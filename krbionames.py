@@ -16,6 +16,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     '''
 
     var_string = 'var.'
+    form_string = 'f.'
     sub_string = 'subsp.'
     cross_string = 'x'
     other_string = 'sp.'
@@ -23,17 +24,21 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     name_list = name.split(sep)
 
     var_bool = bool(name_list.count(var_string))
+    form_bool = bool(name_list.count(form_string))
     sub_bool = bool(name_list.count(sub_string))
     cross_bool = bool(name_list.count(cross_string))
     other_bool = bool(name_list.count(other_string))
 
     var = None
+    form = None
     sub = None
     cross = None
     other = None
 
     if var_bool:
         var = name_list.index(var_string)
+    if form_bool:
+        form = name_list.index(form_string)
     if sub_bool:
         sub = name_list.index(sub_string)
     if cross_bool:
@@ -42,6 +47,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         other = name_list.index(other_string)
 
     var_dict = {'name': 'variety', 'index': var}
+    form_dict = {'name': 'form', 'index': form}
     sub_dict = {'name': 'subspecies', 'index': sub}
     cross_dict = {'name': 'cross', 'index': cross}
     other_dict = {'name': 'other', 'index': other}
@@ -49,6 +55,8 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     indexes = []
     if var != None:
         indexes.append(var_dict)
+    if form != None:
+        indexes.append(form_dict)
     if sub != None:
         indexes.append(sub_dict)
     if cross != None:
@@ -81,6 +89,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         organism_dict['species'] = name_list[1]
 
     organism_dict['variety'] = ''
+    organism_dict['form'] = ''
     organism_dict['subspecies'] = ''
     organism_dict['cross'] = ''
     organism_dict['other'] = ''
@@ -146,6 +155,7 @@ def flatten_organism_name(parsed_name, sep=' '):
     genus_bool = parsed_name.has_key('genus')
     species_bool = parsed_name.has_key('species')
     var_bool = parsed_name.has_key('variety')
+    form_bool = parsed_name.has_key('form')
     sub_bool = parsed_name.has_key('subspecies')
     cross_bool = parsed_name.has_key('cross')
     other_bool = parsed_name.has_key('other')
@@ -153,6 +163,7 @@ def flatten_organism_name(parsed_name, sep=' '):
     name = ''
 
     var_string = 'var.'
+    form_string = 'f.'
     sub_string = 'subsp.'
     cross_string = 'x'
     other_string = 'sp.'
@@ -167,6 +178,8 @@ def flatten_organism_name(parsed_name, sep=' '):
         name = name + sep + other_string + sep + parsed_name['other']
     if var_bool and parsed_name['variety'] != '':
         name = name + sep + var_string + sep + parsed_name['variety']
+    if form_bool and parsed_name['form'] != '':
+        name = name + sep + form_string + sep + parsed_name['form']
     if sub_bool and parsed_name['subspecies'] != '':
         name = name + sep + sub_string + sep + parsed_name['subspecies']
 
