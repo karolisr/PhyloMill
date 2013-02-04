@@ -185,6 +185,65 @@ def flatten_organism_name(parsed_name, sep=' '):
 
     return name
 
+def accepted_name(name, synonymy_table, auth_file, sep=' '):
+
+    '''
+    Takes the organism name, either as a string or an output of
+    "parse_organism_name" function and returns an accepted name based on
+    synonymy_table information.
+    '''
+
+    # Emma Goldberg's module to standardize authority
+    from krtp.eg import stdauth
+    authority_alternates = stdauth.make_auth_dic(auth_file)
+
+    # Organism name parsed
+    o = None
+    if isinstance(name, basestring):
+        o = parse_organism_name(name)
+    else:
+        o = name
+    # Take available authority information and translate it into an
+    # accepted form.
+    o['authority'] = stdauth.translate(o['authority'], authority_alternates)
+    accepted = dict()
+    accepted['genus'] = ''
+    accepted['species'] = ''
+    accepted['variety'] = ''
+    accepted['subspecies'] = ''
+    accepted['status'] = ''
+    accepted['authority'] = ''
+    accepted['id']= ''
+    matching_entries = list()
+
+    # Find the entries in synonymy table that match our organism name.
+    for s in synonymy_table:
+        if (o['genus'] == s['Genus'] and
+            o['species'] == s['Species'] and
+            o['variety'] == s['Variety'] and
+            o['subspecies'] == s['Subspecies'] and
+            (o['authority'] == '' or (o['authority'] == s['Authority']))
+            ):
+            matching_entries.append(s)
+
+    for s in matching_entries:
+        accepted['genus'] = s['AccGenus']
+        accepted['species'] = s['AccSpecies']
+        accepted['variety'] = s['AccVariety']
+        accepted['subspecies'] = s['AccSubspecies']
+        accepted['status'] = s['Status']
+        accepted['authority'] = s['AccAuthority']
+        accepted['id'] = s['AccID']
+        # If the matching entry is a synonym, recurse into synonymy table
+        # until an entry with a non-synonym status is reached.
+        if (s['Status'].lower() == 'syn' or
+            s['Status'].lower() == 'syn-alt'):
+            accepted = accepted_name(accepted, synonymy_table, auth_file,
+                                     sep=sep)
+        else:
+            break
+    return accepted
+
 if __name__ == '__main__':
     
     # Tests
@@ -200,3 +259,11 @@ if __name__ == '__main__':
 
     # flatten_organism_name
     print(flatten_organism_name(name))
+
+    # accepted_name
+    import krio
+    synonymy_table = krio.read_table_file('testdata'+PS+'synonymy.csv',
+        has_headers=True, headers=None, delimiter=b',', iterator=False)
+    an = accepted_name('Physalis microphysa', synonymy_table,
+        'testdata'+PS+'authorityalternates.dat', sep=b' ')
+    print(an)
