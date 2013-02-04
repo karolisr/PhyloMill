@@ -60,7 +60,7 @@ def cluster_file(
 def parse_uc_file(uc_file_path):
 
     import csv
-    uc = csv.reader(open(uc_file_path, 'rb'), delimiter='\t')
+    uc = csv.reader(open(uc_file_path, 'rb'), delimiter=b'\t')
 
     cluster_dict = {}
 
@@ -70,6 +70,29 @@ def parse_uc_file(uc_file_path):
         elif row[0].startswith('H'):
             cluster_dict[row[1]].append(row[8])
 
+    return cluster_dict
+
+def cluster_records(records, similarity, temp_dir):
+
+    '''
+    Cluster records based on similarity treshold.
+    '''
+
+    import os
+    import krbioio
+
+    ps = os.path.sep
+
+    to_cluster_path = temp_dir + ps + 'to_cluster.fasta'
+    clustered_path = temp_dir + ps + 'clustered.uc'
+    
+    krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
+    cluster_file(to_cluster_path, clustered_path, similarity)
+    cluster_dict = parse_uc_file(clustered_path)
+    
+    os.remove(to_cluster_path)
+    os.remove(clustered_path)
+    
     return cluster_dict
 
 if __name__ == '__main__':
@@ -82,6 +105,8 @@ if __name__ == '__main__':
 
     to_cluster_file='testdata/tocluster.fasta'
     output_file='testdata/clustered.uc'
+
+    # cluster_file
     cluster_file(to_cluster_file,
                  output_file,
                  identity_threshold=0.99,
@@ -91,3 +116,8 @@ if __name__ == '__main__':
                  threads=4,
                  quiet=False,
                  program='usearch6')
+
+    # cluster_records
+    import krbioio
+    records = krbioio.read_sequence_file(to_cluster_file, 'fasta')
+    cluster_records(records, 0.99, 'testdata')
