@@ -38,14 +38,11 @@ This file contains functions for working with [USEARCH](http://drive5.com/usearc
 
 These modules depend on these Python packages:
 
-[Biopython](http://biopython.org)
-
-[Unidecode](http://pypi.python.org/pypi/Unidecode)
+*[Biopython](http://biopython.org)
+*[Unidecode](http://pypi.python.org/pypi/Unidecode)
 
 Some modules in this package allow for interaction with:
 
-[USEARCH](http://drive5.com/usearch)
-
-[MAFFT](http://mafft.cbrc.jp/alignment/software)
-
-[MUSCLE](http://www.drive5.com/muscle)
+*[USEARCH](http://drive5.com/usearch)
+*[MAFFT](http://mafft.cbrc.jp/alignment/software)
+*[MUSCLE](http://www.drive5.com/muscle)
