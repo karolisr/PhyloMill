@@ -136,6 +136,42 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
 
     return organism_dict
 
+def flatten_organism_name(parsed_name, sep=' '):
+
+    '''
+    Take a dictionary from "parse_organism_name" and return an organism name
+    string.
+    '''
+    
+    genus_bool = parsed_name.has_key('genus')
+    species_bool = parsed_name.has_key('species')
+    var_bool = parsed_name.has_key('variety')
+    sub_bool = parsed_name.has_key('subspecies')
+    cross_bool = parsed_name.has_key('cross')
+    other_bool = parsed_name.has_key('other')
+
+    name = ''
+
+    var_string = 'var.'
+    sub_string = 'subsp.'
+    cross_string = 'x'
+    other_string = 'sp.'
+
+    if genus_bool and parsed_name['genus'] != '':
+        name = name + parsed_name['genus']
+    if species_bool and parsed_name['species'] != '':
+        name = name + sep + parsed_name['species']
+    if cross_bool and parsed_name['cross'] != '':
+        name = name + sep + cross_string + sep + parsed_name['cross']
+    if other_bool and parsed_name['other'] != '':
+        name = name + sep + other_string + sep + parsed_name['other']
+    if var_bool and parsed_name['variety'] != '':
+        name = name + sep + var_string + sep + parsed_name['variety']
+    if sub_bool and parsed_name['subspecies'] != '':
+        name = name + sep + sub_string + sep + parsed_name['subspecies']
+
+    return name
+
 if __name__ == '__main__':
     
     # Tests
@@ -145,5 +181,9 @@ if __name__ == '__main__':
     PS = os.path.sep
 
     # parse_organism_name
-    print(parse_organism_name('A b x c var. d subsp. e',
-        sep=' ', ncbi_authority=False))
+    name = parse_organism_name('A b x c var. d subsp. e', sep=' ',
+        ncbi_authority=False)
+    print(name)
+
+    # flatten_organism_name
+    print(flatten_organism_name(name))
