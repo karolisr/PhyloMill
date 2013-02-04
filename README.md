@@ -10,6 +10,10 @@ The list of files in the collection with brief descriptions.
 
 This file contains functions dealing with biological sequence data input/output operations.
 
+### krbionames.py
+
+This file contains functions dealing with organism nomenclature.
+
 ### krcl.py
 
 This file contains functions dealing with command line interactions.
