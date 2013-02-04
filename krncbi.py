@@ -65,6 +65,75 @@ def esearch(esearch_terms, db, email):
     uid_set = set(uid_set)
     return uid_set
 
+def download_sequence_records(file_path, uids, db, entrez_email):
+
+    '''
+    Will download sequence records for uids and database (db) given from NCBI.
+    '''
+
+    from Bio import Entrez
+    from Bio import SeqIO
+    import krbioio
+
+    if isinstance(uids, set):
+        uids = list(uids)
+
+    Entrez.email = entrez_email
+    out_handle = open(file_path, 'w')
+    uid_count = len(uids)
+
+    # Not sure if these should be input as function arguments.
+    large_batch_size = 500
+    small_batch_size = 100
+
+    # Perhaps these may be function arguments?
+    rettype='gb'
+    retmode='text'
+
+    for uid_start in range(0, uid_count, large_batch_size):
+        retry = True
+        while retry:
+            uid_end = min(uid_count, uid_start + large_batch_size)
+            print('Downloading records %i to %i of %i.'
+                % (uid_start+1, uid_end, uid_count))
+            small_batch = uids[uid_start:uid_end]
+            small_batch_count = len(small_batch)
+            epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
+            webenv = epost['WebEnv']
+            query_key = epost['QueryKey']
+
+            temp_records = []
+
+            for start in range(0, small_batch_count, small_batch_size):
+                end = min(small_batch_count, start + small_batch_size)
+                print ('  Going to download record %i to %i of %i.'
+                    % (start + 1, end, small_batch_count))
+
+                fetch_handle = Entrez.efetch(db=db, rettype=rettype,
+                                             retmode=retmode, retstart=start,
+                                             retmax=small_batch_size,
+                                             webenv=webenv,
+                                             query_key=query_key)
+
+                batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
+                temp_records = temp_records + batch_data
+
+            n_rec_to_download = uid_end - uid_start
+            rec_downloaded = len(temp_records)
+            print('    Downloaded', rec_downloaded, 'of',
+                n_rec_to_download, 'records.')
+            if rec_downloaded == n_rec_to_download:
+                retry = False
+                SeqIO.write(temp_records, out_handle, 'gb')
+                fetch_handle.close()
+            else:
+                fetch_handle.close()
+                print('    Retrying...')
+
+    out_handle.close()
+
+    return
+
 if __name__ == '__main__':
     
     # Tests
