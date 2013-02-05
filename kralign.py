@@ -80,7 +80,7 @@ def align(records, program, threads, temp_dir='.'):
     import os
     import subprocess
     from Bio import AlignIO
-    from karolisr.biometatools.util import io
+    import krbioio
 
     working_dir = os.getcwd()
 
@@ -89,7 +89,7 @@ def align(records, program, threads, temp_dir='.'):
 
     os.chdir(temp_dir)
 
-    io.write_sequence_file(records, temp_input_file, 'fasta')
+    krbioio.write_sequence_file(records, temp_input_file, 'fasta')
 
     if program == 'muscle':
         subprocess.call(program + ' -quiet -in ' + temp_input_file +
@@ -99,7 +99,7 @@ def align(records, program, threads, temp_dir='.'):
         subprocess.call(program + ' --quiet --thread ' + str(threads) + ' ' +
                         temp_input_file + ' > ' + temp_output_file, shell=True)
 
-    results = io.read_alignment_file(temp_output_file, 'fasta')
+    results = krbioio.read_alignment_file(temp_output_file, 'fasta')
 
     os.remove(temp_input_file)
     os.remove(temp_output_file)

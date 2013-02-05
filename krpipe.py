@@ -264,7 +264,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                             break
 
                 if not found_match:
-                    log_handle.write(record.id + '\tNo taxonomic match.\n')
+                    log_handle.write(record.id + '\t' + organism.replace('_', ' ') + '\t' + tax_id + '\tNo taxonomic match.\n')
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
@@ -301,15 +301,15 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                 min_similarity, temp_dir)
 
             if acc_name['status'] == '':
-                log_handle.write(record.id + '\tNo taxonomic match.\n')
+                log_handle.write(record.id + '\t' + organism.replace('_', ' ') + '\t' + tax_id + '\tNo taxonomic match.\n')
                 #loci_excluded.append(sequence_record)
             elif len(seq) <= minlen:
-                log_handle.write(record.id + '\tSequence is too short.\n')
+                log_handle.write(record.id + '\t' + organism.replace('_', ' ') + '\t' + tax_id + '\tSequence is too short.\n')
                 #loci_excluded.append(sequence_record)
             # If the sequences are similar enough, there will be only one
             # cluster
             elif len(cluster_dict.keys()) != 1:
-                log_handle.write(record.id + '\tSequence is too dissimilar from a sample sequence.\n')
+                log_handle.write(record.id + '\t' + organism.replace('_', ' ') + '\t' + tax_id + '\tSequence is too dissimilar from a sample sequence.\n')
                 #loci_excluded.append(sequence_record)
             else:
                 loci.append(sequence_record)
@@ -326,7 +326,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
 
         krcl.show_cursor()
 
-        os.removedirs(temp_dir)
+    os.removedirs(temp_dir)
 
 def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
     temp_dir, file_name_sep):
@@ -434,6 +434,57 @@ def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
 
     os.removedirs(temp_dir)
 
+def align_loci(processed_results_dir, output_dir, program, threads, spacing,
+    temp_dir):
+
+    '''
+    Align individual loci, then concatenate alignments.
+
+    spacing - the number of gaps to insert between individual alignments.
+    '''
+
+    print('\nAlign individual loci, then concatenate alignments.')
+
+    import os
+    import krio
+    import krbioio
+    import kralign
+
+    ps = os.path.sep
+
+    alignments = []
+    
+    print('\tPreparing output directory "', output_dir, '"', sep='')
+    krio.prepare_directory(output_dir)
+    print('\tPreparing temporary directory "', temp_dir, '"', sep='')
+    krio.prepare_directory(temp_dir)
+
+    gene_dict = dict()
+
+    file_list = parse_directory(processed_results_dir, ' ')
+    
+    for f in file_list:
+
+        if not f['ext'].startswith('fasta'):
+            continue
+        
+        file_name = f['name']
+        output_file = output_dir + ps + file_name + '.fasta'
+        records = krbioio.read_sequence_file(f['path'], 'fasta')
+
+        # Align each locus individually first.
+        print('\n\tAligning', file_name)
+        aln = kralign.align(records, program, threads, temp_dir)
+        krbioio.write_alignment_file(aln, output_file, 'fasta')
+        alignments.append(aln)
+
+    print('\n\tProducing concatenated alignment.')
+    concatenated = kralign.concatenate(alignments, spacing)
+    concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
+    krbioio.write_alignment_file(concatenated, concatenated_output_file, 'fasta')
+
+    os.removedirs(temp_dir)
+
 # End pipeline functions ------------------------------------------------------
 
 if __name__ == '__main__':
@@ -446,7 +497,7 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
-    parser.add_argument('-c', '--command', type=unicode, choices=['search_and_download', 'extract_loci', 'one_locus_per_organism'], help='Run a command.')
+    parser.add_argument('-c', '--command', type=unicode, choices=['search_and_download', 'extract_loci', 'one_locus_per_organism', 'align_loci'], help='Run a command.')
     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
     parser.add_argument('-o', '--output', type=unicode, help='Output directory path.')
     parser.add_argument('-s', '--sep', type=unicode, help='Output file name separator.')
@@ -458,7 +509,10 @@ if __name__ == '__main__':
     parser.add_argument('--samples', type=unicode, help='Sequence samples file in FASTA format.')
     parser.add_argument('--similarity', type=float, help='Minimum sequence similarity.')
     parser.add_argument('--tempdir', type=unicode, help='Temporary directory path.')
-    
+    parser.add_argument('--alignprog', type=unicode, choices=['mafft', 'einsi', 'linsi', 'muscle'], help='Alignment program to be used.')
+    parser.add_argument('--threads', type=int, help='Number of CPU cores to use.')
+    parser.add_argument('--alignspacing', type=int, help='Number of gaps to add between alignments in concatenated alignment.')
+
     args = parser.parse_args()
 
     PS = os.path.sep
@@ -529,4 +583,15 @@ if __name__ == '__main__':
                 min_similarity = args.similarity,
                 temp_dir = args.tempdir,
                 file_name_sep = args.sep
+                )
+
+        if args.command == 'align_loci':
+
+            align_loci(
+                processed_results_dir = args.input,
+                output_dir = args.output,
+                program = args.alignprog,
+                threads = args.threads,
+                spacing = args.alignspacing,
+                temp_dir = args.tempdir
                 )
