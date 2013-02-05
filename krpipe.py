@@ -114,7 +114,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
     and similarity.
     '''
 
-    print('\nStep 2: Extracting relevant loci.')
+    print('\nExtracting relevant loci.')
     
     import os
     from Bio import SeqRecord
