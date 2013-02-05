@@ -328,6 +328,112 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
 
         os.removedirs(temp_dir)
 
+def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
+    temp_dir, file_name_sep):
+
+    '''
+    Produce single sequence per locus, per organism.
+    '''
+
+    print('\nProduce single sequence per locus, per organism.')
+
+    import os
+    import krio
+    import krbioio
+    import krusearch
+    import krcl
+
+    ps = os.path.sep
+
+    print('\tPreparing output directory "', output_dir, '"', sep='')
+    krio.prepare_directory(output_dir)
+    
+    print('\tPreparing temporary directory "', temp_dir, '"', sep='')
+    krio.prepare_directory(temp_dir)
+
+    locus_dict = dict()
+
+    file_list = parse_directory(extracted_results_dir, file_name_sep)
+    
+    for f in file_list:
+
+        if not f['ext'].startswith('fasta'):
+            continue
+
+        if f['split'][-1].startswith('excluded'):
+            continue
+
+        file_name = f['name']
+        name = f['split'][0]
+
+        if not locus_dict.has_key(name):
+            locus_dict[name] = list()
+
+        records = krbioio.read_sequence_file(f['path'], 'fasta')
+        locus_dict[name] = locus_dict[name] + records
+
+    # Because for each locus, there could be several records from the same
+    # species, we need to pick the best representative sequence. Only one
+    # per locus, per organism.
+    for locus_name in locus_dict.keys():
+        print('\n\tProcessing', locus_name)
+
+        output_file = output_dir + ps + locus_name + '.fasta'
+        results = list()
+        records = locus_dict[locus_name]
+        records_dict = dict()
+        
+        log_file = output_dir + ps + locus_name + '.log'
+        log_handle = open(log_file, 'w')
+
+        for record in records:
+            taxid = record.description.split('|')[4]
+            if not records_dict.has_key(taxid):
+                records_dict[taxid] = list()
+            records_dict[taxid].append(record)
+        records_count = len(records_dict.keys())
+        
+        krcl.hide_cursor()
+
+        for i, taxid in enumerate(records_dict.keys()):
+            tax_records = records_dict[taxid]
+            krcl.print_progress(i+1, records_count, 50, '\t')
+            # If there is more than one sequence for particular locus and
+            # particular organism.
+            if len(tax_records) > 1:
+                # ...we cluster these sequences and hope for only one cluster
+                cluster_dict = krusearch.cluster_records(tax_records, min_similarity,
+                                               temp_dir)
+                # ...if there is only one cluster
+                if len(cluster_dict.keys()) == 1:
+                    # ...we pick the longest available sequence
+                    tax_records.sort(key=lambda x:len(x), reverse=True)
+                    results.append(tax_records[0])
+                else:
+                    # ToDo: What happens if the sequences from the same
+                    # organism and the same locus are not similar enough?
+                    # Note: This happened only twice in my expirience so far,
+                    # so I don't think this is top priority.
+                    log_handle.write(tax_records[0].description.split('|')[-2] + '\t' + taxid + '\tSequences are too dissimilar.\n')
+            else:
+                results.append(tax_records[0])
+
+        krcl.show_cursor()
+
+        for result in results:
+            desc = result.description.split('|')
+            desc = desc[-2] + '|' + desc[-1]
+            result.id = desc
+            result.name = ''
+            result.description = ''
+        krbioio.write_sequence_file(results, output_file, 'fasta')
+
+        log_handle.close()
+
+        print('\n\tAccepted', len(results), 'sequences.')
+
+    os.removedirs(temp_dir)
+
 # End pipeline functions ------------------------------------------------------
 
 if __name__ == '__main__':
@@ -340,7 +446,7 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
-    parser.add_argument('-c', '--command', type=unicode, choices=['search_and_download', 'extract_loci'], help='Run a command.')
+    parser.add_argument('-c', '--command', type=unicode, choices=['search_and_download', 'extract_loci', 'one_locus_per_organism'], help='Run a command.')
     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
     parser.add_argument('-o', '--output', type=unicode, help='Output directory path.')
     parser.add_argument('-s', '--sep', type=unicode, help='Output file name separator.')
@@ -410,6 +516,16 @@ if __name__ == '__main__':
                 ncbi_names_table = ncbi_names,
                 synonymy_table = synonymy_table,
                 auth_file = args.authority,
+                min_similarity = args.similarity,
+                temp_dir = args.tempdir,
+                file_name_sep = args.sep
+                )
+
+        if args.command == 'one_locus_per_organism':
+
+            one_locus_per_organism(
+                extracted_results_dir = args.input,
+                output_dir = args.output,
                 min_similarity = args.similarity,
                 temp_dir = args.tempdir,
                 file_name_sep = args.sep
