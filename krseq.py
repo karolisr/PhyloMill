@@ -1,3 +1,6 @@
+from __future__ import print_function
+#from __future__ import unicode_literals
+
 def get_annotation(seq_record, annotation_label):
     return_value = None
     if seq_record.annotations.has_key(annotation_label):

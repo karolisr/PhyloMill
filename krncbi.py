@@ -1,5 +1,5 @@
 from __future__ import print_function
-from __future__ import unicode_literals
+#from __future__ import unicode_literals
 
 def entrez_db_list(email):
 
@@ -134,7 +134,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
     return
 
-def names_for_ncbi_taxid(tax_id, ncbi_names_table):
+def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
     
     '''
     Return all the names ("synonyms") associated with an NCBI taxid.
@@ -161,17 +161,31 @@ def names_for_ncbi_taxid(tax_id, ncbi_names_table):
         # not want any of that.
 
         if row['name_class'] == 'scientific name':
+            parsed['name_class'] = '2'
             sci_names.append(parsed)
         if row['name_class'] == 'authority':
+            parsed['name_class'] = '1'
             auth_names.append(parsed)
         if row['name_class'] == 'synonym':
+            parsed['name_class'] = '3'
             syn_names.append(parsed)
 
     priority_list = auth_names + syn_names + sci_names
     # This will sort the names so the results with authority information (if
     # any) will appear at the beginning of the list.
-    priority_list.sort(key=lambda x: x['authority'], reverse=True)
+    if sorting.startswith('class'):
+        priority_list.sort(key=lambda x: x['name_class'], reverse=False)
+    elif sorting.startswith('authority'):
+        priority_list.sort(key=lambda x: x['authority'], reverse=True)
     return priority_list
+
+def get_ncbi_tax_id(record):
+    import krseq
+    feature_index = krseq.get_features_with_qualifier(record, 'db_xref',
+        'taxon')[0]
+    # ToDo: search for taxon key as we now assume that it will always be the
+    # last in the list
+    return record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1]
 
 if __name__ == '__main__':
     
@@ -193,7 +207,7 @@ if __name__ == '__main__':
     ncbi_names_table = krio.read_table_file('testdata'+PS+'ncbinames.dmp',
         has_headers=False,
         headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
-        delimiter=b'\t', iterator=False)
-    names = names_for_ncbi_taxid('710638', ncbi_names_table)
+        delimiter='\t|')
+    names = names_for_ncbi_taxid('1146960', ncbi_names_table, sorting='class')
     for n in names:
         print(n)

@@ -1,5 +1,5 @@
 from __future__ import print_function
-from __future__ import unicode_literals
+#from __future__ import unicode_literals
 
 def parse_organism_name(name, sep=' ', ncbi_authority=False):
     
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     # accepted_name
     import krio
     synonymy_table = krio.read_table_file('testdata'+PS+'synonymy.csv',
-        has_headers=True, headers=None, delimiter=b',', iterator=False)
+        has_headers=True, headers=None, delimiter=',', iterator=False)
     an = accepted_name('Physalis microphysa', synonymy_table,
-        'testdata'+PS+'authorityalternates.dat', sep=b' ')
+        'testdata'+PS+'authorityalternates.dat', sep=' ')
     print(an)

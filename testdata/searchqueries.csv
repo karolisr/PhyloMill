@@ -1,7 +1,7 @@
-name1,name2,locus,minlen,ncbi_feature_type,ncbi_qualifier_label,database,query
+name1	name2	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	database	query
 
 # GBSSI (granule-bound starch synthase (waxy)) nuclear
-GBSSI,0,GBSSI,100,gene,gene,nuccore,GBSSI[Gene Name] AND txid4070[Organism]
+GBSSI	0	GBSSI,waxy	100	gene	gene	nuccore	GBSSI[Gene Name] AND txid4070[Organism]
 
 # ndhF (NADH dehydrogenase subunit (ndhF) gene) chloroplast
-ndhF,0,ndhF,100,gene,gene,nuccore,ndhF[Gene Name] AND txid4070[Organism]
+ndhF	0	ndhF	100	gene	gene	nuccore	ndhF[Gene Name] AND txid4070[Organism]

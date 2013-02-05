@@ -1,5 +1,5 @@
 from __future__ import print_function
-from __future__ import unicode_literals
+#from __future__ import unicode_literals
 
 '''
     This module is designed for USEARCH 6. There are many differences between

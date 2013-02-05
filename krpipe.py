@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from __future__ import unicode_literals
+#from __future__ import unicode_literals
 
 # Utility functions used by the pipeline functions.
 
@@ -43,7 +43,7 @@ def parse_directory(path, file_name_sep):
     
     return return_list
 
-# Pipeline functions.
+# Pipeline functions ----------------------------------------------------------
 
 def search_and_download(queries, output_dir, file_name_sep, email):
 
@@ -105,7 +105,230 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         # Download records.
         krncbi.download_sequence_records(file_name, result_uids, db, email)
 
-# End pipeline functions.
+def extract_loci(search_results_dir, output_dir, sequence_samples,
+    ncbi_names_table, min_similarity, temp_dir, file_name_sep,
+    synonymy_table=None, auth_file=None):
+
+    '''
+    Extract relevant loci from the search results, do some filtering by length
+    and similarity.
+    '''
+
+    print('\nStep 2: Extracting relevant loci.')
+    
+    import os
+    from Bio import SeqRecord
+    import krio
+    import krbioio
+    import krseq
+    import krncbi
+    import krcl
+    import krbionames
+    import krusearch
+
+    ps = os.path.sep
+
+    print('\tPreparing output directory "', output_dir, '"', sep='')
+    krio.prepare_directory(output_dir)
+    print('\tPreparing temporary directory "', temp_dir, '"', sep='')
+    krio.prepare_directory(temp_dir)
+
+    file_list = parse_directory(search_results_dir, file_name_sep)
+
+    # Iterate over search results
+    for f in file_list:
+        
+        if not f['ext'].startswith('gb'):
+            continue
+
+        # Stores all loci that have passed quality control
+        loci = list()
+        # Stores all loci that have failed quality control
+        #loci_excluded = list()
+
+        # Read search results
+        records = krbioio.read_sequence_file(f['path'], 'genbank')
+
+        # Get information from the search result file name
+        file_name = f['name']
+        name1 = f['split'][0]
+        name2 = f['split'][1]
+        locus = f['split'][2]
+        minlen = int(f['split'][3])
+        feature_type = f['split'][4]
+        qualifier_label = f['split'][5]
+        
+        log_file = output_dir + ps + file_name + '.log'
+        log_handle = open(log_file, 'w')
+
+        output_file = output_dir + ps + file_name + '.fasta'
+        output_file_excluded = (output_dir + ps + file_name + file_name_sep +
+            'excluded.fasta')
+        
+        records_count = len(records)
+
+        print('\n\tProcessing: ', name1, ' ', name2, ' / ', locus, sep='')
+        
+        krcl.hide_cursor()
+
+        # Locus may have different names
+        locus = locus.split(',')
+
+        for i, record in enumerate(records):
+            krcl.print_progress(i+1, records_count, 50, '\t')
+            
+            # genbank records contain "features" which conatin annotation
+            #   information. Here we look for the feature that contains our
+            #   target locus and note its index
+
+            feature_indexes = list()
+
+            for l in locus:
+                fi = krseq.get_features_with_qualifier(record=record,
+                    qualifier_label=qualifier_label, qualifier=l.strip(),
+                    feature_type=feature_type)
+                feature_indexes = feature_indexes + fi
+            # ToDo: this should never occur, and occured only once
+            # Same gene annotated more than once
+            if len(feature_indexes) > 1:
+                log_handle.write(record.id + '\tMore than one locus annotation.\n')
+                continue
+            if len(feature_indexes) == 0:
+                log_handle.write(record.id + '\tNo locus annotation.\n')
+                continue
+            # There should be only one matching index.
+            feature = record.features[feature_indexes[0]]
+            start = int(feature.location.start)
+            end = int(feature.location.end)
+            strand = int(feature.location.strand)
+            # Extract relevant region
+            seq = record.seq[start:end]
+            # If the feature is in reverse orientation, reverse-complement.
+            if strand == -1:
+                seq = seq.reverse_complement()
+            
+            # Deal with the organism name
+            tax_id = krncbi.get_ncbi_tax_id(record)
+
+            ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+            
+            organism = krseq.get_annotation(record, 'organism')
+            organism = organism.replace(' ', '_')
+
+            acc_name = None
+            acc_name_flat = None
+            organism_authority = None
+
+            if synonymy_table and auth_file:
+
+                # A list of organism names based on NCBI taxid. This is a sorted
+                #   list with the most complete names at lower indexes.
+                organism_authority = krncbi.names_for_ncbi_taxid(tax_id,
+                    ncbi_names_table, sorting='authority')
+
+                # Iterate over the list of NCBI names and try to resolve accepted
+                #   name.
+
+                # First look if there is a best possible match "acc"
+
+                found_match = False
+
+                for oa in organism_authority:
+                    acc_name = krbionames.accepted_name(oa, synonymy_table,
+                        auth_file)
+                    if acc_name['status'].lower() == 'acc':
+                        found_match = True
+                        break
+
+                # If no, then look for the next best thing "prov"
+
+                if not found_match:
+                    for oa in organism_authority:
+                        acc_name = krbionames.accepted_name(oa, synonymy_table,
+                            auth_file)
+                        if acc_name['status'].lower() == 'prov':
+                            found_match = True
+                            break
+
+                # Otherwise, let's find something that isn't blank
+
+                if not found_match:
+                    for oa in organism_authority:
+                        acc_name = krbionames.accepted_name(oa, synonymy_table,
+                            auth_file)
+                        if (acc_name['status'].lower() == 'as' or
+                            acc_name['status'].lower() == 'nn' or
+                            acc_name['status'].lower() == 'unc' or
+                            acc_name['status'].lower() == 'unr'):
+                            found_match = True
+                            break
+
+                if not found_match:
+                    log_handle.write(record.id + '\tNo taxonomic match.\n')
+                    continue
+
+                acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
+
+            else:
+
+                acc_name = dict()
+                acc_name['id'] = tax_id
+                acc_name['status'] = 'NA'
+                organism_authority = krncbi.names_for_ncbi_taxid(tax_id,
+                    ncbi_names_table, sorting='class')
+                acc_name_flat = krbionames.flatten_organism_name(organism_authority[0], '_')
+
+            # Record id for the fasta output
+            sequence_record_id = (
+                # NCBI accession
+                record.id + '|' +
+                # Organism name as it appears in search results
+                organism + '|' +
+                # NCBI taxid
+                tax_id + '|' +
+                # Accepted name
+                acc_name_flat + '|' +
+                # Accepted name id from the synonymy table
+                acc_name['id'])
+            # Produce a biopython sequence record object
+            sequence_record = SeqRecord.SeqRecord(
+                seq=seq, id=sequence_record_id, name='', description='')
+            # We will try to cluster this sequence with a sample at the
+            # relatively low similarity treshold, to weed out sequences
+            # that have nothing to do with what we are looking for.
+            to_cluster = [sequence_record, sequence_samples[name1]]
+            cluster_dict = krusearch.cluster_records(to_cluster,
+                min_similarity, temp_dir)
+
+            if acc_name['status'] == '':
+                log_handle.write(record.id + '\tNo taxonomic match.\n')
+                #loci_excluded.append(sequence_record)
+            elif len(seq) <= minlen:
+                log_handle.write(record.id + '\tSequence is too short.\n')
+                #loci_excluded.append(sequence_record)
+            # If the sequences are similar enough, there will be only one
+            # cluster
+            elif len(cluster_dict.keys()) != 1:
+                log_handle.write(record.id + '\tSequence is too dissimilar from a sample sequence.\n')
+                #loci_excluded.append(sequence_record)
+            else:
+                loci.append(sequence_record)
+
+        log_handle.close()
+
+        # Write results
+        krbioio.write_sequence_file(loci, output_file, 'fasta')
+        #krbioio.write_sequence_file(loci_excluded, output_file_excluded,
+        #    'fasta')
+
+        print('\n\tAccepted', len(loci), 'sequences.')
+        #print('\n\tRejected', len(loci_excluded), 'sequences.')
+
+        krcl.show_cursor()
+
+        os.removedirs(temp_dir)
+
+# End pipeline functions ------------------------------------------------------
 
 if __name__ == '__main__':
     
@@ -113,17 +336,22 @@ if __name__ == '__main__':
     import argparse
     import os
     import krio
+    import krbioio
     
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
-    parser.add_argument('-c', '--command', type=unicode,
-        choices=['search_and_download'], help='Run a command.')
+    parser.add_argument('-c', '--command', type=unicode, choices=['search_and_download', 'extract_loci'], help='Run a command.')
     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
-    parser.add_argument('-o', '--output', type=unicode,
-        help='Output directory path.')
-    parser.add_argument('-s', '--sep', type=unicode,
-        help='Output file name separator.')
+    parser.add_argument('-o', '--output', type=unicode, help='Output directory path.')
+    parser.add_argument('-s', '--sep', type=unicode, help='Output file name separator.')
     parser.add_argument('-e', '--email', type=unicode, help='Email.')
+    parser.add_argument('-i', '--input', type=unicode, help='Input directory path.')
+    parser.add_argument('--ncbinames', type=unicode, help='NCBI organism names file.')
+    parser.add_argument('--synonymy', type=unicode, help='Synonymy file.')
+    parser.add_argument('--authority', type=unicode, help='Authority alternates file.')
+    parser.add_argument('--samples', type=unicode, help='Sequence samples file in FASTA format.')
+    parser.add_argument('--similarity', type=float, help='Minimum sequence similarity.')
+    parser.add_argument('--tempdir', type=unicode, help='Temporary directory path.')
     
     args = parser.parse_args()
 
@@ -148,6 +376,41 @@ if __name__ == '__main__':
         if args.command == 'search_and_download':
 
             queries = krio.read_table_file(args.query, has_headers=True,
-                          headers=None, delimiter=b',', iterator=False)
+                          headers=None, delimiter='\t')
 
             search_and_download(queries, args.output+PS, args.sep, args.email)
+
+        if args.command == 'extract_loci':
+
+            ncbi_names = None
+            synonymy_table = None
+            sequence_samples = None
+
+            if args.ncbinames:
+
+                ncbi_names = krio.read_table_file(args.ncbinames,
+                    has_headers=False,
+                    headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
+                    delimiter='\t|')
+
+            if args.authority and args.synonymy:
+
+                synonymy_table = krio.read_table_file(args.synonymy,
+                    has_headers=True, headers=None, delimiter=',')
+
+            if args.samples:
+
+                sequence_samples = krbioio.read_sequence_file(args.samples, 'fasta',
+                    ret_type='dict')
+            
+            extract_loci(
+                search_results_dir = args.input,
+                output_dir = args.output,
+                sequence_samples = sequence_samples,
+                ncbi_names_table = ncbi_names,
+                synonymy_table = synonymy_table,
+                auth_file = args.authority,
+                min_similarity = args.similarity,
+                temp_dir = args.tempdir,
+                file_name_sep = args.sep
+                )
