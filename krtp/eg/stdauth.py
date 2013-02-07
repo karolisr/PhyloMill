@@ -26,6 +26,7 @@ authtable = 'authority_alternates.dat'
 # Anyway, the overall plan is to allow non-ascii characters in the input files
 # (author table and names to be standardized) and to return ascii output.
 
+
 def clean_name(name):
     '''
         For the name of a single author.
@@ -51,9 +52,9 @@ def make_auth_dic(filename):
 
             line_list = line.split('|')
             key = unidecode(line_list[0].strip())
-            val = [ clean_name(x) for x in line_list ]
+            val = [clean_name(x) for x in line_list]
 
-            if (dic.has_key(key)):
+            if key in dic:
                 dic[key] = dic[key] + val
             else:
                 dic[key] = val
@@ -109,7 +110,7 @@ def clean_spaces(line):
     line = ') '.join([x.strip() for x in line.split(')')])
     line = ' ('.join([x.strip() for x in line.split('(')])
     line = ' & '.join([x.strip() for x in line.split('&')])
-    line = re.sub('^\"\s*|\s*\"$', '"', line) # no space by surrounding quotes
+    line = re.sub('^\"\s*|\s*\"$', '"', line)  # no space by surrounding quotes
     line = ' '.join([x.strip() for x in line.split()])
     return(line.strip())
 
@@ -133,8 +134,8 @@ def translate(authority, authority_alternates):
 
     authority = authority.replace(' Ex ', ' ex ')
     authority = authority.replace(' and ', ' & ')
-    authority = authority.replace(' et ', ' & ')         # breaks 'et al.'
-    authority = authority.replace(' & al.', ' et al.') # must follow 'et' sub
+    authority = authority.replace(' et ', ' & ')        # breaks 'et al.'
+    authority = authority.replace(' & al.', ' et al.')  # must follow 'et' sub
 
     line_list = splitter.split(authority)
     for (p, piece) in enumerate(line_list):

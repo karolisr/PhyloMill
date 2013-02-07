@@ -1,0 +1,10 @@
+name1	name2	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	database	query
+
+# GBSSI (granule-bound starch synthase (waxy)) nuclear
+GBSSI	0	GBSSI,waxy	100	gene	gene	nuccore	GBSSI[Gene Name] AND txid4070[Organism] AND 100:-1[Sequence Length]
+
+# rbcL (ribulose 1	5-bisphosphate carboxylase large subunit) cloroplast
+rbcL	0	rbcL	100	gene	gene	nuccore	rbcL[Gene Name] AND txid4070[Organism] AND 100:-1[Sequence Length]
+
+# trnT-trnL (trnT-trnL intergenic spacer) chloroplast
+trnT-trnL	0	trnT-trnL	400	misc_feature	note	nuccore	trnT-trnL AND txid4070[Organism] AND 100:-1[Sequence Length]

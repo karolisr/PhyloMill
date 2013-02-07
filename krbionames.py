@@ -1,8 +1,9 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
 def parse_organism_name(name, sep=' ', ncbi_authority=False):
-    
+
     '''
     Parse an organism name and return a dictionary with fields:
 
@@ -64,7 +65,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     if other != None:
         indexes.append(other_dict)
 
-    indexes.sort(key=lambda x:x['index'])
+    indexes.sort(key=lambda x: x['index'])
 
     organism_dict = {}
 
@@ -127,7 +128,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
             if ncbi_authority:
                 organism_dict[previous_index['name']] = (
                     ' '.join(name_list[previous_index['index'] +
-                                       1:previous_index['index']+2]))
+                                       1:previous_index['index'] + 2]))
             else:
                 organism_dict[previous_index['name']] = (
                     ' '.join(name_list[previous_index['index'] +
@@ -137,7 +138,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         if ncbi_authority:
             organism_dict[previous_index['name']] = (
                 ' '.join(name_list[previous_index['index'] +
-                                   1:previous_index['index']+2]))
+                                   1:previous_index['index'] + 2]))
         else:
             organism_dict[previous_index['name']] = (
                 ' '.join(name_list[previous_index['index'] +
@@ -145,20 +146,21 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
 
     return organism_dict
 
+
 def flatten_organism_name(parsed_name, sep=' '):
 
     '''
     Take a dictionary from "parse_organism_name" and return an organism name
     string.
     '''
-    
-    genus_bool = parsed_name.has_key('genus')
-    species_bool = parsed_name.has_key('species')
-    var_bool = parsed_name.has_key('variety')
-    form_bool = parsed_name.has_key('form')
-    sub_bool = parsed_name.has_key('subspecies')
-    cross_bool = parsed_name.has_key('cross')
-    other_bool = parsed_name.has_key('other')
+
+    genus_bool = 'genus' in parsed_name
+    species_bool = 'species' in parsed_name
+    var_bool = 'variety' in parsed_name
+    form_bool = 'form' in parsed_name
+    sub_bool = 'subspecies' in parsed_name
+    cross_bool = 'cross' in parsed_name
+    other_bool = 'other' in parsed_name
 
     name = ''
 
@@ -184,6 +186,7 @@ def flatten_organism_name(parsed_name, sep=' '):
         name = name + sep + sub_string + sep + parsed_name['subspecies']
 
     return name
+
 
 def accepted_name(name, synonymy_table, auth_file, sep=' '):
 
@@ -213,7 +216,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     accepted['subspecies'] = ''
     accepted['status'] = ''
     accepted['authority'] = ''
-    accepted['id']= ''
+    accepted['id'] = ''
     matching_entries = list()
 
     # Find the entries in synonymy table that match our organism name.
@@ -245,9 +248,9 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     return accepted
 
 if __name__ == '__main__':
-    
+
     # Tests
-    
+
     import os
 
     PS = os.path.sep
@@ -262,8 +265,8 @@ if __name__ == '__main__':
 
     # accepted_name
     import krio
-    synonymy_table = krio.read_table_file('testdata'+PS+'synonymy.csv',
-        has_headers=True, headers=None, delimiter=',', iterator=False)
+    synonymy_table = krio.read_table_file('testdata' + PS + 'synonymy.csv',
+        has_headers=True, headers=None, delimiter=',')
     an = accepted_name('Physalis microphysa', synonymy_table,
-        'testdata'+PS+'authorityalternates.dat', sep=' ')
+        'testdata' + PS + 'authority_alternates.dat', sep=' ')
     print(an)

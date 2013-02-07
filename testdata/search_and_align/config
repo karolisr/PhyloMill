@@ -1,0 +1,6 @@
+email	test@test.com	Contact email, so NCBI can inform the user if there are any problems
+asim	0.5				Among-species similarity
+wsim	0.8				Within-species similarity
+alnprg	mafft			Alignment program
+threads	2				CPU cores to use
+alngaps	100				Number of gaps to add between individual alignments in the concatenated alignment

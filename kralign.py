@@ -1,8 +1,9 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
 def concatenate(alignments, padding_length=0):
-    
+
     '''
     Concatenate alignments based on the Seq ids; row order does not
     matter. If one alignment contains a Seq id that another one does
@@ -29,7 +30,8 @@ def concatenate(alignments, padding_length=0):
     aln2 = None
     if len(alignments) > 2:
         aln2 = alignments.pop()
-        aln1 = concatenate(alignments=alignments, padding_length=padding_length)
+        aln1 = concatenate(alignments=alignments,
+            padding_length=padding_length)
     elif len(alignments) == 2:
         aln1 = alignments[0]
         aln2 = alignments[1]
@@ -52,7 +54,7 @@ def concatenate(alignments, padding_length=0):
     result_seq_list = list()
     for aln1_key in aln1_dict.keys():
         merged_Seq = None
-        if aln2_dict.has_key(aln1_key):
+        if aln1_key in aln2_dict:
             merged_Seq = aln1_dict[aln1_key] + padding + aln2_dict[aln1_key]
             merged_Seq.id = aln1_dict[aln1_key].id
             merged_Seq.name = ''
@@ -75,11 +77,11 @@ def concatenate(alignments, padding_length=0):
     result_alignment.sort()
     return result_alignment
 
+
 def align(records, program, threads, temp_dir='.'):
 
     import os
     import subprocess
-    from Bio import AlignIO
     import krbioio
 
     working_dir = os.getcwd()

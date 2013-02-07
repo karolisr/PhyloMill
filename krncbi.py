@@ -1,6 +1,7 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
 def entrez_db_list(email):
 
     '''
@@ -16,14 +17,16 @@ def entrez_db_list(email):
     dbs.sort()
     return dbs
 
+
 def esearch(esearch_terms, db, email):
-    
+
     '''
     Perform Entrez ESearch by term.
 
     Args:
         esearch_terms: One or more search terms that use esearch syntax
-            http://www.ncbi.nlm.nih.gov/books/NBK3837/#EntrezHelp.Entrez_Searching_Options
+            http://www.ncbi.nlm.nih.gov/books/NBK3837/
+                #EntrezHelp.Entrez_Searching_Options
 
         db: Entrez database name. Use entrez_db_list to get a current list of
             available databases.
@@ -65,6 +68,7 @@ def esearch(esearch_terms, db, email):
     uid_set = set(uid_set)
     return uid_set
 
+
 def download_sequence_records(file_path, uids, db, entrez_email):
 
     '''
@@ -87,15 +91,15 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     small_batch_size = 100
 
     # Perhaps these may be function arguments?
-    rettype='gb'
-    retmode='text'
+    rettype = 'gb'
+    retmode = 'text'
 
     for uid_start in range(0, uid_count, large_batch_size):
         retry = True
         while retry:
             uid_end = min(uid_count, uid_start + large_batch_size)
             print('Downloading records %i to %i of %i.'
-                % (uid_start+1, uid_end, uid_count))
+                % (uid_start + 1, uid_end, uid_count))
             small_batch = uids[uid_start:uid_end]
             small_batch_count = len(small_batch)
             epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
@@ -134,8 +138,9 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
     return
 
+
 def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
-    
+
     '''
     Return all the names ("synonyms") associated with an NCBI taxid.
     '''
@@ -179,6 +184,7 @@ def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
         priority_list.sort(key=lambda x: x['authority'], reverse=True)
     return priority_list
 
+
 def get_ncbi_tax_id(record):
     import krseq
     feature_index = krseq.get_features_with_qualifier(record, 'db_xref',
@@ -188,9 +194,9 @@ def get_ncbi_tax_id(record):
     return record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1]
 
 if __name__ == '__main__':
-    
+
     # Tests
-    
+
     import os
 
     PS = os.path.sep
@@ -204,7 +210,7 @@ if __name__ == '__main__':
 
     # names_for_ncbi_taxid
     import krio
-    ncbi_names_table = krio.read_table_file('testdata'+PS+'ncbinames.dmp',
+    ncbi_names_table = krio.read_table_file('testdata' + PS + 'ncbi_names.dmp',
         has_headers=False,
         headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
         delimiter='\t|')

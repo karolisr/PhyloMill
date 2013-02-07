@@ -6,19 +6,17 @@ from __future__ import print_function
     USEARCH versions 6 and 5. This module is incompatible with version 5.
 '''
 
-def cluster_file(
 
+def cluster_file(
     input_file_path,
     output_file_path,
     identity_threshold,
     sorted_input=False,
-    algorithm='fast', # fast smallmem
-    strand='plus', # plus both
+    algorithm='fast',  # fast smallmem
+    strand='plus',  # plus both
     threads=1,
     quiet=True,
-    program='usearch6'
-
-    ):
+    program='usearch6'):
 
     import os
     import subprocess
@@ -57,6 +55,7 @@ def cluster_file(
 
     return output_file_path
 
+
 def parse_uc_file(uc_file_path):
 
     import csv
@@ -72,6 +71,7 @@ def parse_uc_file(uc_file_path):
 
     return cluster_dict
 
+
 def cluster_records(records, similarity, temp_dir):
 
     '''
@@ -83,28 +83,28 @@ def cluster_records(records, similarity, temp_dir):
 
     ps = os.path.sep
 
-    to_cluster_path = temp_dir + ps + 'to_cluster.fasta'
-    clustered_path = temp_dir + ps + 'clustered.uc'
-    
+    to_cluster_path = temp_dir + ps + 'to_cluster_temp.fasta'
+    clustered_path = temp_dir + ps + 'clustered_temp.uc'
+
     krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
     cluster_file(to_cluster_path, clustered_path, similarity)
     cluster_dict = parse_uc_file(clustered_path)
-    
+
     os.remove(to_cluster_path)
     os.remove(clustered_path)
-    
+
     return cluster_dict
 
 if __name__ == '__main__':
-    
+
     # Tests
-    
+
     import os
 
     PS = os.path.sep
 
-    to_cluster_file='testdata/tocluster.fasta'
-    output_file='testdata/clustered.uc'
+    to_cluster_file = 'testdata/to_cluster.fasta'
+    output_file = 'testdata/clustered.uc'
 
     # cluster_file
     cluster_file(to_cluster_file,

@@ -1,6 +1,7 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
 def prepare_directory(path):
 
     '''
@@ -13,7 +14,10 @@ def prepare_directory(path):
     return
 
 # The commented file reading class from:
-# http://www.mfasold.net/blog/2010/02/python-recipe-read-csvtsv-textfiles-and-ignore-comment-lines
+# http://www.mfasold.net/blog/2010/02/
+#   python-recipe-read-csvtsv-textfiles-and-ignore-comment-lines
+
+
 class CommentedFile:
 
     '''
@@ -23,15 +27,19 @@ class CommentedFile:
     def __init__(self, f, commentstring="#"):
         self.f = f
         self.commentstring = commentstring
+
     def next(self):
         line = self.f.next()
         while line.startswith(self.commentstring) or not line.strip():
             line = self.f.next()
         return line
+
     def __iter__(self):
         return self
+
     def close(self):
         self.f.close()
+
 
 def read_table_file(
     path,
@@ -65,21 +73,21 @@ def read_table_file(
     return return_value
 
 if __name__ == '__main__':
-    
+
     # Tests
-    
+
     import os
 
     PS = os.path.sep
 
     # CommentedFile
-    handle = CommentedFile(open('testdata'+PS+'commentedfile.csv', 'rb'))
+    handle = CommentedFile(open('testdata' + PS + 'commented_file.csv', 'rb'))
     for i, line in enumerate(handle):
         print(i, repr(line))
     handle.close()
 
     # read_table_file
-    table = read_table_file(path='testdata'+PS+'commentedfile.csv',
+    table = read_table_file(path='testdata' + PS + 'commented_file.csv',
         has_headers=True, headers=None, delimiter=',')
     for i, line in enumerate(table):
         print(i, repr(line))

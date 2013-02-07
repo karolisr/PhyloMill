@@ -1,11 +1,13 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
 def get_annotation(seq_record, annotation_label):
     return_value = None
-    if seq_record.annotations.has_key(annotation_label):
+    if annotation_label in seq_record.annotations:
         return_value = seq_record.annotations[annotation_label]
     return return_value
+
 
 def get_features_with_qualifier_label(record, qualifier_label,
     feature_type=None):
@@ -17,6 +19,7 @@ def get_features_with_qualifier_label(record, qualifier_label,
                 if qualifier_key == qualifier_label:
                     features.append(i)
     return features
+
 
 def get_features_with_qualifier(record, qualifier_label, qualifier,
     feature_type=None):
