@@ -6,33 +6,41 @@ krpy is a collection of Python scripts, classes and functions written by Karolis
 
 The list of files in the collection with brief descriptions.
 
+### kralign.py
+
+Dealing with biological sequence alignments.
+
 ### krbioio.py
 
-This file contains functions dealing with biological sequence data input/output operations.
+Dealing with biological sequence data input/output operations.
 
 ### krbionames.py
 
-This file contains functions dealing with organism nomenclature.
+Dealing with organism nomenclature.
 
 ### krcl.py
 
-This file contains functions dealing with command line interactions.
+Dealing with command line interactions.
 
 ### krio.py
 
-This file contains functions dealing with file system operations.
+Dealing with file system operations.
 
 ### krncbi.py
 
-This file contains functions dealig with National Center for Biotechnology Information (NCBI) databases.
+Dealing with National Center for Biotechnology Information (NCBI) databases.
 
 ### krpipe.py
 
-This file contains functions used to construct pipelines.
+This file contains functions used to construct pipelines. These functions combine various other modules and do something short and useful. Output is predictable and can be used by other functions within the module. Good example of how these pipeline elements can be combined is the "search-and-align" module under pipelines directory.
+
+### krseq.py
+
+Dealing with various biological sequence annotations.
 
 ### krusearch.py
 
-This file contains functions for working with [USEARCH](http://drive5.com/usearch)
+Working with [USEARCH](http://drive5.com/usearch)
 
 ## Dependencies
 
