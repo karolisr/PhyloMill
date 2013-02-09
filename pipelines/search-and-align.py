@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output_dir', type=unicode,
         help='Output directory path.')
     parser.add_argument('--steps', type=unicode,
-        help='Which steps to perform 1, 2, 3, 4')
+        help='Which steps to perform 1, 2, 3, 4, 5')
 
     args = parser.parse_args()
 
@@ -50,13 +50,18 @@ if __name__ == '__main__':
         synonymy_file = input_dir + 'synonymy'
         ncbi_names_file = input_dir + 'ncbi-names'
         authority_file = input_dir + 'authority'
+        cutlist_records_file = input_dir + 'cutlist_records'
+        keeplist_records_file = input_dir + 'keeplist_records'
+        cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
+        keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
 
         temp_dir = output_dir + 'temp'
 
         search_results_dir = output_dir + '01-search-results'
-        extract_loci_dir = output_dir + '02-extracted-loci'
-        one_locus_per_organism_dir = output_dir + '03-one-locus-per-organism'
-        aligned_dir = output_dir + '04-aligned'
+        filtered_results_dir = output_dir + '02-filtered-results'
+        extract_loci_dir = output_dir + '03-extracted-loci'
+        one_locus_per_organism_dir = output_dir + '04-one-locus-per-organism'
+        aligned_dir = output_dir + '05-aligned'
 
         # Create output directory
         krio.prepare_directory(output_dir)
@@ -91,6 +96,18 @@ if __name__ == '__main__':
 
         if not steps or 2 in steps:
 
+            # Filter records
+            krpipe.filter_records(
+                search_results_dir=search_results_dir,
+                output_dir=filtered_results_dir,
+                cutlist_records_file=cutlist_records_file,
+                keeplist_records_file=keeplist_records_file,
+                cutlist_taxonomy_file=cutlist_taxonomy_file,
+                keeplist_taxonomy_file=keeplist_taxonomy_file
+                )
+
+        if not steps or 3 in steps:
+
             ncbi_names = krio.read_table_file(ncbi_names_file,
                 has_headers=False,
                 headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
@@ -102,7 +119,7 @@ if __name__ == '__main__':
 
             # Extract loci
             krpipe.extract_loci(
-                search_results_dir=search_results_dir,
+                search_results_dir=filtered_results_dir,
                 output_dir=extract_loci_dir,
                 sequence_samples=sequence_samples,
                 ncbi_names_table=ncbi_names,
@@ -112,7 +129,7 @@ if __name__ == '__main__':
                 synonymy_table=synonymy_table,
                 auth_file=authority_file)
 
-        if not steps or 3 in steps:
+        if not steps or 4 in steps:
 
             # One locus per organism
             krpipe.one_locus_per_organism(
@@ -122,7 +139,7 @@ if __name__ == '__main__':
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep)
 
-        if not steps or 4 in steps:
+        if not steps or 5 in steps:
 
             # Align loci and produce a concatenated alignment
             krpipe.align_loci(

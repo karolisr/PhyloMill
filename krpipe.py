@@ -44,6 +44,7 @@ def parse_directory(path, file_name_sep):
 
     return return_list
 
+
 # Pipeline functions ----------------------------------------------------------
 
 
@@ -109,6 +110,140 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         result_uids = krncbi.esearch(query, db, email)
         # Download records.
         krncbi.download_sequence_records(file_name, result_uids, db, email)
+
+
+def filter_records(search_results_dir, output_dir, cutlist_records_file,
+    keeplist_records_file, cutlist_taxonomy_file, keeplist_taxonomy_file):
+
+    import os
+    import krio
+    import krbioio
+    import krcl
+    import krseq
+    import krncbi
+
+    ps = os.path.sep
+
+    print('\nFiltering records.')
+
+    print('\tPreparing output directory "', output_dir, '"', sep='')
+    krio.prepare_directory(output_dir)
+
+    cutlist_records = None
+    keeplist_records = None
+    cutlist_taxonomy = None
+    keeplist_taxonomy = None
+
+    if cutlist_records_file:
+
+        cutlist_records = krio.read_table_file(
+        path=cutlist_records_file,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar='"',
+        rettype='set')
+
+    if keeplist_records_file:
+
+        keeplist_records = krio.read_table_file(
+        path=keeplist_records_file,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar='"',
+        rettype='set')
+
+    if cutlist_taxonomy_file:
+
+        cutlist_taxonomy = krio.read_table_file(
+        path=cutlist_taxonomy_file,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar='"',
+        rettype='set')
+
+    if keeplist_taxonomy_file:
+
+        keeplist_taxonomy = krio.read_table_file(
+        path=keeplist_taxonomy_file,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar='"',
+        rettype='set')
+
+    file_list = parse_directory(search_results_dir, ' ')
+
+    # Iterate over search results
+    for f in file_list:
+
+        if not f['ext'].startswith('gb'):
+            continue
+
+        output_file = output_dir + ps + f['full']
+
+        # Read search results
+        records = krbioio.read_sequence_file(f['path'], 'genbank')
+
+        records_filtered_id = list()
+        records_filtered_tax = list()
+
+        print('\n\tProcessing: ', f['full'], sep='')
+
+        krcl.hide_cursor()
+
+        print('\n\tFiltering records for ids.')
+        if keeplist_records or cutlist_records:
+            records_count = len(records)
+            for i, record in enumerate(records):
+                krcl.print_progress(i + 1, records_count, 50, '\t')
+
+                if keeplist_records:
+                    if ((record.id in keeplist_records) or
+                        (krseq.get_annotation(record, 'gi') in
+                            keeplist_records)):
+                        records_filtered_id.append(record)
+                elif cutlist_records:
+                    if ((record.id not in cutlist_records) and
+                        (krseq.get_annotation(record, 'gi') not in
+                            cutlist_records)):
+                        records_filtered_id.append(record)
+        else:
+            records_filtered_id = records
+        print('\n\tAccepted', len(records_filtered_id), 'records.')
+
+        print('\n\tFiltering records for taxonomy.')
+        if keeplist_taxonomy or cutlist_taxonomy:
+            records_count = len(records_filtered_id)
+            for i, record in enumerate(records_filtered_id):
+                krcl.print_progress(i + 1, records_count, 50, '\t')
+
+                if keeplist_taxonomy:
+                    if ((krncbi.get_ncbi_tax_id(record) in
+                        keeplist_taxonomy) or
+                        krseq.get_annotation(record, 'organism') in
+                        keeplist_taxonomy):
+                        records_filtered_tax.append(record)
+                elif cutlist_taxonomy:
+                    if ((krncbi.get_ncbi_tax_id(record) not in
+                        cutlist_taxonomy) and
+                        krseq.get_annotation(record, 'organism') not in
+                        cutlist_taxonomy):
+                        records_filtered_tax.append(record)
+        else:
+            records_filtered_tax = records_filtered_id
+        print('\n\tAccepted', len(records_filtered_tax), 'records.')
+
+        # Write results
+        if keeplist_taxonomy or cutlist_taxonomy:
+            krbioio.write_sequence_file(records_filtered_tax, output_file,
+                'gb')
+        else:
+            krbioio.write_sequence_file(records_filtered_id, output_file, 'gb')
+
+        krcl.show_cursor()
 
 
 def extract_loci(search_results_dir, output_dir, sequence_samples,
@@ -494,14 +629,17 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
             alignments.append(aln)
 
     print('\n\tProducing concatenated alignment.')
-    concatenated = kralign.concatenate(alignments, spacing)
-    concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
-    krbioio.write_alignment_file(concatenated, concatenated_output_file,
-        'fasta')
+    if alignments:
+        concatenated = kralign.concatenate(alignments, spacing)
+        concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
+        krbioio.write_alignment_file(concatenated, concatenated_output_file,
+            'fasta')
 
     os.removedirs(temp_dir)
 
+
 # End pipeline functions ------------------------------------------------------
+
 
 if __name__ == '__main__':
 
@@ -514,7 +652,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
     parser.add_argument('-c', '--command', type=unicode,
-        choices=['search_and_download', 'extract_loci',
+        choices=['search_and_download', 'filter_records', 'extract_loci',
         'one_locus_per_organism', 'align_loci'], help='Run a command.')
     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
     parser.add_argument('-o', '--output', type=unicode,
@@ -543,6 +681,11 @@ if __name__ == '__main__':
     parser.add_argument('--alignspacing', type=int,
         help='Number of gaps to add between alignments \
         in concatenated alignment.')
+    parser.add_argument('--clrec', type=unicode, help='Cutlist records file.')
+    parser.add_argument('--klrec', type=unicode, help='Keeplist records file.')
+    parser.add_argument('--cltax', type=unicode, help='Cutlist taxonomy file.')
+    parser.add_argument('--kltax', type=unicode,
+        help='Keeplist taxonomy file.')
 
     args = parser.parse_args()
 
@@ -571,6 +714,16 @@ if __name__ == '__main__':
 
             search_and_download(queries, args.output + PS, args.sep,
                 args.email)
+
+        if args.command == 'filter_records':
+            filter_records(
+                search_results_dir=args.input,
+                output_dir=args.output,
+                cutlist_records_file=args.clrec,
+                keeplist_records_file=args.klrec,
+                cutlist_taxonomy_file=args.cltax,
+                keeplist_taxonomy_file=args.kltax
+                )
 
         if args.command == 'extract_loci':
 

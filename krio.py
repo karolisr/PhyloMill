@@ -46,7 +46,8 @@ def read_table_file(
     has_headers=False,
     headers=None,
     delimiter=',',
-    quotechar='"'
+    quotechar='"',
+    rettype='dict'  # dict, list, set
     ):
 
     '''
@@ -63,13 +64,29 @@ def read_table_file(
         headers = headers.replace(quotechar, '')
         headers = headers.split('\n')[0]
         headers = headers.split(delimiter)
+
     return_value = list()
-    for l in handle:
-        l = l.split('\n')[0]
-        row_dict = dict()
-        for i, h in enumerate(headers):
-            row_dict[h] = ((l.split(delimiter)[i]).strip()).strip(quotechar)
-        return_value.append(row_dict)
+
+    if rettype.startswith('dict'):
+        for l in handle:
+            l = l.split('\n')[0]
+            row_dict = dict()
+            for i, h in enumerate(headers):
+                row_dict[h] = (
+                    ((l.split(delimiter)[i]).strip()).strip(quotechar))
+            return_value.append(row_dict)
+
+    if rettype.startswith('list') or rettype.startswith('set'):
+        for l in handle:
+            l = l.split('\n')[0]
+            row_list = [x.strip().strip(quotechar) for x in l.split(delimiter)]
+            if rettype.startswith('set') and len(row_list) == 1:
+                row_list = row_list[0]
+            return_value.append(row_list)
+
+    if rettype.startswith('set'):
+        return_value = set(return_value)
+
     return return_value
 
 if __name__ == '__main__':
