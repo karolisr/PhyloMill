@@ -451,11 +451,9 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             # We will try to cluster this sequence with a sample at the
             # relatively low similarity treshold, to weed out sequences
             # that have nothing to do with what we are looking for.
-            #to_cluster = [sequence_record, sequence_samples[name1]]
-            #cluster_dict = krusearch.cluster_records(to_cluster,
-            #    min_similarity, temp_dir)
-
-            cluster_dict = {'a': '1'}
+            to_cluster = [sequence_record, sequence_samples[name1]]
+            cluster_dict = krusearch.cluster_records(to_cluster,
+                min_similarity, temp_dir)
 
             if acc_name['status'] == '':
                 log_handle.write(
