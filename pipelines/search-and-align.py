@@ -123,7 +123,7 @@ if __name__ == '__main__':
                 output_dir=extract_loci_dir,
                 sequence_samples=sequence_samples,
                 ncbi_names_table=ncbi_names,
-                min_similarity=config_dict['asim'],
+                min_similarity=float(config_dict['asim']),
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 synonymy_table=synonymy_table,
@@ -135,7 +135,7 @@ if __name__ == '__main__':
             krpipe.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
                 output_dir=one_locus_per_organism_dir,
-                min_similarity=config_dict['wsim'],
+                min_similarity=float(config_dict['wsim']),
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep)
 
