@@ -203,13 +203,15 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     # Organism name parsed
     o = None
     if isinstance(name, basestring):
-        o = parse_organism_name(name)
+        o = parse_organism_name(name, sep=' ', ncbi_authority=False)
     else:
         o = name
     # Take available authority information and translate it into an
     # accepted form.
     o['authority'] = stdauth.translate(o['authority'], authority_alternates)
+
     accepted = dict()
+
     accepted['genus'] = ''
     accepted['species'] = ''
     accepted['variety'] = ''
@@ -217,6 +219,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     accepted['status'] = ''
     accepted['authority'] = ''
     accepted['id'] = ''
+
     matching_entries = list()
 
     # Find the entries in synonymy table that match our organism name.
@@ -253,7 +256,7 @@ if __name__ == '__main__':
 
     import os
 
-    PS = os.path.sep
+    ps = os.path.sep
 
     # parse_organism_name
     name = parse_organism_name('A b x c var. d subsp. e', sep=' ',
@@ -265,8 +268,14 @@ if __name__ == '__main__':
 
     # accepted_name
     import krio
-    synonymy_table = krio.read_table_file('testdata' + PS + 'synonymy.csv',
+    synonymy_table = krio.read_table_file('testdata' + ps + 'synonymy.csv',
         has_headers=True, headers=None, delimiter=',')
-    an = accepted_name('Physalis microphysa', synonymy_table,
-        'testdata' + PS + 'authority_alternates.dat', sep=' ')
-    print(an)
+
+    an1 = accepted_name('Physalis microphysa', synonymy_table,
+        'testdata' + ps + 'authority_alternates.dat', sep=' ')
+
+    an2 = accepted_name('Petunia axillaris (Lam.) Britton, Stern & Poggenb.', synonymy_table,
+        'testdata' + ps + 'authority_alternates.dat', sep=' ')
+
+    print(an1)
+    print(an2)

@@ -69,11 +69,22 @@ def read_table_file(
 
     if rettype.startswith('dict'):
         for l in handle:
+
             l = l.split('\n')[0]
+            unq = l.split(quotechar)
+
+            if unq[0].startswith(''):
+                unq.remove('')
+            if unq[-1].startswith(''):
+                unq.pop()
+
+            sep_cnt = unq.count(delimiter)
+            for i in range(0, sep_cnt):
+                unq.remove(delimiter)
+
             row_dict = dict()
             for i, h in enumerate(headers):
-                row_dict[h] = (
-                    ((l.split(delimiter)[i]).strip()).strip(quotechar))
+                row_dict[h] = unq[i].strip()
             return_value.append(row_dict)
 
     if rettype.startswith('list') or rettype.startswith('set'):
