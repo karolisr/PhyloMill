@@ -146,6 +146,7 @@ if __name__ == '__main__':
                 processed_results_dir=one_locus_per_organism_dir,
                 output_dir=aligned_dir,
                 program=config_dict['alnprg'],
-                threads=config_dict['threads'],
-                spacing=config_dict['alngaps'],
-                temp_dir=temp_dir)
+                threads=int(config_dict['threads']),
+                spacing=int(config_dict['alngaps']),
+                temp_dir=temp_dir,
+                order=config_dict['algnorder'])

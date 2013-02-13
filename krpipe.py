@@ -332,11 +332,20 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             # ToDo: this should never occur, and occured only once
             # Same gene annotated more than once
             if len(feature_indexes) > 1:
-                log_handle.write(record.id +
-                    '\tMore than one locus annotation.\n')
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
+                    '\t' +
+                    '\t' +
+                    'More than one locus annotation.\n')
                 continue
             if len(feature_indexes) == 0:
-                log_handle.write(record.id + '\tNo locus annotation.\n')
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
+                    '\t' +
+                    '\t' +
+                    'No locus annotation.\n')
                 continue
             # There should be only one matching index.
             feature = record.features[feature_indexes[0]]
@@ -404,9 +413,12 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                             break
 
                 if not found_match:
-                    log_handle.write(record.id + '\t' +
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
                         organism.replace('_', ' ') + '\t' +
-                        tax_id + '\tNo taxonomic match.\n')
+                        tax_id + '\t'
+                        'No taxonomic match.\n')
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
@@ -439,26 +451,37 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             # We will try to cluster this sequence with a sample at the
             # relatively low similarity treshold, to weed out sequences
             # that have nothing to do with what we are looking for.
-            to_cluster = [sequence_record, sequence_samples[name1]]
-            cluster_dict = krusearch.cluster_records(to_cluster,
-                min_similarity, temp_dir)
+            #to_cluster = [sequence_record, sequence_samples[name1]]
+            #cluster_dict = krusearch.cluster_records(to_cluster,
+            #    min_similarity, temp_dir)
+
+            cluster_dict = {'a': '1'}
 
             if acc_name['status'] == '':
-                log_handle.write(record.id + '\t' +
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
                     organism.replace('_', ' ') + '\t' +
-                    tax_id + '\tNo taxonomic match.\n')
+                    tax_id + '\t' +
+                    'No taxonomic match.\n')
                 #loci_excluded.append(sequence_record)
             elif len(seq) <= minlen:
-                log_handle.write(record.id + '\t' +
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
                     organism.replace('_', ' ') + '\t' +
-                    tax_id + '\tSequence is too short.\n')
+                    tax_id + '\t' +
+                    'Sequence is too short.\n')
                 #loci_excluded.append(sequence_record)
             # If the sequences are similar enough, there will be only one
             # cluster
             elif len(cluster_dict.keys()) != 1:
-                log_handle.write(record.id + '\t' +
-                    organism.replace('_', ' ') + '\t' + tax_id +
-                    '\tSequence is too dissimilar from a sample sequence.\n')
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
+                    organism.replace('_', ' ') + '\t' +
+                    tax_id + '\t' +
+                    'Sequence is too dissimilar from a sample sequence.\n')
                 #loci_excluded.append(sequence_record)
             else:
                 loci.append(sequence_record)
@@ -474,6 +497,21 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
         #print('\n\tRejected', len(loci_excluded), 'sequences.')
 
         krcl.show_cursor()
+
+    all_logs = set()
+    file_list = parse_directory(output_dir, file_name_sep)
+    for f in file_list:
+        if not f['ext'].startswith('log'):
+            continue
+        handle = open(f['path'])
+        for l in handle:
+            all_logs.add(l)
+        handle.close()
+    all_logs = list(all_logs)
+    all_logs_file = output_dir + ps + 'all.log'
+    handle = open(all_logs_file, 'w')
+    handle.writelines(all_logs)
+    handle.close()
 
     os.removedirs(temp_dir)
 
@@ -586,7 +624,7 @@ def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
 
 
 def align_loci(processed_results_dir, output_dir, program, threads, spacing,
-    temp_dir):
+    temp_dir, order):
 
     '''
     Align individual loci, then concatenate alignments.
@@ -603,7 +641,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
     ps = os.path.sep
 
-    alignments = []
+    #alignments = []
 
     print('\tPreparing output directory "', output_dir, '"', sep='')
     krio.prepare_directory(output_dir)
@@ -611,6 +649,8 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
     krio.prepare_directory(temp_dir)
 
     file_list = parse_directory(processed_results_dir, ' ')
+
+    alignments = [x.strip() for x in order.split(',')]
 
     for f in file_list:
 
@@ -623,14 +663,20 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
         # Align each locus individually first.
         print('\n\tAligning', file_name)
-        aln = kralign.align(records, program, threads, temp_dir)
+        aln = kralign.align(records, program, int(threads), temp_dir)
         if aln:
             krbioio.write_alignment_file(aln, output_file, 'fasta')
-            alignments.append(aln)
+            #alignments.append(aln)
+            i = alignments.index(file_name)
+            alignments[i] = aln
+
+    for aln in alignments:
+        if isinstance(aln, basestring):
+            alignments.remove(aln)
 
     print('\n\tProducing concatenated alignment.')
     if alignments:
-        concatenated = kralign.concatenate(alignments, spacing)
+        concatenated = kralign.concatenate(alignments, int(spacing))
         concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
         krbioio.write_alignment_file(concatenated, concatenated_output_file,
             'fasta')
@@ -686,6 +732,8 @@ if __name__ == '__main__':
     parser.add_argument('--cltax', type=unicode, help='Cutlist taxonomy file.')
     parser.add_argument('--kltax', type=unicode,
         help='Keeplist taxonomy file.')
+    parser.add_argument('--alignorder', type=unicode,
+        help='Order of loci in the concatenated alignment.')
 
     args = parser.parse_args()
 
@@ -779,5 +827,6 @@ if __name__ == '__main__':
                 program=args.alignprog,
                 threads=args.threads,
                 spacing=args.alignspacing,
-                temp_dir=args.tempdir
+                temp_dir=args.tempdir,
+                order=args.alignorder
                 )
