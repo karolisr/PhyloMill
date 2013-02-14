@@ -108,10 +108,14 @@ if __name__ == '__main__':
 
         if not steps or 3 in steps:
 
-            ncbi_names = krio.read_table_file(ncbi_names_file,
+            ncbi_names = krio.read_table_file(
+                path=ncbi_names_file,
                 has_headers=False,
                 headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
-                delimiter='\t|')
+                delimiter='\t|',
+                quotechar=None,
+                stripchar='"',
+                rettype='dict')
             synonymy_table = krio.read_table_file(synonymy_file,
                 has_headers=True, headers=None, delimiter=',')
             sequence_samples = krbioio.read_sequence_file(

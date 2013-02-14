@@ -188,13 +188,16 @@ def flatten_organism_name(parsed_name, sep=' '):
     return name
 
 
-def accepted_name(name, synonymy_table, auth_file, sep=' '):
+def accepted_name(name, synonymy_table, auth_file, sep=' ', level=1):
 
     '''
     Takes the organism name, either as a string or an output of
     "parse_organism_name" function and returns an accepted name based on
     synonymy_table information.
     '''
+    import copy
+
+    synonymy_table = copy.copy(synonymy_table)
 
     # Emma Goldberg's module to standardize authority
     from krtp.eg import stdauth
@@ -209,6 +212,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     # Take available authority information and translate it into an
     # accepted form.
     o['authority'] = stdauth.translate(o['authority'], authority_alternates)
+    #print(level * '-', 'o', str(level), flatten_organism_name(o))
 
     accepted = dict()
 
@@ -220,6 +224,8 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
     accepted['authority'] = ''
     accepted['id'] = ''
 
+    matching_entries_strict = list()
+    matching_entries_loose = list()
     matching_entries = list()
 
     # Find the entries in synonymy table that match our organism name.
@@ -230,7 +236,42 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
             o['subspecies'] == s['Subspecies'] and
             (o['authority'] == '' or (o['authority'] == s['Authority']))
             ):
-            matching_entries.append(s)
+            matching_entries_strict.append(s)
+
+    for s in synonymy_table:
+        if (o['genus'] == s['Genus'] and
+            o['species'] == s['Species'] and
+            (o['variety'] == '' or s['Variety'] == '' or
+                (o['variety'] == s['Variety'])) and
+            (o['subspecies'] == '' or s['Subspecies'] == '' or
+                (o['subspecies'] == s['Subspecies'])) and
+            (o['authority'] == '' or s['Authority'] == '' or
+                (o['authority'] == s['Authority']))
+            ):
+            matching_entries_loose.append(s)
+
+    matching_entries_strict = sorted(matching_entries_strict, key=lambda x: (
+        x['Authority'],
+        x['Variety'],
+        x['Subspecies']
+        ))
+
+    matching_entries_strict.reverse()
+
+    matching_entries_loose = sorted(matching_entries_loose, key=lambda x: (
+        x['Authority'],
+        x['Variety'],
+        x['Subspecies']
+        ))
+
+    matching_entries_loose.reverse()
+
+    matching_entries = matching_entries_strict + matching_entries_loose
+
+    #print('----------------------------')
+
+    #for r in matching_entries:
+    #    print(r)
 
     for s in matching_entries:
         accepted['genus'] = s['AccGenus']
@@ -244,11 +285,14 @@ def accepted_name(name, synonymy_table, auth_file, sep=' '):
         # until an entry with a non-synonym status is reached.
         if (s['Status'].lower() == 'syn' or
             s['Status'].lower() == 'syn-alt'):
-            accepted = accepted_name(accepted, synonymy_table, auth_file,
-                                     sep=sep)
+            if s in synonymy_table:
+                synonymy_table.remove(s)
+            return(accepted_name(accepted, synonymy_table, auth_file,
+                                     sep=sep, level=level + 1))
         else:
-            break
-    return accepted
+            #print(level * '-', 'a', str(level), flatten_organism_name(accepted))
+            return(accepted)
+
 
 if __name__ == '__main__':
 

@@ -47,6 +47,7 @@ def read_table_file(
     headers=None,
     delimiter=',',
     quotechar='"',
+    stripchar='',
     rettype='dict'  # dict, list, set
     ):
 
@@ -56,49 +57,41 @@ def read_table_file(
         A list of dictionaries, one dictionary per row. Header names as keys.
     '''
 
+    import krother
+
     handle = CommentedFile(open(path, 'rb'))
     if headers != None:
         has_headers = False
     if has_headers:
         headers = handle.next()
-        headers = headers.replace(quotechar, '')
-        headers = headers.split('\n')[0]
-        headers = headers.split(delimiter)
+        headers = krother.parse_line(headers, delimiter, quotechar, stripchar)
 
     return_value = list()
 
     if rettype.startswith('dict'):
         for l in handle:
 
-            l = l.split('\n')[0]
-            unq = l.split(quotechar)
-
-            if unq[0].startswith(''):
-                unq.remove('')
-            if unq[-1].startswith(''):
-                unq.pop()
-
-            sep_cnt = unq.count(delimiter)
-            for i in range(0, sep_cnt):
-                unq.remove(delimiter)
+            l_spl = krother.parse_line(l, delimiter, quotechar, stripchar)
 
             row_dict = dict()
             for i, h in enumerate(headers):
-                row_dict[h] = unq[i].strip()
+                row_dict[h] = l_spl[i]
             return_value.append(row_dict)
 
     if rettype.startswith('list') or rettype.startswith('set'):
         for l in handle:
-            l = l.split('\n')[0]
-            row_list = [x.strip().strip(quotechar) for x in l.split(delimiter)]
-            if rettype.startswith('set') and len(row_list) == 1:
-                row_list = row_list[0]
-            return_value.append(row_list)
+
+            l_spl = krother.parse_line(l, delimiter, quotechar, stripchar)
+
+            if rettype.startswith('set') and len(l_spl) == 1:
+                l_spl = l_spl[0]
+
+            return_value.append(l_spl)
 
     if rettype.startswith('set'):
         return_value = set(return_value)
 
-    return return_value
+    return(return_value)
 
 if __name__ == '__main__':
 
@@ -106,16 +99,16 @@ if __name__ == '__main__':
 
     import os
 
-    PS = os.path.sep
+    ps = os.path.sep
 
     # CommentedFile
-    handle = CommentedFile(open('testdata' + PS + 'commented_file.csv', 'rb'))
+    handle = CommentedFile(open('testdata' + ps + 'commented_file.csv', 'rb'))
     for i, line in enumerate(handle):
         print(i, repr(line))
     handle.close()
 
     # read_table_file
-    table = read_table_file(path='testdata' + PS + 'commented_file.csv',
+    table = read_table_file(path='testdata' + ps + 'commented_file.csv',
         has_headers=True, headers=None, delimiter=',')
     for i, line in enumerate(table):
         print(i, repr(line))

@@ -369,6 +369,8 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             organism_authority = None
 
             if synonymy_table and auth_file:
+                #print('--- --- --- --- --- ---')
+                #print('O', organism)
 
                 # A list of organism names based on NCBI taxid. This is a
                 #   sorted list with the most complete names at lower indexes.
@@ -385,7 +387,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                 for oa in organism_authority:
                     acc_name = krbionames.accepted_name(oa, synonymy_table,
                         auth_file)
-                    if acc_name['status'].lower() == 'acc':
+                    if acc_name and acc_name['status'].lower() == 'acc':
                         found_match = True
                         break
 
@@ -395,7 +397,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                     for oa in organism_authority:
                         acc_name = krbionames.accepted_name(oa, synonymy_table,
                             auth_file)
-                        if acc_name['status'].lower() == 'prov':
+                        if acc_name and acc_name['status'].lower() == 'prov':
                             found_match = True
                             break
 
@@ -405,10 +407,11 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                     for oa in organism_authority:
                         acc_name = krbionames.accepted_name(oa, synonymy_table,
                             auth_file)
-                        if (acc_name['status'].lower() == 'as' or
+                        if (acc_name and (
+                            acc_name['status'].lower() == 'as' or
                             acc_name['status'].lower() == 'nn' or
                             acc_name['status'].lower() == 'unc' or
-                            acc_name['status'].lower() == 'unr'):
+                            acc_name['status'].lower() == 'unr')):
                             found_match = True
                             break
 
@@ -419,9 +422,11 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t'
                         'No taxonomic match.\n')
+                    #print('_________________ NO MATCH _________________')
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
+                #print('A', acc_name_flat)
 
             else:
 
@@ -779,11 +784,15 @@ if __name__ == '__main__':
 
             if args.ncbinames:
 
-                ncbi_names = krio.read_table_file(args.ncbinames,
+                ncbi_names = krio.read_table_file(
+                    path=args.ncbinames,
                     has_headers=False,
                     headers=('tax_id', 'name_txt', 'unique_name',
                         'name_class'),
-                    delimiter='\t|')
+                    delimiter='\t|',
+                    quotechar=None,
+                    stripchar='"',
+                    rettype='dict')
 
             if args.authority and args.synonymy:
 
