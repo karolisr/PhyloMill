@@ -290,7 +290,8 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ', level=1):
             return(accepted_name(accepted, synonymy_table, auth_file,
                                      sep=sep, level=level + 1))
         else:
-            #print(level * '-', 'a', str(level), flatten_organism_name(accepted))
+            #print(level * '-', 'a', str(level),
+                #flatten_organism_name(accepted))
             return(accepted)
 
 
@@ -318,8 +319,8 @@ if __name__ == '__main__':
     an1 = accepted_name('Physalis microphysa', synonymy_table,
         'testdata' + ps + 'authority_alternates.dat', sep=' ')
 
-    an2 = accepted_name('Petunia axillaris (Lam.) Britton, Stern & Poggenb.', synonymy_table,
-        'testdata' + ps + 'authority_alternates.dat', sep=' ')
+    an2 = accepted_name('Petunia axillaris (Lam.) Britton, Stern & Poggenb.',
+        synonymy_table, 'testdata' + ps + 'authority_alternates.dat', sep=' ')
 
     print(an1)
     print(an2)
