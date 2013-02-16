@@ -188,40 +188,33 @@ def flatten_organism_name(parsed_name, sep=' '):
     return name
 
 
-def accepted_name(name, synonymy_table, auth_file, sep=' ', level=1):
-
-    '''
-    Takes the organism name, either as a string or an output of
-    "parse_organism_name" function and returns an accepted name based on
-    synonymy_table information.
-    '''
+def accepted_name(name, synonymy_table, auth_file, sep=' ',
+    allow_loose_matching=True, ncbi_authority=False, level=1):
     import copy
-
-    synonymy_table = copy.copy(synonymy_table)
-
     # Emma Goldberg's module to standardize authority
     from krtp.eg import stdauth
+    # Make a copy of the synonymy_table object. We will be removing entries
+    # from it, we do not want this to affect the original object.
+    synonymy_table = copy.copy(synonymy_table)
     authority_alternates = stdauth.make_auth_dic(auth_file)
-
     # Organism name parsed
     o = None
     if isinstance(name, basestring):
-        o = parse_organism_name(name, sep=' ', ncbi_authority=False)
+        o = parse_organism_name(name, sep=sep, ncbi_authority=ncbi_authority)
     else:
         o = name
     # Take available authority information and translate it into an
     # accepted form.
     o['authority'] = stdauth.translate(o['authority'], authority_alternates)
-    #print(level * '-', 'o', str(level), flatten_organism_name(o))
-
+    print(level * '-', 'o', str(level), flatten_organism_name(o))
+    # This will store the accepted name
     accepted = dict()
-
     accepted['genus'] = ''
     accepted['species'] = ''
-    accepted['variety'] = ''
-    accepted['subspecies'] = ''
-    accepted['status'] = ''
     accepted['authority'] = ''
+    accepted['subspecies'] = ''
+    accepted['variety'] = ''
+    accepted['status'] = ''
     accepted['id'] = ''
 
     matching_entries_strict = list()
@@ -234,52 +227,50 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ', level=1):
             o['species'] == s['Species'] and
             o['variety'] == s['Variety'] and
             o['subspecies'] == s['Subspecies'] and
-            (o['authority'] == '' or (o['authority'] == s['Authority']))
+            o['authority'] == s['Authority']
             ):
             matching_entries_strict.append(s)
 
-    for s in synonymy_table:
-        if (o['genus'] == s['Genus'] and
-            o['species'] == s['Species'] and
-            (o['variety'] == '' or s['Variety'] == '' or
-                (o['variety'] == s['Variety'])) and
-            (o['subspecies'] == '' or s['Subspecies'] == '' or
-                (o['subspecies'] == s['Subspecies'])) and
-            (o['authority'] == '' or s['Authority'] == '' or
-                (o['authority'] == s['Authority']))
-            ):
-            matching_entries_loose.append(s)
+    if allow_loose_matching:
+        for s in synonymy_table:
+            if (o['genus'] == s['Genus'] and
+                o['species'] == s['Species'] and
+                (o['variety'] == '' or s['Variety'] == '' or
+                    (o['variety'] == s['Variety'])) and
+                (o['subspecies'] == '' or s['Subspecies'] == '' or
+                    (o['subspecies'] == s['Subspecies'])) and
+                (o['authority'] == '' or s['Authority'] == '' or
+                    (o['authority'] == s['Authority']))
+                ):
+                matching_entries_loose.append(s)
 
     matching_entries_strict = sorted(matching_entries_strict, key=lambda x: (
         x['Authority'],
         x['Variety'],
         x['Subspecies']
         ))
-
     matching_entries_strict.reverse()
-
     matching_entries_loose = sorted(matching_entries_loose, key=lambda x: (
         x['Authority'],
         x['Variety'],
         x['Subspecies']
         ))
-
     matching_entries_loose.reverse()
-
     matching_entries = matching_entries_strict + matching_entries_loose
 
-    #print('----------------------------')
-
-    #for r in matching_entries:
-    #    print(r)
+    print(' ' * level, '=== === === ===')
+    for e in matching_entries:
+        print(' ' * level, e['Genus'], e['Species'], 'A', e['Authority'],
+            'S', e['Subspecies'], 'V', e['Variety'])
+    print(' ' * level, '=== === === ===')
 
     for s in matching_entries:
         accepted['genus'] = s['AccGenus']
         accepted['species'] = s['AccSpecies']
-        accepted['variety'] = s['AccVariety']
-        accepted['subspecies'] = s['AccSubspecies']
-        accepted['status'] = s['Status']
         accepted['authority'] = s['AccAuthority']
+        accepted['subspecies'] = s['AccSubspecies']
+        accepted['variety'] = s['AccVariety']
+        accepted['status'] = s['Status']
         accepted['id'] = s['AccID']
         # If the matching entry is a synonym, recurse into synonymy table
         # until an entry with a non-synonym status is reached.
@@ -290,10 +281,53 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ', level=1):
             return(accepted_name(accepted, synonymy_table, auth_file,
                                      sep=sep, level=level + 1))
         else:
-            #print(level * '-', 'a', str(level),
-                #flatten_organism_name(accepted))
+            print(level * '-', 'a', str(level),
+                flatten_organism_name(accepted))
             return(accepted)
 
+
+def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
+
+    '''
+    Return all the names ("synonyms") associated with an NCBI taxid.
+    '''
+
+    names = list()
+    #sci_name = None
+    #authority_name = None
+    for row in ncbi_names_table:
+        if row['tax_id'] == str(tax_id):
+            names.append(row)
+
+    auth_names = list()
+    syn_names = list()
+    sci_names = list()
+
+    for row in names:
+        parsed = parse_organism_name(row['name_txt'],
+            ncbi_authority=True)
+
+        # NCBI names table includes common names and other weird things, we do
+        # not want any of that.
+
+        if row['name_class'] == 'scientific name':
+            parsed['name_class'] = '2'
+            sci_names.append(parsed)
+        if row['name_class'] == 'authority':
+            parsed['name_class'] = '1'
+            auth_names.append(parsed)
+        if row['name_class'] == 'synonym':
+            parsed['name_class'] = '3'
+            syn_names.append(parsed)
+
+    priority_list = auth_names + syn_names + sci_names
+    # This will sort the names so the results with authority information (if
+    # any) will appear at the beginning of the list.
+    if sorting.startswith('class'):
+        priority_list.sort(key=lambda x: x['name_class'], reverse=False)
+    elif sorting.startswith('authority'):
+        priority_list.sort(key=lambda x: x['authority'], reverse=True)
+    return priority_list
 
 if __name__ == '__main__':
 
@@ -324,3 +358,12 @@ if __name__ == '__main__':
 
     print(an1)
     print(an2)
+
+    # names_for_ncbi_taxid
+    ncbi_names_table = krio.read_table_file('testdata' + ps + 'ncbi_names.dmp',
+        has_headers=False,
+        headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
+        delimiter='\t|')
+    names = names_for_ncbi_taxid('1146960', ncbi_names_table, sorting='class')
+    for n in names:
+        print(n)

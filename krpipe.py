@@ -316,7 +316,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
         locus = locus.split(',')
 
         for i, record in enumerate(records):
-            krcl.print_progress(i + 1, records_count, 50, '\t')
+            #krcl.print_progress(i + 1, records_count, 50, '\t')
 
             # genbank records contain "features" which conatin annotation
             #   information. Here we look for the feature that contains our
@@ -369,49 +369,101 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             organism_authority = None
 
             if synonymy_table and auth_file:
-                #print('--- --- --- --- --- ---')
-                #print('O', organism)
+                print('--- --- --- --- --- ---')
+                print('O', organism)
 
                 # A list of organism names based on NCBI taxid. This is a
                 #   sorted list with the most complete names at lower indexes.
-                organism_authority = krncbi.names_for_ncbi_taxid(tax_id,
+                organism_authority = krbionames.names_for_ncbi_taxid(tax_id,
                     ncbi_names_table, sorting='authority')
 
                 # Iterate over the list of NCBI names and try to resolve
                 #   accepted name.
 
+                # First we look for matches using STRICT mode
                 # First look if there is a best possible match "acc"
-
                 found_match = False
-
                 for oa in organism_authority:
-                    acc_name = krbionames.accepted_name(oa, synonymy_table,
-                        auth_file)
+                    acc_name = krbionames.accepted_name(
+                        name=oa,
+                        synonymy_table=synonymy_table,
+                        auth_file=auth_file,
+                        allow_loose_matching=False)
                     if acc_name and acc_name['status'].lower() == 'acc':
                         found_match = True
                         break
 
                 # If no, then look for the next best thing "prov"
-
                 if not found_match:
                     for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(oa, synonymy_table,
-                            auth_file)
+                        acc_name = krbionames.accepted_name(
+                            name=oa,
+                            synonymy_table=synonymy_table,
+                            auth_file=auth_file,
+                            allow_loose_matching=False)
                         if acc_name and acc_name['status'].lower() == 'prov':
                             found_match = True
                             break
 
                 # Otherwise, let's find something that isn't blank
-
                 if not found_match:
                     for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(oa, synonymy_table,
-                            auth_file)
+                        acc_name = krbionames.accepted_name(
+                            name=oa,
+                            synonymy_table=synonymy_table,
+                            auth_file=auth_file,
+                            allow_loose_matching=False)
                         if (acc_name and (
                             acc_name['status'].lower() == 'as' or
                             acc_name['status'].lower() == 'nn' or
                             acc_name['status'].lower() == 'unc' or
                             acc_name['status'].lower() == 'unr')):
+                            found_match = True
+                            break
+
+                # If we find nothing using STRICT mode we look for matches
+                # using LOOSE mode
+                # First look if there is a best possible match "acc"
+                loose_mode = False
+                if not found_match:
+                    for oa in organism_authority:
+                        acc_name = krbionames.accepted_name(
+                            name=oa,
+                            synonymy_table=synonymy_table,
+                            auth_file=auth_file,
+                            allow_loose_matching=True)
+                        if acc_name and acc_name['status'].lower() == 'acc':
+                            loose_mode = True
+                            found_match = True
+                            break
+
+                # If no, then look for the next best thing "prov"
+                if not found_match:
+                    for oa in organism_authority:
+                        acc_name = krbionames.accepted_name(
+                            name=oa,
+                            synonymy_table=synonymy_table,
+                            auth_file=auth_file,
+                            allow_loose_matching=True)
+                        if acc_name and acc_name['status'].lower() == 'prov':
+                            loose_mode = True
+                            found_match = True
+                            break
+
+                # Otherwise, let's find something that isn't blank
+                if not found_match:
+                    for oa in organism_authority:
+                        acc_name = krbionames.accepted_name(
+                            name=oa,
+                            synonymy_table=synonymy_table,
+                            auth_file=auth_file,
+                            allow_loose_matching=True)
+                        if (acc_name and (
+                            acc_name['status'].lower() == 'as' or
+                            acc_name['status'].lower() == 'nn' or
+                            acc_name['status'].lower() == 'unc' or
+                            acc_name['status'].lower() == 'unr')):
+                            loose_mode = True
                             found_match = True
                             break
 
@@ -422,18 +474,20 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t'
                         'No taxonomic match.\n')
-                    #print('_________________ NO MATCH _________________')
+                    print('___!!!___!!!________ NO MATCH ________!!!___!!!___')
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
-                #print('A', acc_name_flat)
+                print('A', acc_name_flat)
+                if loose_mode:
+                    print('___!!!___!!!________ LOOSE ________!!!___!!!___')
 
             else:
 
                 acc_name = dict()
                 acc_name['id'] = tax_id
                 acc_name['status'] = 'NA'
-                organism_authority = krncbi.names_for_ncbi_taxid(tax_id,
+                organism_authority = krbionames.names_for_ncbi_taxid(tax_id,
                     ncbi_names_table, sorting='class')
                 acc_name_flat = krbionames.flatten_organism_name(
                     organism_authority[0], '_')
@@ -487,6 +541,13 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                     'Sequence is too dissimilar from a sample sequence.\n')
                 #loci_excluded.append(sequence_record)
             else:
+                if loose_mode:
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        organism.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'Taxonomic match using LOOSE mode.\n')
                 loci.append(sequence_record)
 
         log_handle.close()
