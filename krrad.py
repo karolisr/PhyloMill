@@ -3,6 +3,12 @@ from __future__ import print_function
 
 
 def read_barcodes(file_path, delimiter, id_header, barcode_header):
+
+    '''
+    Read RAD barcodes and return a list of dictionaries with keys id and
+    barcode.
+    '''
+
     import krio
 
     barcodes = krio.read_table_file(path=file_path, has_headers=True,
