@@ -48,6 +48,7 @@ These modules depend on these Python packages:
 
 * [Biopython](http://biopython.org)
 * [Unidecode](http://pypi.python.org/pypi/Unidecode)
+	* On Ubuntu this can be installed: sudo apt-get install python-unidecode
 * [Levenshtein](https://pypi.python.org/pypi/python-Levenshtein)
 	* On Ubuntu this can be installed: sudo apt-get install python-levenshtein
 
