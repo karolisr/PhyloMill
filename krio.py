@@ -18,6 +18,14 @@ def prepare_directory(path):
 #   python-recipe-read-csvtsv-textfiles-and-ignore-comment-lines
 
 
+def num_lines_in_file(file_path):
+    with open(file_path) as f:
+        for i, l in enumerate(f):
+            pass
+        # ah... wonderful Python scope rules!
+    return(i + 1)
+
+
 class CommentedFile:
 
     '''
