@@ -57,6 +57,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
     import os
     import krio
     import krncbi
+    import krbioio
 
     ps = os.path.sep
 
@@ -75,9 +76,6 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         qualifier_label = query_dict['ncbi_qualifier_label']
         db = query_dict['database']
         query = query_dict['query']
-
-        print('\n\tSearching for:', name1, name2, 'Locus:', locus, 'in', db,
-            'database.\n', sep=' ')
 
         '''
         File name is genrated based on the search query (periods will be
@@ -98,7 +96,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
             us later if we wish to treat the results independently.
         '''
 
-        file_name = (output_dir.rstrip(ps) + ps +
+        file_path = (output_dir.rstrip(ps) + ps +
                      name1 + file_name_sep +
                      name2 + file_name_sep +
                      locus + file_name_sep +
@@ -106,10 +104,35 @@ def search_and_download(queries, output_dir, file_name_sep, email):
                      feature_type + file_name_sep +
                      qualifier_label + file_name_sep +
                      db + '.gb')
-        # Search NCBI.
-        result_uids = krncbi.esearch(query, db, email)
-        # Download records.
-        krncbi.download_sequence_records(file_name, result_uids, db, email)
+
+        if query.lower().startswith('donotdownload'):
+            all_records = dict()
+            file_list = parse_directory(output_dir, file_name_sep)
+            for f in file_list:
+                if not f['ext'].startswith('gb'):
+                    continue
+                if f['split'][0] == name1:
+                    records = krbioio.read_sequence_file(
+                        file_path=f['path'],
+                        file_format='genbank',
+                        ret_type='dict')
+                    for key in records.keys():
+                        if records[key] not in all_records.keys():
+                            all_records[key] = records[key]
+
+            all_records = all_records.values()
+            print('\n\tDo not download:', name1, name2, '\n', sep=' ')
+            krbioio.write_sequence_file(records, file_path, 'genbank')
+
+        else:
+
+            print('\n\tSearching for:', name1, name2, 'Locus:', locus, 'in',
+                db, 'database.\n', sep=' ')
+
+            # Search NCBI.
+            result_uids = krncbi.esearch(query, db, email)
+            # Download records.
+            krncbi.download_sequence_records(file_path, result_uids, db, email)
 
 
 def filter_records(search_results_dir, output_dir, cutlist_records_file,
@@ -316,7 +339,7 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
         locus = locus.split(',')
 
         for i, record in enumerate(records):
-            #krcl.print_progress(i + 1, records_count, 50, '\t')
+            krcl.print_progress(i + 1, records_count, 50, '\t')
 
             # genbank records contain "features" which conatin annotation
             #   information. Here we look for the feature that contains our
@@ -327,8 +350,9 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             for l in locus:
                 fi = krseq.get_features_with_qualifier(record=record,
                     qualifier_label=qualifier_label, qualifier=l.strip(),
-                    feature_type=feature_type)
+                    feature_type=feature_type, loose=True)
                 feature_indexes = feature_indexes + fi
+            feature_indexes = list(set(feature_indexes))
             # ToDo: this should never occur, and occured only once
             # Same gene annotated more than once
             if len(feature_indexes) > 1:
@@ -369,8 +393,8 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             organism_authority = None
 
             if synonymy_table and auth_file:
-                print('--- --- --- --- --- ---')
-                print('O', organism)
+                #print('--- --- --- --- --- ---')
+                #print('O', organism)
 
                 # A list of organism names based on NCBI taxid. This is a
                 #   sorted list with the most complete names at lower indexes.
@@ -474,13 +498,14 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t'
                         'No taxonomic match.\n')
-                    print('___!!!___!!!________ NO MATCH ________!!!___!!!___')
+                    #print('___!!!___!!!_______ NO MATCH _______!!!___!!!___')
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
-                print('A', acc_name_flat)
+                #print('A', acc_name_flat)
                 if loose_mode:
-                    print('___!!!___!!!________ LOOSE ________!!!___!!!___')
+                    #print('___!!!___!!!_______ LOOSE _______!!!___!!!___')
+                    pass
 
             else:
 
@@ -547,7 +572,8 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                         record.id + '\t' +
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
-                        'Taxonomic match using LOOSE mode.\n')
+                        'Taxonomic match using LOOSE mode.' + '\t' +
+                        acc_name_flat + '\n')
                 loci.append(sequence_record)
 
         log_handle.close()

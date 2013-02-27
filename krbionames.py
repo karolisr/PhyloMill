@@ -206,7 +206,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     # Take available authority information and translate it into an
     # accepted form.
     o['authority'] = stdauth.translate(o['authority'], authority_alternates)
-    print(level * '-', 'o', str(level), flatten_organism_name(o))
+    #print(level * '-', 'o', str(level), flatten_organism_name(o))
     # This will store the accepted name
     accepted = dict()
     accepted['genus'] = ''
@@ -258,11 +258,11 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     matching_entries_loose.reverse()
     matching_entries = matching_entries_strict + matching_entries_loose
 
-    print(' ' * level, '=== === === ===')
-    for e in matching_entries:
-        print(' ' * level, e['Genus'], e['Species'], 'A', e['Authority'],
-            'S', e['Subspecies'], 'V', e['Variety'])
-    print(' ' * level, '=== === === ===')
+    #print(' ' * level, '=== === === ===')
+    #for e in matching_entries:
+    #    print(' ' * level, e['Genus'], e['Species'], 'A', e['Authority'],
+    #        'S', e['Subspecies'], 'V', e['Variety'])
+    #print(' ' * level, '=== === === ===')
 
     for s in matching_entries:
         accepted['genus'] = s['AccGenus']
@@ -281,8 +281,8 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
             return(accepted_name(accepted, synonymy_table, auth_file,
                                      sep=sep, level=level + 1))
         else:
-            print(level * '-', 'a', str(level),
-                flatten_organism_name(accepted))
+            #print(level * '-', 'a', str(level),
+            #    flatten_organism_name(accepted))
             return(accepted)
 
 
@@ -338,32 +338,50 @@ if __name__ == '__main__':
     ps = os.path.sep
 
     # parse_organism_name
-    name = parse_organism_name('A b x c var. d subsp. e', sep=' ',
-        ncbi_authority=False)
-    print(name)
+    #name = parse_organism_name('A b x c var. d subsp. e', sep=' ',
+    #    ncbi_authority=False)
+    #print(name)
 
     # flatten_organism_name
-    print(flatten_organism_name(name))
+    #print(flatten_organism_name(name))
 
     # accepted_name
-    import krio
-    synonymy_table = krio.read_table_file('testdata' + ps + 'synonymy.csv',
-        has_headers=True, headers=None, delimiter=',')
+    #import krio
+    #synonymy_table = krio.read_table_file('testdata' + ps + 'synonymy.csv',
+    #    has_headers=True, headers=None, delimiter=',')
 
-    an1 = accepted_name('Physalis microphysa', synonymy_table,
-        'testdata' + ps + 'authority_alternates.dat', sep=' ')
+    #synonymy_table = krio.read_table_file(
+    #    '/home/karolis/Dropbox/code/test/sol-in-1/synonymy',
+    #    has_headers=True, headers=None, delimiter=',')
 
-    an2 = accepted_name('Petunia axillaris (Lam.) Britton, Stern & Poggenb.',
-        synonymy_table, 'testdata' + ps + 'authority_alternates.dat', sep=' ')
+    #an1 = accepted_name('Solanum x juzepczukii', synonymy_table,
+    #    'testdata' + ps + 'authority_alternates.dat', sep=' ')
 
-    print(an1)
-    print(an2)
+    #an2 = accepted_name('Petunia axillaris (Lam.) Britton, Stern & Poggenb.',
+    #    synonymy_table, 'testdata' + ps + 'authority_alternates.dat', sep=' ')
+
+    #Pprint(an1)
+    #print(an2)
 
     # names_for_ncbi_taxid
-    ncbi_names_table = krio.read_table_file('testdata' + ps + 'ncbi_names.dmp',
-        has_headers=False,
-        headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
-        delimiter='\t|')
-    names = names_for_ncbi_taxid('1146960', ncbi_names_table, sorting='class')
-    for n in names:
-        print(n)
+    #ncbi_names_table = krio.read_table_file('testdata' + ps + 'ncbi_names.dmp',
+    #    has_headers=False,
+    #    headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
+    #    delimiter='\t|')
+    #ncbi_names_table = krio.read_table_file(
+    #    '/home/karolis/Dropbox/code/test/sol-in-1/ncbi-names',
+    #    has_headers=False,
+    #    headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
+    #    delimiter='\t|')
+    #ncbi_names_table = krio.read_table_file(
+    #    path='/home/karolis/Dropbox/code/test/sol-in-1/ncbi-names',
+    #    has_headers=False,
+    #    headers=('tax_id', 'name_txt', 'unique_name',
+    #        'name_class'),
+    #    delimiter='\t|',
+    #    quotechar=None,
+    #    stripchar='"',
+    #    rettype='dict')
+    #names = names_for_ncbi_taxid('136614', ncbi_names_table, sorting='class')
+    #for n in names:
+    #    print(n)
