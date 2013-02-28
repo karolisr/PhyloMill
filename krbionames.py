@@ -54,15 +54,15 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     other_dict = {'name': 'other', 'index': other}
 
     indexes = []
-    if var != None:
+    if var is not None:
         indexes.append(var_dict)
-    if form != None:
+    if form is not None:
         indexes.append(form_dict)
-    if sub != None:
+    if sub is not None:
         indexes.append(sub_dict)
-    if cross != None:
+    if cross is not None:
         indexes.append(cross_dict)
-    if other != None:
+    if other is not None:
         indexes.append(other_dict)
 
     indexes.sort(key=lambda x: x['index'])
@@ -78,12 +78,12 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
             (len(indexes) and
              indexes[0]['index'] >= 2)):
             organism_dict['authority'] = (
-            ' '.join(name_list[indexes[-1]['index'] + 2:len(name_list)]))
+                ' '.join(name_list[indexes[-1]['index'] + 2:len(name_list)]))
         if len(name_list) > 2 and len(indexes) == 0:
             organism_dict['authority'] = ' '.join(name_list[2:len(name_list)])
 
     if (len(name_list) >= 2 and ((len(indexes) == 0) or
-        (len(indexes) and indexes[0]['index'] != 1))):
+           (len(indexes) and indexes[0]['index'] != 1))):
         organism_dict['species'] = name_list[1]
 
     if len(indexes) and indexes[0]['index'] > 1:
@@ -100,7 +100,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     if number_of_indexes:
         previous_index = None
         for i, index in enumerate(indexes):
-            if previous_index == None:
+            if previous_index is None:
                 previous_index = index
                 continue
 
@@ -189,7 +189,7 @@ def flatten_organism_name(parsed_name, sep=' '):
 
 
 def accepted_name(name, synonymy_table, auth_file, sep=' ',
-    allow_loose_matching=True, ncbi_authority=False, level=1):
+                  allow_loose_matching=True, ncbi_authority=False, level=1):
     import copy
     # Emma Goldberg's module to standardize authority
     from krtp.eg import stdauth
@@ -227,8 +227,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
             o['species'] == s['Species'] and
             o['variety'] == s['Variety'] and
             o['subspecies'] == s['Subspecies'] and
-            o['authority'] == s['Authority']
-            ):
+                o['authority'] == s['Authority']):
             matching_entries_strict.append(s)
 
     if allow_loose_matching:
@@ -240,21 +239,18 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
                 (o['subspecies'] == '' or s['Subspecies'] == '' or
                     (o['subspecies'] == s['Subspecies'])) and
                 (o['authority'] == '' or s['Authority'] == '' or
-                    (o['authority'] == s['Authority']))
-                ):
+                    (o['authority'] == s['Authority']))):
                 matching_entries_loose.append(s)
 
     matching_entries_strict = sorted(matching_entries_strict, key=lambda x: (
         x['Authority'],
         x['Variety'],
-        x['Subspecies']
-        ))
+        x['Subspecies']))
     matching_entries_strict.reverse()
     matching_entries_loose = sorted(matching_entries_loose, key=lambda x: (
         x['Authority'],
         x['Variety'],
-        x['Subspecies']
-        ))
+        x['Subspecies']))
     matching_entries_loose.reverse()
     matching_entries = matching_entries_strict + matching_entries_loose
 
@@ -275,11 +271,11 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
         # If the matching entry is a synonym, recurse into synonymy table
         # until an entry with a non-synonym status is reached.
         if (s['Status'].lower() == 'syn' or
-            s['Status'].lower() == 'syn-alt'):
+                s['Status'].lower() == 'syn-alt'):
             if s in synonymy_table:
                 synonymy_table.remove(s)
             return(accepted_name(accepted, synonymy_table, auth_file,
-                                     sep=sep, level=level + 1))
+                                 sep=sep, level=level + 1))
         else:
             #print(level * '-', 'a', str(level),
             #    flatten_organism_name(accepted))
@@ -305,7 +301,7 @@ def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
 
     for row in names:
         parsed = parse_organism_name(row['name_txt'],
-            ncbi_authority=True)
+                                     ncbi_authority=True)
 
         # NCBI names table includes common names and other weird things, we do
         # not want any of that.
@@ -364,7 +360,8 @@ if __name__ == '__main__':
     #print(an2)
 
     # names_for_ncbi_taxid
-    #ncbi_names_table = krio.read_table_file('testdata' + ps + 'ncbi_names.dmp',
+    #ncbi_names_table = krio.read_table_file(
+    #    'testdata' + ps + 'ncbi_names.dmp',
     #    has_headers=False,
     #    headers=('tax_id', 'name_txt', 'unique_name', 'name_class'),
     #    delimiter='\t|')

@@ -11,9 +11,9 @@ def read_barcodes(file_path, delimiter, id_header, barcode_header):
 
     import krio
 
-    barcodes = krio.read_table_file(path=file_path, has_headers=True,
-        headers=None, delimiter=delimiter, quotechar='"', stripchar='',
-        rettype='dict')
+    barcodes = krio.read_table_file(
+        path=file_path, has_headers=True, headers=None, delimiter=delimiter,
+        quotechar='"', stripchar='', rettype='dict')
 
     id_header_new = 'id'
     barcode_header_new = 'barcode'
@@ -30,7 +30,7 @@ def read_barcodes(file_path, delimiter, id_header, barcode_header):
 
 
 def split_rad_fastq_file(pieces, output_dir, forward_reads_file_path,
-    reverse_reads_file_path=None):
+                         reverse_reads_file_path=None):
 
     import os
     import krio
@@ -45,11 +45,11 @@ def split_rad_fastq_file(pieces, output_dir, forward_reads_file_path,
 
     for piece in range(0, pieces):
         handle = open(output_dir + os.path.sep + 'f_' + str(piece + 1) +
-            '.fastq', 'wa')
+                      '.fastq', 'wa')
         forward_file_handles.append(handle)
         if reverse_reads_file_path:
             handle = open(output_dir + os.path.sep + 'r_' + str(piece + 1) +
-                '.fastq', 'wa')
+                          '.fastq', 'wa')
             reverse_file_handles.append(handle)
 
     forward_file_handles.reverse()
@@ -61,12 +61,12 @@ def split_rad_fastq_file(pieces, output_dir, forward_reads_file_path,
         lines_written = 0
         for i, l in enumerate(f):
             if (len(forward_file_handles) and
-                ((float(i) / 4) % records_per_file == 0)):
+                    ((float(i) / 4) % records_per_file == 0)):
                 if lines_written != 0:
                     print('\tWritten', str(lines_written / 4), 'records.')
                     lines_written = 0
                 print('\t' + str(len(forward_file_handles)) +
-                    ' files remaining.')
+                      ' files remaining.')
                 write_handle = forward_file_handles.pop()
             write_handle.write(l)
             lines_written = lines_written + 1
@@ -80,12 +80,12 @@ def split_rad_fastq_file(pieces, output_dir, forward_reads_file_path,
             lines_written = 0
             for i, l in enumerate(f):
                 if (len(reverse_file_handles) and
-                    ((float(i) / 4) % records_per_file == 0)):
+                        ((float(i) / 4) % records_per_file == 0)):
                     if lines_written != 0:
                         print('\tWritten', str(lines_written / 4), 'records.')
                         lines_written = 0
                     print('\t' + str(len(reverse_file_handles)) +
-                        ' files remaining.')
+                          ' files remaining.')
                     write_handle = reverse_file_handles.pop()
                 write_handle.write(l)
                 lines_written = lines_written + 1
@@ -112,5 +112,3 @@ if __name__ == '__main__':
     #     output_dir='../test/fastq-split',
     #     forward_reads_file_path='testdata/rad_forward.fastq',
     #     reverse_reads_file_path='testdata/rad_reverse.fastq')
-
-

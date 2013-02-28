@@ -99,7 +99,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
         while retry:
             uid_end = min(uid_count, uid_start + large_batch_size)
             print('Downloading records %i to %i of %i.'
-                % (uid_start + 1, uid_end, uid_count))
+                  % (uid_start + 1, uid_end, uid_count))
             small_batch = uids[uid_start:uid_end]
             small_batch_count = len(small_batch)
             epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
@@ -111,7 +111,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
             for start in range(0, small_batch_count, small_batch_size):
                 end = min(small_batch_count, start + small_batch_size)
                 print ('  Going to download record %i to %i of %i.'
-                    % (start + 1, end, small_batch_count))
+                       % (start + 1, end, small_batch_count))
 
                 fetch_handle = Entrez.efetch(db=db, rettype=rettype,
                                              retmode=retmode, retstart=start,
@@ -125,7 +125,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
             n_rec_to_download = uid_end - uid_start
             rec_downloaded = len(temp_records)
             print('    Downloaded', rec_downloaded, 'of',
-                n_rec_to_download, 'records.')
+                  n_rec_to_download, 'records.')
             if rec_downloaded == n_rec_to_download:
                 retry = False
                 SeqIO.write(temp_records, out_handle, 'gb')
@@ -142,7 +142,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 def get_ncbi_tax_id(record):
     import krseq
     feature_index = krseq.get_features_with_qualifier(record, 'db_xref',
-        'taxon')[0]
+                                                      'taxon')[0]
     # ToDo: search for taxon key as we now assume that it will always be the
     # last in the list
     return record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1]
@@ -160,4 +160,4 @@ if __name__ == '__main__':
 
     # esearch
     print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
-        'test@test.com'))
+          'test@test.com'))

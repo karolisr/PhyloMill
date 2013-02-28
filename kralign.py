@@ -31,14 +31,14 @@ def concatenate(alignments, padding_length=0):
     if len(alignments) > 2:
         aln2 = alignments.pop()
         aln1 = concatenate(alignments=alignments,
-            padding_length=padding_length)
+                           padding_length=padding_length)
     elif len(alignments) == 2:
         aln1 = alignments[0]
         aln2 = alignments[1]
     if (not isinstance(aln1, MultipleSeqAlignment) or
-        not isinstance(aln2, MultipleSeqAlignment)):
+            not isinstance(aln2, MultipleSeqAlignment)):
         raise ValueError(
-                'Argument must inherit from Bio.Align.MultipleSeqAlignment.')
+            'Argument must inherit from Bio.Align.MultipleSeqAlignment.')
     alphabet = Alphabet._consensus_alphabet([aln1._alphabet, aln2._alphabet])
     aln1_dict = dict()
     aln2_dict = dict()

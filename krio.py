@@ -57,7 +57,7 @@ def read_table_file(
     quotechar='"',
     stripchar='',
     rettype='dict'  # dict, list, set
-    ):
+):
 
     '''
     Reads a delimited text file.
@@ -68,7 +68,7 @@ def read_table_file(
     import krother
 
     handle = CommentedFile(open(path, 'rb'))
-    if headers != None:
+    if headers is not None:
         has_headers = False
     if has_headers:
         headers = handle.next()
@@ -117,6 +117,6 @@ if __name__ == '__main__':
 
     # read_table_file
     table = read_table_file(path='testdata' + ps + 'commented_file.csv',
-        has_headers=True, headers=None, delimiter=',')
+                            has_headers=True, headers=None, delimiter=',')
     for i, line in enumerate(table):
         print(i, repr(line))

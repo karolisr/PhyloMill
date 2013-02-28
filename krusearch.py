@@ -16,7 +16,7 @@ def cluster_file(
     strand='plus',  # plus both
     threads=1,
     quiet=True,
-    program='usearch6'):
+        program='usearch6'):
 
     import os
     import subprocess

@@ -20,11 +20,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-i', '--input_dir', type=unicode,
-        help='Input directory path.')
+                        help='Input directory path.')
     parser.add_argument('-o', '--output_dir', type=unicode,
-        help='Output directory path.')
+                        help='Output directory path.')
     parser.add_argument('--steps', type=unicode,
-        help='Which steps to perform 1, 2, 3, 4, 5')
+                        help='Which steps to perform 1, 2, 3, 4, 5')
 
     args = parser.parse_args()
 
@@ -71,14 +71,15 @@ if __name__ == '__main__':
         config_dict = dict()
         config_file_path = input_dir + 'config'
         if os.path.exists(config_file_path):
-            config = krio.read_table_file(config_file_path, has_headers=False,
-                headers=['name', 'value'], delimiter='\t', quotechar='"')
+            config = krio.read_table_file(
+                config_file_path, has_headers=False, headers=['name', 'value'],
+                delimiter='\t', quotechar='"')
             for l in config:
                 config_dict[l['name']] = l['value']
 
         # Parse queries file
         queries = krio.read_table_file(query_file, has_headers=True,
-            headers=None, delimiter='\t')
+                                       headers=None, delimiter='\t')
 
         steps = None
 
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                 keeplist_records_file=keeplist_records_file,
                 cutlist_taxonomy_file=cutlist_taxonomy_file,
                 keeplist_taxonomy_file=keeplist_taxonomy_file
-                )
+            )
 
         if not steps or 3 in steps:
 
@@ -116,8 +117,8 @@ if __name__ == '__main__':
                 quotechar=None,
                 stripchar='"',
                 rettype='dict')
-            synonymy_table = krio.read_table_file(synonymy_file,
-                has_headers=True, headers=None, delimiter=',')
+            synonymy_table = krio.read_table_file(
+                synonymy_file, has_headers=True, headers=None, delimiter=',')
             sequence_samples = krbioio.read_sequence_file(
                 sequence_samples_file, 'fasta', ret_type='dict')
 

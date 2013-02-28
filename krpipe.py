@@ -128,7 +128,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         else:
 
             print('\n\tSearching for:', name1, name2, 'in', db, 'database.\n',
-                sep=' ')
+                  sep=' ')
 
             # Search NCBI.
             result_uids = krncbi.esearch(query, db, email)
@@ -137,7 +137,8 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
 
 def filter_records(search_results_dir, output_dir, cutlist_records_file,
-    keeplist_records_file, cutlist_taxonomy_file, keeplist_taxonomy_file):
+                   keeplist_records_file, cutlist_taxonomy_file,
+                   keeplist_taxonomy_file):
 
     import os
     import krio
@@ -161,42 +162,42 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
     if cutlist_records_file:
 
         cutlist_records = krio.read_table_file(
-        path=cutlist_records_file,
-        has_headers=False,
-        headers=None,
-        delimiter=',',
-        quotechar='"',
-        rettype='set')
+            path=cutlist_records_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
 
     if keeplist_records_file:
 
         keeplist_records = krio.read_table_file(
-        path=keeplist_records_file,
-        has_headers=False,
-        headers=None,
-        delimiter=',',
-        quotechar='"',
-        rettype='set')
+            path=keeplist_records_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
 
     if cutlist_taxonomy_file:
 
         cutlist_taxonomy = krio.read_table_file(
-        path=cutlist_taxonomy_file,
-        has_headers=False,
-        headers=None,
-        delimiter=',',
-        quotechar='"',
-        rettype='set')
+            path=cutlist_taxonomy_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
 
     if keeplist_taxonomy_file:
 
         keeplist_taxonomy = krio.read_table_file(
-        path=keeplist_taxonomy_file,
-        has_headers=False,
-        headers=None,
-        delimiter=',',
-        quotechar='"',
-        rettype='set')
+            path=keeplist_taxonomy_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
 
     file_list = parse_directory(search_results_dir, ' ')
 
@@ -248,13 +249,13 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
                     if ((krncbi.get_ncbi_tax_id(record) in
                         keeplist_taxonomy) or
                         krseq.get_annotation(record, 'organism') in
-                        keeplist_taxonomy):
+                            keeplist_taxonomy):
                         records_filtered_tax.append(record)
                 elif cutlist_taxonomy:
                     if ((krncbi.get_ncbi_tax_id(record) not in
                         cutlist_taxonomy) and
                         krseq.get_annotation(record, 'organism') not in
-                        cutlist_taxonomy):
+                            cutlist_taxonomy):
                         records_filtered_tax.append(record)
         else:
             records_filtered_tax = records_filtered_id
@@ -263,7 +264,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         # Write results
         if keeplist_taxonomy or cutlist_taxonomy:
             krbioio.write_sequence_file(records_filtered_tax, output_file,
-                'gb')
+                                        'gb')
         else:
             krbioio.write_sequence_file(records_filtered_id, output_file, 'gb')
 
@@ -271,8 +272,8 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
 
 
 def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
-    ncbi_names_table, min_similarity, temp_dir, file_name_sep,
-    synonymy_table=None, auth_file=None):
+                 ncbi_names_table, min_similarity, temp_dir, file_name_sep,
+                 synonymy_table=None, auth_file=None):
 
     '''
     Extract relevant loci from the search results, do some filtering by length
@@ -373,9 +374,10 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                 loose_matching = True
 
             for l in locus:
-                fi = krseq.get_features_with_qualifier(record=record,
-                    qualifier_label=qualifier_label, qualifier=l.strip(),
-                    feature_type=feature_type, loose=loose_matching)
+                fi = krseq.get_features_with_qualifier(
+                    record=record, qualifier_label=qualifier_label,
+                    qualifier=l.strip(), feature_type=feature_type,
+                    loose=loose_matching)
                 feature_indexes = feature_indexes + fi
             feature_indexes = list(set(feature_indexes))
             # ToDo: this should never occur, and occured only once
@@ -423,8 +425,8 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
 
                 # A list of organism names based on NCBI taxid. This is a
                 #   sorted list with the most complete names at lower indexes.
-                organism_authority = krbionames.names_for_ncbi_taxid(tax_id,
-                    ncbi_names_table, sorting='authority')
+                organism_authority = krbionames.names_for_ncbi_taxid(
+                    tax_id, ncbi_names_table, sorting='authority')
 
                 # Iterate over the list of NCBI names and try to resolve
                 #   accepted name.
@@ -466,7 +468,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                             acc_name['status'].lower() == 'as' or
                             acc_name['status'].lower() == 'nn' or
                             acc_name['status'].lower() == 'unc' or
-                            acc_name['status'].lower() == 'unr')):
+                                acc_name['status'].lower() == 'unr')):
                             found_match = True
                             break
 
@@ -511,7 +513,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                             acc_name['status'].lower() == 'as' or
                             acc_name['status'].lower() == 'nn' or
                             acc_name['status'].lower() == 'unc' or
-                            acc_name['status'].lower() == 'unr')):
+                                acc_name['status'].lower() == 'unr')):
                             loose_mode = True
                             found_match = True
                             break
@@ -537,8 +539,8 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                 acc_name = dict()
                 acc_name['id'] = tax_id
                 acc_name['status'] = 'NA'
-                organism_authority = krbionames.names_for_ncbi_taxid(tax_id,
-                    ncbi_names_table, sorting='class')
+                organism_authority = krbionames.names_for_ncbi_taxid(
+                    tax_id, ncbi_names_table, sorting='class')
                 acc_name_flat = krbionames.flatten_organism_name(
                     organism_authority[0], '_')
 
@@ -648,7 +650,7 @@ def one_locus_per_organism(
     temp_dir,
     file_name_sep,
     aln_program,
-    threads):
+        threads):
 
     '''
     Produce single sequence per locus, per organism.
@@ -780,14 +782,14 @@ def one_locus_per_organism(
                 if len(tax_records_name2) > 1:
                     # ...we cluster these sequences and hope for only one
                     # cluster
-                    cluster_dict = krusearch.cluster_records(tax_records_name2,
-                    min_similarity, temp_dir)
+                    cluster_dict = krusearch.cluster_records(
+                        tax_records_name2, min_similarity, temp_dir)
                     # ...if there is only one cluster
                     if len(cluster_dict.keys()) == 1:
                         # We align the sequences in a cluster and produce
                         # a consensus
                         aln = kralign.align(tax_records_name2, aln_program,
-                            int(threads), temp_dir)
+                                            int(threads), temp_dir)
                         summary_aln = AlignInfo.SummaryInfo(aln)
                         consensus = summary_aln.dumb_consensus(
                             threshold=0.001, ambiguous='N')
@@ -822,7 +824,7 @@ def one_locus_per_organism(
                     all_taxid_for_name2_dict[taxid] = tax_records_name2[0]
 
             name1_results.append({'results': all_taxid_for_name2_dict,
-                'lrp': lrp})
+                                 'lrp': lrp})
 
             print('\n')
 
@@ -891,7 +893,8 @@ def one_locus_per_organism(
 
                         cons_id = '_'.join(cons_ids)
                         old_record_id_split = record.id.split('|')
-                        sequence_record_id = ('consensus_' + cons_id + '|' +
+                        sequence_record_id = (
+                            'consensus_' + cons_id + '|' +
                             old_record_id_split[1] + '|' +
                             old_record_id_split[2] + '|' +
                             old_record_id_split[3] + '|' +
@@ -934,21 +937,23 @@ def one_locus_per_organism(
 
             if len(consensus_list) > 1:
                 aln = kralign.align(consensus_list, aln_program, int(threads),
-                    temp_dir)
+                                    temp_dir)
                 summary_aln = AlignInfo.SummaryInfo(aln)
                 consensus = summary_aln.dumb_consensus(threshold=0.001,
-                    ambiguous='N')
+                                                       ambiguous='N')
 
                 cons_id = '_'.join(cons_ids)
                 old_record_id_split = consensus_list[0].id.split('|')
-                sequence_record_id = ('consensus_' + cons_id + '|' +
+                sequence_record_id = (
+                    'consensus_' + cons_id + '|' +
                     old_record_id_split[1] + '|' +
                     old_record_id_split[2] + '|' +
                     old_record_id_split[3] + '|' +
                     old_record_id_split[4])
 
-                sequence_record = SeqRecord.SeqRecord(seq=consensus,
-                    id=sequence_record_id, name='', description='')
+                sequence_record = SeqRecord.SeqRecord(
+                    seq=consensus, id=sequence_record_id, name='',
+                    description='')
 
                 results.append(sequence_record)
             #    print(sequence_record.id, len(sequence_record))
@@ -987,7 +992,7 @@ def one_locus_per_organism(
 
 
 def align_loci(processed_results_dir, output_dir, program, threads, spacing,
-    temp_dir, order):
+               temp_dir, order):
 
     '''
     Align individual loci, then concatenate alignments.
@@ -1042,7 +1047,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
         concatenated = kralign.concatenate(alignments, int(spacing))
         concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
         krbioio.write_alignment_file(concatenated, concatenated_output_file,
-            'fasta')
+                                     'fasta')
 
     os.removedirs(temp_dir)
 
@@ -1060,43 +1065,55 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
-    parser.add_argument('-c', '--command', type=unicode,
+    parser.add_argument(
+        '-c', '--command', type=unicode,
         choices=['search_and_download', 'filter_records', 'extract_loci',
         'one_locus_per_organism', 'align_loci'], help='Run a command.')
     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
-    parser.add_argument('-o', '--output', type=unicode,
+    parser.add_argument(
+        '-o', '--output', type=unicode,
         help='Output directory path.')
-    parser.add_argument('-s', '--sep', type=unicode,
+    parser.add_argument(
+        '-s', '--sep', type=unicode,
         help='Output file name separator.')
     parser.add_argument('-e', '--email', type=unicode, help='Email.')
-    parser.add_argument('-i', '--input', type=unicode,
+    parser.add_argument(
+        '-i', '--input', type=unicode,
         help='Input directory path.')
-    parser.add_argument('--ncbinames', type=unicode,
+    parser.add_argument(
+        '--ncbinames', type=unicode,
         help='NCBI organism names file.')
     parser.add_argument('--synonymy', type=unicode, help='Synonymy file.')
-    parser.add_argument('--authority', type=unicode,
+    parser.add_argument(
+        '--authority', type=unicode,
         help='Authority alternates file.')
-    parser.add_argument('--samples', type=unicode,
+    parser.add_argument(
+        '--samples', type=unicode,
         help='Sequence samples file in FASTA format.')
-    parser.add_argument('--similarity', type=float,
+    parser.add_argument(
+        '--similarity', type=float,
         help='Minimum sequence similarity.')
-    parser.add_argument('--tempdir', type=unicode,
+    parser.add_argument(
+        '--tempdir', type=unicode,
         help='Temporary directory path.')
-    parser.add_argument('--alignprog', type=unicode,
+    parser.add_argument(
+        '--alignprog', type=unicode,
         choices=['mafft', 'einsi', 'linsi', 'muscle'],
         help='Alignment program to be used.')
-    parser.add_argument('--threads', type=int,
+    parser.add_argument(
+        '--threads', type=int,
         help='Number of CPU cores to use.')
-    parser.add_argument('--alignspacing', type=int,
+    parser.add_argument(
+        '--alignspacing', type=int,
         help='Number of gaps to add between alignments \
         in concatenated alignment.')
     parser.add_argument('--clrec', type=unicode, help='Cutlist records file.')
     parser.add_argument('--klrec', type=unicode, help='Keeplist records file.')
     parser.add_argument('--cltax', type=unicode, help='Cutlist taxonomy file.')
     parser.add_argument('--kltax', type=unicode,
-        help='Keeplist taxonomy file.')
+                        help='Keeplist taxonomy file.')
     parser.add_argument('--alignorder', type=unicode,
-        help='Order of loci in the concatenated alignment.')
+                        help='Order of loci in the concatenated alignment.')
 
     args = parser.parse_args()
 
@@ -1110,7 +1127,7 @@ if __name__ == '__main__':
 
         # parse_directory
         t_parse_directory = parse_directory('testdata' + PS +
-            'parse_directory', '$')
+                                            'parse_directory', '$')
         for d in t_parse_directory:
             print(d)
 
@@ -1119,12 +1136,12 @@ if __name__ == '__main__':
     else:
 
         queries = krio.read_table_file(args.query, has_headers=True,
-            headers=None, delimiter='\t')
+                                       headers=None, delimiter='\t')
 
         if args.command == 'search_and_download':
 
             search_and_download(queries, args.output + PS, args.sep,
-                args.email)
+                                args.email)
 
         if args.command == 'filter_records':
             filter_records(
@@ -1134,7 +1151,7 @@ if __name__ == '__main__':
                 keeplist_records_file=args.klrec,
                 cutlist_taxonomy_file=args.cltax,
                 keeplist_taxonomy_file=args.kltax
-                )
+            )
 
         if args.command == 'extract_loci':
 
@@ -1148,7 +1165,7 @@ if __name__ == '__main__':
                     path=args.ncbinames,
                     has_headers=False,
                     headers=('tax_id', 'name_txt', 'unique_name',
-                        'name_class'),
+                             'name_class'),
                     delimiter='\t|',
                     quotechar=None,
                     stripchar='"',
@@ -1156,13 +1173,14 @@ if __name__ == '__main__':
 
             if args.authority and args.synonymy:
 
-                synonymy_table = krio.read_table_file(args.synonymy,
-                    has_headers=True, headers=None, delimiter=',')
+                synonymy_table = krio.read_table_file(
+                    args.synonymy, has_headers=True, headers=None,
+                    delimiter=',')
 
             if args.samples:
 
-                sequence_samples = krbioio.read_sequence_file(args.samples,
-                    'fasta', ret_type='dict')
+                sequence_samples = krbioio.read_sequence_file(
+                    args.samples, 'fasta', ret_type='dict')
 
             extract_loci(
                 search_results_dir=args.input,
@@ -1175,7 +1193,7 @@ if __name__ == '__main__':
                 min_similarity=args.similarity,
                 temp_dir=args.tempdir,
                 file_name_sep=args.sep
-                )
+            )
 
         if args.command == 'one_locus_per_organism':
 
@@ -1188,7 +1206,7 @@ if __name__ == '__main__':
                 file_name_sep=args.sep,
                 aln_program=args.alignprog,
                 threads=args.threads
-                )
+            )
 
         if args.command == 'align_loci':
 
@@ -1200,4 +1218,4 @@ if __name__ == '__main__':
                 spacing=args.alignspacing,
                 temp_dir=args.tempdir,
                 order=args.alignorder
-                )
+            )
