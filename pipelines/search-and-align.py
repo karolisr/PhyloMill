@@ -125,6 +125,7 @@ if __name__ == '__main__':
             krpipe.extract_loci(
                 search_results_dir=filtered_results_dir,
                 output_dir=extract_loci_dir,
+                queries=queries,
                 sequence_samples=sequence_samples,
                 ncbi_names_table=ncbi_names,
                 min_similarity=float(config_dict['asim']),
@@ -139,9 +140,12 @@ if __name__ == '__main__':
             krpipe.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
                 output_dir=one_locus_per_organism_dir,
+                queries=queries,
                 min_similarity=float(config_dict['wsim']),
                 temp_dir=temp_dir,
-                file_name_sep=file_name_sep)
+                file_name_sep=file_name_sep,
+                aln_program=config_dict['alnprg'],
+                threads=int(config_dict['threads']))
 
         if not steps or 5 in steps:
 

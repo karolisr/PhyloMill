@@ -70,10 +70,10 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
         name1 = query_dict['name1']
         name2 = query_dict['name2']
-        locus = query_dict['locus']
-        minlen = query_dict['minlen']
-        feature_type = query_dict['ncbi_feature_type']
-        qualifier_label = query_dict['ncbi_qualifier_label']
+        #locus = query_dict['locus']
+        #minlen = query_dict['minlen']
+        #feature_type = query_dict['ncbi_feature_type']
+        #qualifier_label = query_dict['ncbi_qualifier_label']
         db = query_dict['database']
         query = query_dict['query']
 
@@ -99,11 +99,12 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         file_path = (output_dir.rstrip(ps) + ps +
                      name1 + file_name_sep +
                      name2 + file_name_sep +
-                     locus + file_name_sep +
-                     minlen + file_name_sep +
-                     feature_type + file_name_sep +
-                     qualifier_label + file_name_sep +
-                     db + '.gb')
+                     #locus + file_name_sep +
+                     #minlen + file_name_sep +
+                     #feature_type + file_name_sep +
+                     #qualifier_label + file_name_sep +
+                     #db +
+                     '.gb')
 
         if query.lower().startswith('donotdownload'):
             all_records = dict()
@@ -121,13 +122,13 @@ def search_and_download(queries, output_dir, file_name_sep, email):
                             all_records[key] = records[key]
 
             all_records = all_records.values()
-            print('\n\tDo not download:', name1, name2, '\n', sep=' ')
+            print('\n\tWill not download:', name1, name2, '\n', sep=' ')
             krbioio.write_sequence_file(records, file_path, 'genbank')
 
         else:
 
-            print('\n\tSearching for:', name1, name2, 'Locus:', locus, 'in',
-                db, 'database.\n', sep=' ')
+            print('\n\tSearching for:', name1, name2, 'in', db, 'database.\n',
+                sep=' ')
 
             # Search NCBI.
             result_uids = krncbi.esearch(query, db, email)
@@ -217,7 +218,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
 
         krcl.hide_cursor()
 
-        print('\n\tFiltering records for ids.')
+        print('\n\t\tFiltering records for ids.')
         if keeplist_records or cutlist_records:
             records_count = len(records)
             for i, record in enumerate(records):
@@ -235,9 +236,9 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
                         records_filtered_id.append(record)
         else:
             records_filtered_id = records
-        print('\n\tAccepted', len(records_filtered_id), 'records.')
+        print('\t\tAccepted', len(records_filtered_id), 'records.')
 
-        print('\n\tFiltering records for taxonomy.')
+        print('\n\t\tFiltering records for taxonomy.')
         if keeplist_taxonomy or cutlist_taxonomy:
             records_count = len(records_filtered_id)
             for i, record in enumerate(records_filtered_id):
@@ -257,7 +258,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
                         records_filtered_tax.append(record)
         else:
             records_filtered_tax = records_filtered_id
-        print('\n\tAccepted', len(records_filtered_tax), 'records.')
+        print('\t\tAccepted', len(records_filtered_tax), 'records.')
 
         # Write results
         if keeplist_taxonomy or cutlist_taxonomy:
@@ -269,7 +270,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         krcl.show_cursor()
 
 
-def extract_loci(search_results_dir, output_dir, sequence_samples,
+def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
     ncbi_names_table, min_similarity, temp_dir, file_name_sep,
     synonymy_table=None, auth_file=None):
 
@@ -317,10 +318,29 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
         file_name = f['name']
         name1 = f['split'][0]
         name2 = f['split'][1]
-        locus = f['split'][2]
-        minlen = int(f['split'][3])
-        feature_type = f['split'][4]
-        qualifier_label = f['split'][5]
+        #locus = f['split'][2]
+        #minlen = int(f['split'][3])
+        #feature_type = f['split'][4]
+        #qualifier_label = f['split'][5]
+
+        locus = ''
+        minlen = 0
+        feature_type = ''
+        qualifier_label = ''
+        match_stringency = ''
+
+        for query_dict in queries:
+            if name1 == query_dict['name1'] and name2 == query_dict['name2']:
+                #name1 = query_dict['name1']
+                #name2 = query_dict['name2']
+                locus = query_dict['locus']
+                minlen = int(query_dict['minlen'])
+                feature_type = query_dict['ncbi_feature_type']
+                qualifier_label = query_dict['ncbi_qualifier_label']
+                match_stringency = query_dict['match_stringency']
+                break
+                #db = query_dict['database']
+                #query = query_dict['query']
 
         log_file = output_dir + ps + file_name + '.log'
         log_handle = open(log_file, 'w')
@@ -347,10 +367,15 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
 
             feature_indexes = list()
 
+            loose_matching = False
+
+            if match_stringency.lower() == 'loose':
+                loose_matching = True
+
             for l in locus:
                 fi = krseq.get_features_with_qualifier(record=record,
                     qualifier_label=qualifier_label, qualifier=l.strip(),
-                    feature_type=feature_type, loose=True)
+                    feature_type=feature_type, loose=loose_matching)
                 feature_indexes = feature_indexes + fi
             feature_indexes = list(set(feature_indexes))
             # ToDo: this should never occur, and occured only once
@@ -536,7 +561,8 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
             # relatively low similarity treshold, to weed out sequences
             # that have nothing to do with what we are looking for.
             to_cluster = [sequence_record, sequence_samples[name1]]
-            cluster_dict = krusearch.cluster_records(to_cluster,
+            cluster_dict = krusearch.cluster_records(
+                to_cluster,
                 min_similarity, temp_dir)
 
             if acc_name['status'] == '':
@@ -573,7 +599,15 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
                         'Taxonomic match using LOOSE mode.' + '\t' +
-                        acc_name_flat + '\n')
+                        acc_name_flat.replace('_', ' ') + '\n')
+                else:
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        organism.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'Match' + '\t' +
+                        acc_name_flat.replace('_', ' ') + '\n')
                 loci.append(sequence_record)
 
         log_handle.close()
@@ -606,8 +640,15 @@ def extract_loci(search_results_dir, output_dir, sequence_samples,
     os.removedirs(temp_dir)
 
 
-def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
-    temp_dir, file_name_sep):
+def one_locus_per_organism(
+    extracted_results_dir,
+    output_dir,
+    queries,
+    min_similarity,
+    temp_dir,
+    file_name_sep,
+    aln_program,
+    threads):
 
     '''
     Produce single sequence per locus, per organism.
@@ -616,10 +657,13 @@ def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
     print('\nProduce single sequence per locus, per organism.')
 
     import os
+    from Bio.Align import AlignInfo
+    from Bio import SeqRecord
     import krio
     import krbioio
     import krusearch
     import krcl
+    import kralign
 
     ps = os.path.sep
 
@@ -629,86 +673,315 @@ def one_locus_per_organism(extracted_results_dir, output_dir, min_similarity,
     print('\tPreparing temporary directory "', temp_dir, '"', sep='')
     krio.prepare_directory(temp_dir)
 
-    locus_dict = dict()
+    name_dict = dict()
 
     file_list = parse_directory(extracted_results_dir, file_name_sep)
 
+    #
+    # Iterate over each file that corresponds to a single query line
+    # There are as many files as there are queries. Using these we will build
+    # a structure that looks like this:
+    #
+    #   Nomenclature:
+    #       name1: general query name
+    #       name2: specific query name
+    #
+    #   Structure:
+    #       name_dict: dictionary with key name1, each value is a list of
+    #       dictionaries with keys:
+    #           name2:      specific name (string)
+    #           records:    list of BioSeqRecord objects (list)
+    #           lrp:        locus relative position (int or 'X')
+    #
     for f in file_list:
 
         if not f['ext'].startswith('fasta'):
             continue
 
-        if f['split'][-1].startswith('excluded'):
-            continue
+        # Not sur if this will be used
+        #if f['split'][-1].startswith('excluded'):
+        #    continue
 
-        name = f['split'][0]
+        name1 = f['split'][0]
+        name2 = f['split'][1]
+        locus_relative_position = 0
 
-        if not name in locus_dict:
-            locus_dict[name] = list()
+        for query_dict in queries:
+            if name1 == query_dict['name1'] and name2 == query_dict['name2']:
+                locus_relative_position = query_dict['locus_relative_position']
+                break
+
+        if not name1 in name_dict:
+            name_dict[name1] = list()
 
         records = krbioio.read_sequence_file(f['path'], 'fasta')
-        locus_dict[name] = locus_dict[name] + records
+        name_dict[name1].append({
+            'name2': name2,
+            'records': records,
+            'lrp': locus_relative_position})
 
     # Because for each locus, there could be several records from the same
     # species, we need to pick the best representative sequence. Only one
-    # per locus, per organism.
-    for locus_name in locus_dict.keys():
-        print('\n\tProcessing', locus_name)
+    # per locus, per organism. Each name1 will have one and only one file
+    # associated with it.
 
-        output_file = output_dir + ps + locus_name + '.fasta'
+    # LOOP ALL NAME1 ----------------------------------------------------------
+    for name1 in name_dict.keys():
+        print('\n\tProcessing', name1)
+
         results = list()
-        records = locus_dict[locus_name]
-        records_dict = dict()
 
-        log_file = output_dir + ps + locus_name + '.log'
+        log_file = output_dir + ps + name1 + '.log'
         log_handle = open(log_file, 'w')
-
-        for record in records:
-            taxid = record.description.split('|')[4]
-            if not taxid in records_dict:
-                records_dict[taxid] = list()
-            records_dict[taxid].append(record)
-        records_count = len(records_dict.keys())
+        output_file = output_dir + ps + name1 + '.fasta'
 
         krcl.hide_cursor()
 
-        for i, taxid in enumerate(records_dict.keys()):
-            tax_records = records_dict[taxid]
-            krcl.print_progress(i + 1, records_count, 50, '\t')
-            # If there is more than one sequence for particular locus and
-            # particular organism.
-            if len(tax_records) > 1:
-                # ...we cluster these sequences and hope for only one cluster
-                cluster_dict = krusearch.cluster_records(tax_records,
+        # Each row will contain a dictionary with a list of results and a
+        # relative locus position:
+        name1_results = list()
+
+        # All name2 associated with name1
+        list_of_name2 = name_dict[name1]
+
+        # LOOP ALL NAME2 ------------------------------------------------------
+        for name2_dict in list_of_name2:
+
+            name2 = name2_dict['name2']
+            records = name2_dict['records']
+            lrp = name2_dict['lrp']
+
+            if lrp.lower() != 'x':
+                lrp = int(lrp)
+
+            print('\n\t\tProcessing', name1, name2)
+
+            # Keys will be taxid and value will be the list of all sequences
+            # for name2 with that taxid
+            tax_records_dict_name2 = dict()
+
+            for record in records:
+                taxid = record.description.split('|')[4]
+                if not taxid in tax_records_dict_name2:
+                    tax_records_dict_name2[taxid] = list()
+                tax_records_dict_name2[taxid].append(record)
+
+            # Will hold one sequence record per taxid, keys are taxid
+            all_taxid_for_name2_dict = dict()
+
+            records_count = len(tax_records_dict_name2.keys())
+
+            for i, taxid in enumerate(tax_records_dict_name2.keys()):
+
+                krcl.print_progress(i + 1, records_count, 50, '\t\t')
+
+                tax_records_name2 = tax_records_dict_name2[taxid]
+
+                if len(tax_records_name2) > 1:
+                    # ...we cluster these sequences and hope for only one
+                    # cluster
+                    cluster_dict = krusearch.cluster_records(tax_records_name2,
                     min_similarity, temp_dir)
-                # ...if there is only one cluster
-                if len(cluster_dict.keys()) == 1:
-                    # ...we pick the longest available sequence
-                    tax_records.sort(key=lambda x: len(x), reverse=True)
-                    results.append(tax_records[0])
+                    # ...if there is only one cluster
+                    if len(cluster_dict.keys()) == 1:
+                        # We align the sequences in a cluster and produce
+                        # a consensus
+                        aln = kralign.align(tax_records_name2, aln_program,
+                            int(threads), temp_dir)
+                        summary_aln = AlignInfo.SummaryInfo(aln)
+                        consensus = summary_aln.dumb_consensus(
+                            threshold=0.001, ambiguous='N')
+
+                        # We want the consensus record description to reflect
+                        # all the sequence ids that were combined to form it
+                        cons_ids = list()
+                        for i in tax_records_name2:
+                            cons_ids.append(i.id.split('|')[0])
+                        new_cons_id = '_'.join(cons_ids)
+
+                        old_record_id_split = (
+                            tax_records_name2[0].id.split('|'))
+
+                        sequence_record_id = (
+                            'consensus_' + new_cons_id + '|' +
+                            old_record_id_split[1] + '|' +
+                            old_record_id_split[2] + '|' +
+                            old_record_id_split[3] + '|' +
+                            old_record_id_split[4])
+
+                        # Produce a biopython sequence record object
+                        sequence_record = SeqRecord.SeqRecord(
+                            seq=consensus, id=sequence_record_id, name='',
+                            description='')
+
+                        all_taxid_for_name2_dict[taxid] = sequence_record
+                    else:
+                        # What to do if there is more than one cluster?
+                        pass
                 else:
-                    # ToDo: What happens if the sequences from the same
-                    # organism and the same locus are not similar enough?
-                    # Note: This happened only twice in my expirience so far,
-                    # so I don't think this is top priority.
-                    log_handle.write(tax_records[0].description.split('|')[-2]
-                        + '\t' + taxid + '\tSequences are too dissimilar.\n')
+                    all_taxid_for_name2_dict[taxid] = tax_records_name2[0]
+
+            name1_results.append({'results': all_taxid_for_name2_dict,
+                'lrp': lrp})
+
+            print('\n')
+
+        # END LOOP ALL NAME2 --------------------------------------------------
+
+        # Keys will be taxid, values will be a list of dictionaries with keys:
+        #   record
+        #   lrp
+        final_dict = dict()
+        name1_results.sort(key=lambda x: x['lrp'], reverse=False)
+        for r_dict in name1_results:
+            r = r_dict['results']
+            lrp = r_dict['lrp']
+            for taxid in r.keys():
+                if taxid not in final_dict:
+                    final_dict[taxid] = list()
+                final_dict[taxid].append({'record': r[taxid], 'lrp': lrp})
+
+        for i, taxid in enumerate(final_dict.keys()):
+
+            #print(i+1)
+
+            # -----------------------------------------------------------------
+            # Produce a list of sequences that will represent a consensus of
+            # the locus. We concatenate numbered lrps in order and stick them
+            # at index 0 of the list. Further indexes will contain string named
+            # lrps ('x')
+            consensus_list = list()
+            for r in final_dict[taxid]:
+                lrp = r['lrp']
+                record = r['record']
+
+                # Based on previous ordering we assume that lrps in the list
+                # will occur in order: numbers first, then strings:
+                #   1,2,3...X,X,X
+
+                # We have to concatenate records based on their lrp order
+                if not isinstance(lrp, basestring):
+                    if not len(consensus_list):
+                        consensus_list.append(record)
+                    else:
+                        # for record in consensus list
+                        cons_ids_1 = list()
+                        desc_split = consensus_list[0].id.split('|')
+                        desc_0_split = desc_split[0].split('_')
+                        if desc_0_split[0] == 'consensus':
+                            desc_0_split.remove('consensus')
+                            for acc in desc_0_split:
+                                cons_ids_1.append(acc)
+                        else:
+                            cons_ids_1.append(desc_split[0])
+
+                        # for new record
+                        cons_ids_2 = list()
+                        desc_split = record.id.split('|')
+                        desc_0_split = desc_split[0].split('_')
+                        if desc_0_split[0] == 'consensus':
+                            desc_0_split.remove('consensus')
+                            for acc in desc_0_split:
+                                cons_ids_2.append(acc)
+                        else:
+                            cons_ids_2.append(desc_split[0])
+
+                        cons_ids = list(set(cons_ids_1 + cons_ids_2))
+                        consensus_list[0] = consensus_list[0] + record
+
+                        cons_id = '_'.join(cons_ids)
+                        old_record_id_split = record.id.split('|')
+                        sequence_record_id = ('consensus_' + cons_id + '|' +
+                            old_record_id_split[1] + '|' +
+                            old_record_id_split[2] + '|' +
+                            old_record_id_split[3] + '|' +
+                            old_record_id_split[4])
+
+                        sequence_record = SeqRecord.SeqRecord(
+                            seq=consensus_list[0].seq,
+                            id=sequence_record_id, name='', description='')
+
+                        consensus_list[0] = sequence_record
+
+                # If lrp is 'x' or any string, it means the record contains
+                # sequence that covers entire locus that we are trying to
+                # reconstruct, so we just put it in the list from which the
+                # locus consensus will be determined
+                else:
+                    consensus_list.append(record)
+
+            # END Produce a list of sequences that will represent a consensus
+            # of the locus.
+            # -----------------------------------------------------------------
+
+            #    print(record.id, lrp, len(r['record']))
+            #print('--- --- --- --- --- --- --- --- --- --- --- ---')
+            #for c in consensus_list:
+            #    print(c.id, len(c))
+            #print('--- --- --- --- --- --- --- --- --- --- --- ---')
+
+            cons_ids = list()
+            for c in consensus_list:
+                desc_split = c.id.split('|')
+                desc_0_split = desc_split[0].split('_')
+                if desc_0_split[0] == 'consensus':
+                    desc_0_split.remove('consensus')
+                    for acc in desc_0_split:
+                        cons_ids.append(acc)
+                else:
+                    cons_ids.append(desc_split[0])
+            cons_ids = list(set(cons_ids))
+
+            if len(consensus_list) > 1:
+                aln = kralign.align(consensus_list, aln_program, int(threads),
+                    temp_dir)
+                summary_aln = AlignInfo.SummaryInfo(aln)
+                consensus = summary_aln.dumb_consensus(threshold=0.001,
+                    ambiguous='N')
+
+                cons_id = '_'.join(cons_ids)
+                old_record_id_split = consensus_list[0].id.split('|')
+                sequence_record_id = ('consensus_' + cons_id + '|' +
+                    old_record_id_split[1] + '|' +
+                    old_record_id_split[2] + '|' +
+                    old_record_id_split[3] + '|' +
+                    old_record_id_split[4])
+
+                sequence_record = SeqRecord.SeqRecord(seq=consensus,
+                    id=sequence_record_id, name='', description='')
+
+                results.append(sequence_record)
+            #    print(sequence_record.id, len(sequence_record))
+            #    print('=== === === === === === === === === === === ===')
+
             else:
-                results.append(tax_records[0])
+                results.append(consensus_list[0])
+            #    print(consensus_list[0].id, len(consensus_list[0]))
+            #    print('=== === === === === === === === === === === ===')
 
         krcl.show_cursor()
 
         for result in results:
-            desc = result.description.split('|')
+            desc = result.id.split('|')
+
+            acc_in_result = desc[0].split('_')
+            if acc_in_result[0] == 'consensus':
+                acc_in_result.remove('consensus')
+            acc_in_result = ' '.join(acc_in_result)
+            log_handle.write(desc[-2] + '\t' + desc[-1] + '\t' +
+                             acc_in_result + '\n')
+
             desc = desc[-2] + '|' + desc[-1]
             result.id = desc
             result.name = ''
             result.description = ''
         krbioio.write_sequence_file(results, output_file, 'fasta')
 
+        print('\n\tAccepted', len(results), 'sequences.')
+
         log_handle.close()
 
-        print('\n\tAccepted', len(results), 'sequences.')
+    # END LOOP ALL NAME1 ------------------------------------------------------
 
     os.removedirs(temp_dir)
 
@@ -845,10 +1118,10 @@ if __name__ == '__main__':
 
     else:
 
-        if args.command == 'search_and_download':
+        queries = krio.read_table_file(args.query, has_headers=True,
+            headers=None, delimiter='\t')
 
-            queries = krio.read_table_file(args.query, has_headers=True,
-                          headers=None, delimiter='\t')
+        if args.command == 'search_and_download':
 
             search_and_download(queries, args.output + PS, args.sep,
                 args.email)
@@ -894,6 +1167,7 @@ if __name__ == '__main__':
             extract_loci(
                 search_results_dir=args.input,
                 output_dir=args.output,
+                queries=queries,
                 sequence_samples=sequence_samples,
                 ncbi_names_table=ncbi_names,
                 synonymy_table=synonymy_table,
@@ -908,9 +1182,12 @@ if __name__ == '__main__':
             one_locus_per_organism(
                 extracted_results_dir=args.input,
                 output_dir=args.output,
+                queries=queries,
                 min_similarity=args.similarity,
                 temp_dir=args.tempdir,
-                file_name_sep=args.sep
+                file_name_sep=args.sep,
+                aln_program=args.alignprog,
+                threads=args.threads
                 )
 
         if args.command == 'align_loci':
