@@ -34,3 +34,42 @@ def get_features_with_qualifier(record, qualifier_label, qualifier,
             if loose and qualifier.lower() in q.lower():
                 result_features.append(feature_index)
     return result_features
+
+
+def trim_residues(bio_seq_record, trim_length, right=False):
+    '''
+        Will trim trim_length residues from the left or right side of the
+        sequence record.
+    '''
+    from Bio import SeqRecord
+    sequence_record = bio_seq_record.seq.tomutable()
+    keep_start = trim_length
+    keep_end = len(sequence_record)
+    if right:
+        keep_start = 0
+        keep_end = len(sequence_record) - trim_length
+    sequence_record = sequence_record[keep_start:keep_end]
+    letter_annotations = dict()
+    if 'phred_quality' in bio_seq_record.letter_annotations:
+        quality_scores = bio_seq_record.letter_annotations['phred_quality']
+        letter_annotations['phred_quality'] = (
+            quality_scores[keep_start:keep_end])
+    bio_seq_record = SeqRecord.SeqRecord(
+        seq=sequence_record.toseq(),
+        id=bio_seq_record.id,
+        name=bio_seq_record.name,
+        description=bio_seq_record.description,
+        dbxrefs=None,
+        features=None,
+        annotations=None,
+        letter_annotations=letter_annotations)
+    return bio_seq_record
+
+
+def reverse_complement(bio_seq_record):
+    result = bio_seq_record.reverse_complement(id=True, name=True,
+                                               description=True,
+                                               features=True, annotations=True,
+                                               letter_annotations=True,
+                                               dbxrefs=True)
+    return result
