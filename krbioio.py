@@ -97,7 +97,7 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
     forward_file_handles.reverse()
     reverse_file_handles.reverse()
 
-    print('Splitting forward reads.')
+    print('\nSplitting forward reads.\n')
     with open(forward_reads_file_path) as f:
         write_handle = None
         lines_written = 0
@@ -116,7 +116,7 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
                 print('\tWritten', str(lines_written / 4), 'records.')
 
     if reverse_reads_file_path:
-        print('Splitting reverse reads...')
+        print('\nSplitting reverse reads...\n')
         with open(reverse_reads_file_path) as f:
             write_handle = None
             lines_written = 0

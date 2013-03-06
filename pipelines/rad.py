@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     ps = os.path.sep
 
-    # Possible arguments
+    # Possible arguments ------------------------------------------------------
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--commands', type=unicode,
@@ -46,12 +46,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Standardize output directory
+    # Standardize output directory --------------------------------------------
     output_dir = None
     if args.output_dir:
         output_dir = args.output_dir.rstrip(ps) + ps
 
-    # Check if prerequisites are met to run the pipeline
+    # Check if prerequisites are met to run the pipeline ----------------------
     if not output_dir:
         print('Output directory is required.')
         sys.exit(1)
@@ -60,12 +60,12 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
 
-        # Determine which commands to run
+        # Determine which commands to run -------------------------------------
         commands = None
         if args.commands:
             commands = set([x.strip() for x in args.commands.split(',')])
 
-        # Read_barcodes
+        # Read_barcodes -------------------------------------------------------
         barcodes = None
         if args.barcodes_file:
             barcodes = krnextgen.read_barcodes(
@@ -74,10 +74,12 @@ if __name__ == '__main__':
                 id_header='id',
                 barcode_header='barcode')
 
-        split_raw_fastq_output_dir = output_dir + '01-split-raw-fastq'
-        demultiplexed_output_dir = output_dir + '02-demultiplexed-fastq'
+        split_raw_fastq_output_dir = output_dir + '01-raw-fastq-parts'
+        dmltplx_output_dir_split = output_dir + '02-demultiplexed-fastq-parts'
+        dmltplx_output_dir_combined = (output_dir +
+                                       '03-demultiplexed-fastq-combined')
 
-        # Split FASTQ files
+        # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
 
             if not args.forward_file:
@@ -96,7 +98,7 @@ if __name__ == '__main__':
                 reverse_reads_file_path=args.reverse_file
             )
 
-        # Demultiplex split files
+        # Demultiplex split files ---------------------------------------------
         if commands and ('demultiplex' in commands):
 
             if not barcodes:
@@ -123,13 +125,15 @@ if __name__ == '__main__':
                     reverse = True
                     break
 
-            print('\n')
+            processes = list()
+
+            print('')
 
             for f in split_file_list:
                 if f['split'][0] == 'f':
                     print('Demultiplexing file', f['split'][1])
                     input_file_format = f['ext']
-                    output_dir_split = (demultiplexed_output_dir + ps +
+                    output_dir_split = (dmltplx_output_dir_split + ps +
                                         f['split'][1])
                     reverse_reads_file_path = None
                     if reverse:
@@ -142,21 +146,35 @@ if __name__ == '__main__':
                     p = Process(
                         target=krnextgen.demultiplex,
                         args=(
-                            barcodes,  # barcodes
-                            f['path'],  # forward_reads_file_path
-                            reverse_reads_file_path,  # reverse_reads_file_path
-                            input_file_format,  # input_file_format
-                            'fastq',  # output_file_format
+                            barcodes,
+                            # forward_reads_file_path
+                            f['path'],
+                            reverse_reads_file_path,
+                            input_file_format,
+                            # output_file_format
+                            'fastq',
                             args.max_barcode_mismatch_count,
-                            # max_barcode_mismatch_count
-                            output_dir_split,  # output_dir
-                            args.trim_barcode,  # trim_barcode
-                            args.trim_extra,  # trim_extra
-                            1000  # write_every
+                            # output_dir
+                            output_dir_split,
+                            args.trim_barcode,
+                            args.trim_extra,
+                            # write_every
+                            1000
                         )
                     )
 
                     p.start()
+
+                    processes.append(p)
+
+            for p in processes:
+                p.join()
+
+            print('\nCombining demultiplexed results...')
+
+            krnextgen.combine_demultiplexed_results(
+                input_dir=dmltplx_output_dir_split,
+                output_dir=dmltplx_output_dir_combined)
 
 # ./rad.py \
 # --output_dir /home/karolis/Dropbox/code/test/rad \

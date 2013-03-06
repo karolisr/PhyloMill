@@ -6,7 +6,7 @@ from __future__ import print_function
 # Utility functions used by the pipeline functions.
 
 
-def parse_directory(path, file_name_sep):
+def parse_directory(path, file_name_sep, sort='forward'):
 
     '''
     Will parse a directory at a given path and return a list of dictionary
@@ -21,25 +21,29 @@ def parse_directory(path, file_name_sep):
     import os
 
     ps = os.path.sep
-
+    path = path.rstrip(ps) + ps
     file_list = os.listdir(path)
-
+    file_list.sort(reverse=False)
+    if sort == 'reverse':
+        file_list.sort(reverse=True)
     return_list = list()
 
     for f in file_list:
 
         file_name = os.path.splitext(f)[0]
-        file_ext = os.path.splitext(f)[1].split('.')[1]
+        file_ext = None
+        if os.path.splitext(f)[1] != '':
+            file_ext = os.path.splitext(f)[1].split('.')[1]
+        isdir = os.path.isdir(path + f)
         file_name_split = file_name.split(file_name_sep)
 
         file_dict = dict()
-
         file_dict['name'] = file_name
         file_dict['ext'] = file_ext
         file_dict['full'] = f
-        file_dict['path'] = path + ps + f
+        file_dict['path'] = path + f
         file_dict['split'] = file_name_split
-
+        file_dict['isdir'] = isdir
         return_list.append(file_dict)
 
     return return_list
@@ -1126,8 +1130,10 @@ if __name__ == '__main__':
         # Tests
 
         # parse_directory
-        t_parse_directory = parse_directory('testdata' + PS +
-                                            'parse_directory', '$')
+        # t_parse_directory = parse_directory('testdata' + PS +
+        #                                     'parse_directory', '$')
+        t_parse_directory = parse_directory(
+            '/data/gbs-new/02-demultiplexed-fastq', ' ')
         for d in t_parse_directory:
             print(d)
 
