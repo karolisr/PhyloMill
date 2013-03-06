@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     import krbioio
     import krpipe
-    import krrad
+    import krnextgen
 
     ps = os.path.sep
 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         # Read_barcodes
         barcodes = None
         if args.barcodes_file:
-            barcodes = krrad.read_barcodes(
+            barcodes = krnextgen.read_barcodes(
                 file_path=args.barcodes_file,
                 delimiter='\t',
                 id_header='id',
@@ -140,7 +140,7 @@ if __name__ == '__main__':
                             f['ext'])
 
                     p = Process(
-                        target=krrad.demultiplex,
+                        target=krnextgen.demultiplex,
                         args=(
                             barcodes,  # barcodes
                             f['path'],  # forward_reads_file_path
