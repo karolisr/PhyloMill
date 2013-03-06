@@ -11,6 +11,7 @@ if __name__ == '__main__':
 
     from multiprocessing import Process
 
+    import krbioio
     import krpipe
     import krrad
 
@@ -88,7 +89,7 @@ if __name__ == '__main__':
 
             print('\n')
 
-            krrad.split_rad_fastq_file(
+            krbioio.split_fastq_file(
                 pieces=args.threads,
                 output_dir=split_raw_fastq_output_dir,
                 forward_reads_file_path=args.forward_file,

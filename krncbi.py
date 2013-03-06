@@ -156,8 +156,8 @@ if __name__ == '__main__':
     PS = os.path.sep
 
     # entrez_db_list
-    print(entrez_db_list('test@test.com'))
+    #print(entrez_db_list('test@test.com'))
 
     # esearch
-    print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
-          'test@test.com'))
+    #print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
+    #      'test@test.com'))

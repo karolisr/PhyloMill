@@ -68,6 +68,73 @@ def write_alignment_file(alignment, file_path, file_format):
     handle.close()
     return count_written
 
+
+def split_fastq_file(pieces, output_dir, forward_reads_file_path,
+                     reverse_reads_file_path=None):
+
+    import os
+    import krio
+
+    print('Splitting FASTQ file into', pieces, 'pieces.')
+
+    krio.prepare_directory(output_dir)
+    num_lines = krio.num_lines_in_file(forward_reads_file_path)
+    print('There are ' + str(num_lines / 4) + ' records.')
+    records_per_file = num_lines / 4 / pieces
+
+    forward_file_handles = list()
+    reverse_file_handles = list()
+
+    for piece in range(0, pieces):
+        handle = open(output_dir + os.path.sep + 'f_' + str(piece + 1) +
+                      '.fastq', 'wa')
+        forward_file_handles.append(handle)
+        if reverse_reads_file_path:
+            handle = open(output_dir + os.path.sep + 'r_' + str(piece + 1) +
+                          '.fastq', 'wa')
+            reverse_file_handles.append(handle)
+
+    forward_file_handles.reverse()
+    reverse_file_handles.reverse()
+
+    print('Splitting forward reads.')
+    with open(forward_reads_file_path) as f:
+        write_handle = None
+        lines_written = 0
+        for i, l in enumerate(f):
+            if (len(forward_file_handles) and
+                    ((float(i) / 4) % records_per_file == 0)):
+                if lines_written != 0:
+                    print('\tWritten', str(lines_written / 4), 'records.')
+                    lines_written = 0
+                print('\t' + str(len(forward_file_handles)) +
+                      ' files remaining.')
+                write_handle = forward_file_handles.pop()
+            write_handle.write(l)
+            lines_written = lines_written + 1
+            if num_lines == i + 1:
+                print('\tWritten', str(lines_written / 4), 'records.')
+
+    if reverse_reads_file_path:
+        print('Splitting reverse reads...')
+        with open(reverse_reads_file_path) as f:
+            write_handle = None
+            lines_written = 0
+            for i, l in enumerate(f):
+                if (len(reverse_file_handles) and
+                        ((float(i) / 4) % records_per_file == 0)):
+                    if lines_written != 0:
+                        print('\tWritten', str(lines_written / 4), 'records.')
+                        lines_written = 0
+                    print('\t' + str(len(reverse_file_handles)) +
+                          ' files remaining.')
+                    write_handle = reverse_file_handles.pop()
+                write_handle.write(l)
+                lines_written = lines_written + 1
+                if num_lines == i + 1:
+                    print('\tWritten', str(lines_written / 4), 'records.')
+
+
 if __name__ == '__main__':
 
     # Tests
