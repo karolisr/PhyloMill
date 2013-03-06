@@ -192,6 +192,161 @@ def demultiplex(barcodes,
                                 write_handle_reverse_other,
                                 output_file_format)
 
+
+# -----------------------------------------------------------------------------
+# Functions that follow are used to estimate various statistics used in
+# population genetics.
+# -----------------------------------------------------------------------------
+
+
+def like_homo(s, p, e):
+
+    '''
+        Calculates the likelihood (for a given site) of observed data
+        conditional on the site being homozygous. Diploid individual is
+        assumed. Lynch 2008.
+
+        parameters:
+            s - a list of counts of nucleotides (for a given site) in a cluster
+                 0  1  2  3
+                [A, C, G, T]
+
+            p - average nucleotide frequencies in the region of analysis
+                 0  1  2  3
+                [A, C, G, T]
+
+            e - error rate
+    '''
+
+    from scipy.stats import binom
+    total_s = sum(s)
+    likelihood = 0
+    for i in range(0, 4):
+        l = p[i] * binom.pmf(total_s-s[i], total_s, e)
+        likelihood = likelihood + l
+    return likelihood
+
+
+def like_hetero(s, p, e):
+
+    '''
+        Calculates the likelihood (for a given site) of observed data
+        conditional on the site being heterozygous. Diploid individual is
+        assumed. Lynch 2008.
+
+        parameters:
+            s - a list of counts of nucleotides (for a given site) in a cluster
+                 0  1  2  3
+                [A, C, G, T]
+
+            p - average nucleotide frequencies in the region of analysis
+                 0  1  2  3
+                [A, C, G, T]
+
+            e - error rate
+    '''
+
+    from scipy.stats import binom
+    total_s = sum(s)
+    S = 1.0 - sum([x*x for x in p])
+    likelihood = 0
+    for i in range(0, 4):
+        for j in range(i+1, 4):
+            l = (2.0 * p[i] * p[j] *
+                 binom.pmf(total_s-s[i]-s[j], total_s, (2*e)/3.0) *
+                 binom.pmf(s[i], s[i]+s[j], 0.5) / S)
+            likelihood = likelihood + l
+    return likelihood
+
+
+def like_homo_hetero(s, p, e, pi):
+
+    '''
+        Calculates the total likelihood (for a given site) of observed data.
+        Diploid individual is assumed. Lynch 2008.
+
+        parameters:
+            s - a list of counts of nucleotides (for a given site) in a cluster
+                 0  1  2  3
+                [A, C, G, T]
+
+            p - average nucleotide frequencies in the region of analysis
+                 0  1  2  3
+                [A, C, G, T]
+
+            e - error rate
+
+            pi - nucleotide diversity
+    '''
+
+    likelihood = (1-pi) * like_homo(s, p, e) + pi * like_hetero(s, p, e)
+    return likelihood
+
+
+def neg_ll_homo_hetero(ns, p, e, pi):
+
+    '''
+        Calculates the negative natural log of the total likelihood
+        (for multiple sites) of observed data. Diploid individual is assumed.
+        Lynch 2008.
+
+        parameters:
+            ns - a list of lists of counts of nucleotides (for a given site) in
+            a cluster
+                  0  1  2  3    0  1  2  3
+                [[A, C, G, T], [A, C, G, T], ... ]
+                    Site 1        Site 2     ...
+
+            p - average nucleotide frequencies in the region of analysis
+                 0  1  2  3
+                [A, C, G, T]
+
+            e - error rate
+
+            pi - nucleotide diversity
+    '''
+
+    import numpy
+    ll = 0
+    for s in ns:
+        l = like_homo_hetero(s, p, e, pi)
+        ll = ll + numpy.log(l)
+    ll = ll * (-1.0)
+    return ll
+
+
+def mle_e_and_pi(ns, p):
+
+    '''
+        Using neg_ll_homo_hetero, will produce a region-wide (could be whole
+        genome) maximum likelihood estimate of e (error rate) and pi
+        (nucleotide diversity).
+
+        parameters:
+            ns - a list of lists of counts of nucleotides (for a given site) in
+            a cluster
+                  0  1  2  3    0  1  2  3
+                [[A, C, G, T], [A, C, G, T], ... ]
+                    Site 1        Site 2     ...
+
+            p - average nucleotide frequencies in the region of analysis
+                 0  1  2  3
+                [A, C, G, T]
+    '''
+
+    from scipy import optimize
+    nll = lambda estimated, ns_l, p_l: (
+        neg_ll_homo_hetero(ns_l, p_l, estimated[0], estimated[1])
+    )
+    return optimize.fmin_l_bfgs_b(
+        nll,
+        x0=(0.0001, 0.0001),
+        args=(ns, p),
+        bounds=((1E-10, 0.99999), (1E-10, 0.99999)),
+        approx_grad=True
+    )
+
+
 if __name__ == '__main__':
     # Tests
     import os
@@ -225,3 +380,71 @@ if __name__ == '__main__':
     #             trim_extra=5,
     #             write_every=1000
     #             )
+
+    # ns = [[99, 1, 0, 0],
+    #      [50, 49, 1, 0],
+    #      [98, 1, 1, 0],
+    #      [50, 50, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [50, 50, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [50, 0, 0, 50],
+    #      [98, 0, 2, 0],
+    #      [48, 1, 50, 1],
+    #      [0, 50, 50, 0]]
+
+    # ns = [[100, 0, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 0, 0]]
+
+    # ns = [[100, 0, 100, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 0, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 0, 0]]
+
+    # ns = [[100, 0, 100, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 100, 0],
+    #      [100, 0, 100, 0]]
+
+    # p = [0.25, 0.25, 0.25, 0.25]
+    # e = 1E-10
+    # pi = 0.5
+
+    # import numpy
+
+    # l1 = like_homo(ns[1], p, e)
+    # print('Homozygote')
+    # print(l1)
+    # print(numpy.log(l1))
+    # print('--- --- --- --- --- --- --- --- --- --- ---')
+
+    # l2 = like_hetero(ns[1], p, e)
+    # print('Heterozygote')
+    # print(l2)
+    # print(numpy.log(l2))
+    # print('--- --- --- --- --- --- --- --- --- --- ---')
+
+    # l3 = like_homo_hetero(ns[1], p, e, pi)
+    # print('Total')
+    # print(l3)
+    # print(numpy.log(l3))
+    # print('--- --- --- --- --- --- --- --- --- --- ---')
+
+    # l4 = neg_ll_homo_hetero(ns, p, e, pi)
+    # print('Negative LN total')
+    # print(l4)
+    # print('--- --- --- --- --- --- --- --- --- --- ---')
+
+    # ml_est = mle_e_and_pi(ns, p)
+    # print('                      e :', ml_est[0][0])
+    # print('                     pi :', ml_est[0][1])
+    # print('negative log likelihood :', ml_est[1])
