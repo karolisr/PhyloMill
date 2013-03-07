@@ -45,6 +45,14 @@ def mask_low_quality_sites(bio_seq_record, quality_score_treshold,
     return(new_r)
 
 
+def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
+    sequence = str(bio_seq_record.seq).lower()
+    low_quality_sites = sequence.count(low_quality_residue.lower())
+    sequence_length = len(bio_seq_record.seq)
+    prop_lq_sites = float(low_quality_sites) / float(sequence_length)
+    return prop_lq_sites
+
+
 def _write_demultiplex_results_(barcodes,
                                 reverse_reads_file_path,
                                 result_batch_forward_other,
