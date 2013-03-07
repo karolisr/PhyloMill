@@ -29,6 +29,22 @@ def read_barcodes(file_path, delimiter, id_header, barcode_header):
     return(barcodes)
 
 
+def mask_low_quality_sites(bio_seq_record, quality_score_treshold,
+                           low_quality_residue='N'):
+    from Bio.SeqRecord import SeqRecord
+    r = bio_seq_record
+    quality_scores = r.letter_annotations['phred_quality']
+    sequence = r.seq.tomutable()
+    for index, score in enumerate(quality_scores):
+        if score < quality_score_treshold:
+            sequence[index] = low_quality_residue
+    new_r = SeqRecord(seq=sequence.toseq(), id=r.id, name=r.name,
+                      description=r.description, dbxrefs=r.dbxrefs,
+                      features=r.features, annotations=r.annotations,
+                      letter_annotations=r.letter_annotations)
+    return(new_r)
+
+
 def _write_demultiplex_results_(barcodes,
                                 reverse_reads_file_path,
                                 result_batch_forward_other,
@@ -269,7 +285,7 @@ def like_homo(s, p, e):
     for i in range(0, 4):
         l = p[i] * binom.pmf(total_s-s[i], total_s, e)
         likelihood = likelihood + l
-    return likelihood
+    return(likelihood)
 
 
 def like_hetero(s, p, e):
@@ -301,7 +317,7 @@ def like_hetero(s, p, e):
                  binom.pmf(total_s-s[i]-s[j], total_s, (2*e)/3.0) *
                  binom.pmf(s[i], s[i]+s[j], 0.5) / S)
             likelihood = likelihood + l
-    return likelihood
+    return(likelihood)
 
 
 def like_homo_hetero(s, p, e, pi):
@@ -357,7 +373,7 @@ def neg_ll_homo_hetero(ns, p, e, pi):
         l = like_homo_hetero(s, p, e, pi)
         ll = ll + numpy.log(l)
     ll = ll * (-1.0)
-    return ll
+    return(ll)
 
 
 def mle_e_and_pi(ns, p):
@@ -383,13 +399,13 @@ def mle_e_and_pi(ns, p):
     nll = lambda estimated, ns_l, p_l: (
         neg_ll_homo_hetero(ns_l, p_l, estimated[0], estimated[1])
     )
-    return optimize.fmin_l_bfgs_b(
+    return(optimize.fmin_l_bfgs_b(
         nll,
         x0=(0.0001, 0.0001),
         args=(ns, p),
         bounds=((1E-10, 0.99999), (1E-10, 0.99999)),
         approx_grad=True
-    )
+    ))
 
 
 if __name__ == '__main__':

@@ -10,7 +10,12 @@ if __name__ == '__main__':
     import argparse
 
     from multiprocessing import Process
+    from Queue import Queue
+    from threading import Thread
 
+    from Bio import SeqIO
+
+    import krio
     import krbioio
     import krpipe
     import krnextgen
@@ -43,6 +48,11 @@ if __name__ == '__main__':
                         help='How many extra bases will be trimmed after the \
                         the barcode was trimmed. This can be used to trim a \
                         restriction sites which will always be the same, etc.')
+    parser.add_argument('--quality_score_treshold', type=int,
+                        help='Minimum quality (phred) score required to \
+                        accept a site.')
+    parser.add_argument('--low_quality_residue', type=unicode,
+                        help='Symbol to use when masking.')
 
     args = parser.parse_args()
 
@@ -78,6 +88,7 @@ if __name__ == '__main__':
         dmltplx_output_dir_split = output_dir + '02-demultiplexed-fastq-parts'
         dmltplx_output_dir_combined = (output_dir +
                                        '03-demultiplexed-fastq-combined')
+        masked_output_dir = (output_dir + '04-masked-fastq')
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -109,9 +120,6 @@ if __name__ == '__main__':
                 sys.exit(1)
             if not args.trim_barcode:
                 print('\nBarcodes will not be trimmed!')
-            if not args.output_file_format:
-                print('output_file_format is required.')
-                sys.exit(1)
             if not args.trim_extra:
                 print('trim_extra is required.')
                 sys.exit(1)
@@ -176,14 +184,76 @@ if __name__ == '__main__':
                 input_dir=dmltplx_output_dir_split,
                 output_dir=dmltplx_output_dir_combined)
 
+        # Mask low quality sites ----------------------------------------------
+        if commands and ('mask' in commands):
+            if not args.quality_score_treshold:
+                print('quality_score_treshold is required.')
+                sys.exit(1)
+            if not args.low_quality_residue:
+                print('low_quality_residue is required.')
+                sys.exit(1)
+            if not args.output_file_format:
+                print('output_file_format is required.')
+                sys.exit(1)
+
+            masked_output_dir = masked_output_dir.rstrip(ps) + ps
+            krio.prepare_directory(masked_output_dir)
+            file_list = krpipe.parse_directory(dmltplx_output_dir_combined,
+                                               ' ')
+
+            print('\nMasking low quality sites.')
+
+            queue = Queue()
+
+            def t(q):
+                while True:
+                    f = q.get()
+                    records = SeqIO.parse(f['path'], 'fastq')
+                    output_file_path = masked_output_dir + f['full']
+                    handle = open(output_file_path, 'w')
+                    for r in records:
+                        r_masked = krnextgen.mask_low_quality_sites(
+                            bio_seq_record=r,
+                            quality_score_treshold=args.quality_score_treshold,
+                            low_quality_residue=str(args.low_quality_residue))
+                        SeqIO.write(r_masked, handle, args.output_file_format)
+                    handle.close()
+                    q.task_done()
+
+            for i in range(args.threads):
+                worker = Thread(target=t, args=(queue,))
+                worker.setDaemon(True)
+                worker.start()
+
+            for f in file_list:
+                queue.put(f)
+
+            queue.join()
+
 # ./rad.py \
 # --output_dir /home/karolis/Dropbox/code/test/rad \
-# --commands split,demultiplex \
+# --commands split,demultiplex,mask \
 # --forward_file /home/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
 # --reverse_file /home/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
-# --threads 4 \
+# --threads 6 \
 # --barcodes '/home/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
 # --output_file_format fastq \
-# --trim_extra 5
+# --trim_extra 5 \
+# --quality_score_treshold 30 \
+# --low_quality_residue N
+
+# ./rad.py \
+# --output_dir /data/gbs-new \
+# --forward_file /data/gbs-andy-david/green_dzaya_DZAYA_R1.PF.fastq \
+# --reverse_file /data/gbs-andy-david/green_dzaya_DZAYA_R2.PF.fastq \
+# --threads 6 \
+# --barcodes /data/gbs-andy-david/barcodes.tsv \
+# --max_barcode_mismatch_count 1 \
+# --trim_barcode \
+# --output_file_format fastq \
+# --trim_extra 5 \
+# --quality_score_treshold 30 \
+# --low_quality_residue N \
+# --commands split,demultiplex,mask
