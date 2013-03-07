@@ -53,6 +53,182 @@ def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
     return prop_lq_sites
 
 
+def compare_sequences(s1, s2, ignore='N'):
+
+    '''
+        Compare two sequences of the same length. Returns a list of integers,
+        one per site.
+
+        Values:
+            1 - match.
+            0 - mismatch.
+            2 - one or both of the nucleotides is an ignored character,
+                N by default.
+
+        Example output:
+            1101111111112121
+            ACGTACGTACGTNCGT
+            ACCTACGTACGTNCNT
+    '''
+
+    mask = []
+    for pos in zip(s1, s2):
+        if ignore in pos:
+            mask.append(2)
+        elif pos[0] is pos[1]:
+            mask.append(1)
+        else:
+            mask.append(0)
+    return(mask)
+
+
+def align_fr_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
+
+    '''
+        Aligns forward and reverse reads. Returns position of the best
+        alignment that has the most matching pairs of nucleotides and the
+        match / (match + miss) is above mmmr_cutoff. Ignored
+        character does not count as a miss.
+
+        Returns:
+            best_alignment = (match, total, ratio, (a, b), (c, d))
+
+            [a:b] - is the alignment range on the first sequence
+            [c:d] - is the alignment range on the second sequence
+    '''
+
+    l1 = len(r1)
+    l2 = len(r2)
+
+    # r1 is expected to be shorter than r2, if this is not the case, we switch
+    # r1 and r2
+    switch = False
+    if l1 > l2:
+        switch = True
+        tmp_str = r1
+        r1 = r2
+        r2 = tmp_str
+        tmp_int = l1
+        l1 = l2
+        l2 = tmp_int
+
+    # Slide the reads past each other and find the best alignment
+
+    # Default setting
+    best_alignment = (0, 0, 0, (None, None), (None, None))
+
+    for i in range(1, l1 + l2):
+
+        #print('i =', i)
+
+        b = min(l1, i)
+        c = max(0, l2 - i)
+        d = l2
+        if i > l1:
+            d = l2 + l1 - i
+        a = abs(d - b - c)
+
+        #print('r1[', a, ':', b, ']', r1[a:b], sep='')
+        #print('r2[', c, ':', d, ']', r2[c:d], sep='')
+
+        mask = compare_sequences(r1[a:b], r2[c:d], ignore=ignore)
+
+        match = mask.count(1)
+        miss = mask.count(0)
+        total = match + miss
+        ratio = 0
+
+        # Decide if this alignment is better than the current best alignment
+        if float(total) > 0:
+            ratio = float(match) / float(total)
+        # Consider the alignment to be acceptable only if match/(match+miss)
+        # meets given ratio
+        if ratio >= mmmr_cutoff:
+            # Furthermore, consider the alignment to be acceptable only if it
+            # contains more matches than the current best alignment
+            if match > best_alignment[0]:
+                best_alignment = (match, total, ratio, (a, b), (c, d))
+
+    # If the switch between r1 and r2 was made, we need to account for that
+    # in our output
+    if switch:
+        best_alignment = (
+            best_alignment[0],
+            best_alignment[1],
+            best_alignment[2],
+            best_alignment[4],
+            best_alignment[3])
+
+    return(best_alignment)
+
+
+def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
+
+    best_alignment = align_fr_reads(r1, r2, mmmr_cutoff=mmmr_cutoff,
+                                    ignore=ignore)
+
+    # best_alignment = (match, total, ratio, (a, b), (c, d))
+
+    o = best_alignment[1]     # length of overlap excluding ignored characters
+    r = best_alignment[2]     # match / (match + miss)
+
+    a = best_alignment[3][0]  # [a:b] - alignment range on the first sequence
+    b = best_alignment[3][1]
+
+    c = best_alignment[4][0]  # [c:d] - alignment range on the second sequence
+    d = best_alignment[4][1]
+
+    str1_aln = r1
+    str2_aln = r2
+
+    cons = None
+
+    # messages:
+    #   0 - normal. forward read first, second read concatenated.
+    #   1 - overlap. forward read first, second read overlaps part of the
+    #       forward read.
+    #   2 - complete overlap. reverse read first, reverse read overlaps the
+    #       beginning of the forward read and may read into the
+    #       adaptor + barcode.
+    #   3 - overlap mismatch. forward and reverse reads do not agree on the
+    #       identity of several bases.
+
+    message = 0
+
+    if r != 0 and r < 1.0:
+        message = 3
+    elif o >= min_overlap:
+        cons = []
+        if a < c:
+            r1 = r1[a:b]
+            str2_aln = r2[c:d]
+            message = 2
+        else:
+            str1_aln = '{:-<{pad}}'.format(r1, pad=len(r2) - d - c + len(r1))
+            str2_aln = '{:->{pad}}'.format(r2, pad=a + len(r2))
+            message = 1
+        for pos in zip(str1_aln, str2_aln):
+            spos = set(pos)
+            if '-' in spos:
+                spos.remove('-')
+            if len(spos) == 1:
+                cons.append(spos.pop())
+            else:
+                if ignore in spos:
+                    spos.remove(ignore)
+                    cons.append(spos.pop())
+                else:
+                    cons.append(ignore)
+        cons = ''.join([char for char in cons])
+    else:
+        cons = r1 + r2
+        message = 0
+
+    ret_value = [o, r, message, cons]
+
+    return(ret_value)
+
+
 def _write_demultiplex_results_(barcodes,
                                 reverse_reads_file_path,
                                 result_batch_forward_other,

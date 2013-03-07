@@ -37,8 +37,8 @@ if __name__ == '__main__':
                         help='FASTQ file with reverse_file RAD reads.')
     parser.add_argument('--threads', type=int,
                         help='Number of threads to use.')
-    parser.add_argument('--output_file_format', type=unicode,
-                        help='Output file format.')
+    # parser.add_argument('--output_file_format', type=unicode,
+    #                     help='Output file format.')
     parser.add_argument('--max_barcode_mismatch_count', type=int,
                         help='How many mismatches will be allowed before \
                         barcode is considered bad.')
@@ -192,16 +192,16 @@ if __name__ == '__main__':
             if not args.low_quality_residue:
                 print('low_quality_residue is required.')
                 sys.exit(1)
-            if not args.output_file_format:
-                print('output_file_format is required.')
-                sys.exit(1)
+            # if not args.output_file_format:
+            #     print('output_file_format is required.')
+            #     sys.exit(1)
 
             masked_output_dir = masked_output_dir.rstrip(ps) + ps
             krio.prepare_directory(masked_output_dir)
             file_list = krpipe.parse_directory(dmltplx_output_dir_combined,
                                                ' ')
 
-            print('\nMasking low quality sites.')
+            print('\nMasking low quality sites...')
 
             queue = Queue()
 
@@ -216,7 +216,11 @@ if __name__ == '__main__':
                             bio_seq_record=r,
                             quality_score_treshold=args.quality_score_treshold,
                             low_quality_residue=str(args.low_quality_residue))
-                        SeqIO.write(r_masked, handle, args.output_file_format)
+                        SeqIO.write(
+                            sequences=r_masked,
+                            handle=handle,
+                            format='fastq'
+                        )
                     handle.close()
                     q.task_done()
 
@@ -239,7 +243,6 @@ if __name__ == '__main__':
 # --barcodes '/home/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
-# --output_file_format fastq \
 # --trim_extra 5 \
 # --quality_score_treshold 30 \
 # --low_quality_residue N
@@ -252,7 +255,6 @@ if __name__ == '__main__':
 # --barcodes /data/gbs-andy-david/barcodes.tsv \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
-# --output_file_format fastq \
 # --trim_extra 5 \
 # --quality_score_treshold 30 \
 # --low_quality_residue N \
