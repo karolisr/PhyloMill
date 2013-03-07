@@ -235,23 +235,22 @@ def combine_demultiplexed_results(input_dir, output_dir):
         sort='forward'
     )
 
-    for d in directory_list:
-        file_dir_path = d['path'].rstrip(ps) + ps
-        file_list = krpipe.parse_directory(
-            path=file_dir_path,
-            file_name_sep='_',
-            sort='forward'
-        )
+    file_dir_path = directory_list[0]['path'].rstrip(ps) + ps
+    file_list = krpipe.parse_directory(
+        path=file_dir_path,
+        file_name_sep='_',
+        sort='forward'
+    )
 
-        for f in file_list:
-            output_file_path = output_dir + f['full']
-            output_file_handle = open(output_file_path, 'wa')
-            for part in range(1, len(directory_list)+1):
-                part_directory_path = input_dir + str(part) + ps
-                part_file_path = part_directory_path + f['full']
-                shutil.copyfileobj(open(part_file_path, 'rb'),
-                                   output_file_handle)
-            output_file_handle.close()
+    for f in file_list:
+        output_file_path = output_dir + f['full']
+        output_file_handle = open(output_file_path, 'wa')
+        for part in range(1, len(directory_list)+1):
+            part_directory_path = input_dir + str(part) + ps
+            part_file_path = part_directory_path + f['full']
+            shutil.copyfileobj(open(part_file_path, 'rb'),
+                               output_file_handle)
+        output_file_handle.close()
 
 
 # -----------------------------------------------------------------------------
