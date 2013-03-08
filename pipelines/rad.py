@@ -10,8 +10,7 @@ if __name__ == '__main__':
     import argparse
 
     from multiprocessing import Process
-    from Queue import Queue
-    from threading import Thread
+    from multiprocessing import JoinableQueue
 
     from Bio import SeqIO
 
@@ -19,6 +18,7 @@ if __name__ == '__main__':
     import krbioio
     import krpipe
     import krnextgen
+    import krusearch
 
     ps = os.path.sep
 
@@ -27,32 +27,63 @@ if __name__ == '__main__':
 
     parser.add_argument('--commands', type=unicode,
                         help='Commands.')
+
     parser.add_argument('--output_dir', type=unicode,
                         help='Output directory path.')
+
     parser.add_argument('--barcodes_file', type=unicode,
                         help='Barcodes for RAD reads.')
+
     parser.add_argument('--forward_file', type=unicode,
                         help='FASTQ file with forward RAD reads.')
+
     parser.add_argument('--reverse_file', type=unicode,
                         help='FASTQ file with reverse_file RAD reads.')
+
     parser.add_argument('--threads', type=int,
                         help='Number of threads to use.')
+
     # parser.add_argument('--output_file_format', type=unicode,
     #                     help='Output file format.')
+
     parser.add_argument('--max_barcode_mismatch_count', type=int,
                         help='How many mismatches will be allowed before \
                         barcode is considered bad.')
+
     parser.add_argument('--trim_barcode', default=False, action='store_true',
                         help='Should the barcode be trimmed.')
+
     parser.add_argument('--trim_extra', type=int,
                         help='How many extra bases will be trimmed after the \
                         the barcode was trimmed. This can be used to trim a \
                         restriction sites which will always be the same, etc.')
+
     parser.add_argument('--quality_score_treshold', type=int,
                         help='Minimum quality (phred) score required to \
                         accept a site.')
+
     parser.add_argument('--low_quality_residue', type=unicode,
                         help='Symbol to use when masking.')
+
+    parser.add_argument('--max_prop_low_quality_sites', type=float,
+                        help='Maximum proportion of low quality sites in a \
+                        read for it to still be considered acceptable.')
+
+    parser.add_argument('--min_overlap', type=int,
+                        help='Minimum overlap required between forward and \
+                        reverse reads. If this overlap is not reached, the \
+                        reads will be concatenated.')
+
+    parser.add_argument('--mmmr_cutoff', type=float,
+                        help='When aligning forward and reverse reads to \
+                        check if they overlap, this value is used as a cutoff \
+                        when deciding if to accept or reject an alignment: \
+                        mmmr = match / (match + miss). miss does not include \
+                        ignored characters, by default \'N\'.')
+
+    parser.add_argument('--identity_threshold', type=float,
+                        help='Identity value for within-sample read \
+                        clustering')
 
     args = parser.parse_args()
 
@@ -88,7 +119,9 @@ if __name__ == '__main__':
         dmltplx_output_dir_split = output_dir + '02-demultiplexed-fastq-parts'
         dmltplx_output_dir_combined = (output_dir +
                                        '03-demultiplexed-fastq-combined')
-        masked_output_dir = (output_dir + '04-masked-fastq')
+        masked_output_dir = output_dir + '04-masked-fastq'
+        binned_output_dir = output_dir + '05-binned-fasta'
+        clustered_output_dir = output_dir + '06-clustered'
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -96,7 +129,7 @@ if __name__ == '__main__':
             if not args.forward_file:
                 print('File with forward RAD reads is required.')
                 sys.exit(1)
-            elif not args.threads:
+            if not args.threads:
                 print('threads is required.')
                 sys.exit(1)
 
@@ -172,7 +205,6 @@ if __name__ == '__main__':
                     )
 
                     p.start()
-
                     processes.append(p)
 
             for p in processes:
@@ -192,6 +224,9 @@ if __name__ == '__main__':
             if not args.low_quality_residue:
                 print('low_quality_residue is required.')
                 sys.exit(1)
+            if not args.threads:
+                print('threads is required.')
+                sys.exit(1)
             # if not args.output_file_format:
             #     print('output_file_format is required.')
             #     sys.exit(1)
@@ -203,7 +238,8 @@ if __name__ == '__main__':
 
             print('\nMasking low quality sites...')
 
-            queue = Queue()
+            processes = list()
+            queue = JoinableQueue()
 
             def t(q):
                 while True:
@@ -224,30 +260,233 @@ if __name__ == '__main__':
                     handle.close()
                     q.task_done()
 
-            for i in range(args.threads):
-                worker = Thread(target=t, args=(queue,))
-                worker.setDaemon(True)
-                worker.start()
-
             for f in file_list:
                 queue.put(f)
 
+            for i in range(args.threads):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
             queue.join()
 
-# ./rad.py \
+            for p in processes:
+                p.terminate()
+
+        # Bin results by quality and produce forward and reverse consensus
+        # sequences
+        if commands and ('bin' in commands):
+            if not args.max_prop_low_quality_sites:
+                print('max_prop_low_quality_sites is required.')
+                sys.exit(1)
+            if not args.min_overlap:
+                print('min_overlap is required.')
+                sys.exit(1)
+            if not args.mmmr_cutoff:
+                print('mmmr_cutoff is required.')
+                sys.exit(1)
+            if not args.low_quality_residue:
+                print('low_quality_residue is required.')
+                sys.exit(1)
+            if not args.threads:
+                print('threads is required.')
+                sys.exit(1)
+
+            masked_output_dir = masked_output_dir.rstrip(ps) + ps
+            binned_output_dir = binned_output_dir.rstrip(ps) + ps
+            krio.prepare_directory(binned_output_dir)
+            file_list = krpipe.parse_directory(masked_output_dir, '_')
+
+            print(('\nBinning results by quality\nand producing forward and '
+                   'reverse consensus sequences...\n'))
+
+            processes = list()
+            queue = JoinableQueue()
+
+            def t(q):
+                while True:
+                    f = q.get()
+
+                    base_file_name = f['split'][0] + '_' + f['split'][1] + '_'
+                    base_file_path = masked_output_dir + base_file_name
+
+                    print(f['split'][0] + '_' + f['split'][1])
+
+                    f_records = SeqIO.parse(base_file_path + 'f.fastq',
+                                            'fastq')
+
+                    r_records = None
+                    if os.path.exists(base_file_path + 'r.fastq'):
+                        r_records = SeqIO.parse(base_file_path + 'r.fastq',
+                                                'fastq')
+
+                    ofp_f_hq = (binned_output_dir + base_file_name +
+                                'f_hq.fasta')
+                    ofp_f_lq = (binned_output_dir + base_file_name +
+                                'f_lq.fasta')
+
+                    ofp_r_hq = None
+                    ofp_r_lq = None
+
+                    if r_records:
+                        ofp_r_hq = (binned_output_dir + base_file_name +
+                                    'r_hq.fasta')
+                        ofp_r_lq = (binned_output_dir + base_file_name +
+                                    'r_lq.fasta')
+
+                    ofp_all_hq = (binned_output_dir + base_file_name +
+                                  'all_hq.fasta')
+
+                    handle_f_hq = open(ofp_f_hq, 'w')
+                    handle_f_lq = open(ofp_f_lq, 'w')
+
+                    handle_r_hq = None
+                    handle_r_lq = None
+
+                    if r_records:
+                        handle_r_hq = open(ofp_r_hq, 'w')
+                        handle_r_lq = open(ofp_r_lq, 'w')
+
+                    handle_all_hq = open(ofp_all_hq, 'w')
+
+                    for fr in f_records:
+                        rr = None
+                        if r_records:
+                            rr = r_records.next()
+
+                        binned = krnextgen.bin_reads(
+                            f_record=fr,
+                            r_record=rr,
+                            max_prop_low_quality_sites=
+                            args.max_prop_low_quality_sites,
+                            min_overlap=args.min_overlap,
+                            mmmr_cutoff=args.mmmr_cutoff,
+                            low_quality_residue=str(args.low_quality_residue)
+                        )
+
+                        f_hq = binned[0]
+                        r_hq = binned[1]
+                        consensus = binned[2]
+
+                        if f_hq:
+                            SeqIO.write(sequences=fr, handle=handle_f_hq,
+                                        format='fasta')
+                        else:
+                            SeqIO.write(sequences=fr, handle=handle_f_lq,
+                                        format='fasta')
+
+                        if r_hq:
+                            SeqIO.write(sequences=rr, handle=handle_r_hq,
+                                        format='fasta')
+                        elif r_records:
+                            SeqIO.write(sequences=rr, handle=handle_r_lq,
+                                        format='fasta')
+
+                        if f_hq and r_hq and consensus:
+                            SeqIO.write(sequences=consensus,
+                                        handle=handle_all_hq,
+                                        format='fasta')
+
+                        if f_hq and not consensus:
+                            SeqIO.write(sequences=fr, handle=handle_all_hq,
+                                        format='fasta')
+
+                        if r_hq and not consensus:
+                            SeqIO.write(sequences=rr, handle=handle_all_hq,
+                                        format='fasta')
+
+                    handle_f_hq.close()
+                    handle_f_lq.close()
+
+                    if r_records:
+                        handle_r_hq.close()
+                        handle_r_lq.close()
+
+                    handle_all_hq.close()
+                    q.task_done()
+
+            for f in file_list:
+                if f['name'] != 'mismatch_f' and f['split'][-1] == 'f':
+                    queue.put(f)
+
+            for i in range(args.threads):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
+
+        # Cluster
+        if commands and ('cluster' in commands):
+            if not args.threads:
+                print('threads is required.')
+                sys.exit(1)
+            if not args.identity_threshold:
+                print('identity_threshold is required.')
+                sys.exit(1)
+
+            binned_output_dir = binned_output_dir.rstrip(ps) + ps
+            clustered_output_dir = clustered_output_dir.rstrip(ps) + ps
+            krio.prepare_directory(clustered_output_dir)
+            file_list = krpipe.parse_directory(binned_output_dir, '_')
+
+            print('\nClustering...')
+
+            processes = list()
+            queue = JoinableQueue()
+
+            def t(q):
+                while True:
+                    f = q.get()
+                    output_file = clustered_output_dir + f['name'] + '.uc'
+                    krusearch.cluster_file(
+                        input_file_path=f['path'],
+                        output_file_path=output_file,
+                        identity_threshold=args.identity_threshold,
+                        sorted_input=False,
+                        algorithm='smallmem',
+                        strand='both',
+                        threads=1,
+                        quiet=True,
+                        program='usearch6'
+                    )
+                    q.task_done()
+
+            for f in file_list:
+                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                    queue.put(f)
+
+            for i in range(args.threads):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
+
+# time ./rad.py \
 # --output_dir /home/karolis/Dropbox/code/test/rad \
-# --commands split,demultiplex,mask \
+# --commands split,demultiplex,mask,bin,cluster \
 # --forward_file /home/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
 # --reverse_file /home/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
-# --threads 6 \
+# --threads 4 \
 # --barcodes '/home/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
 # --trim_extra 5 \
 # --quality_score_treshold 30 \
-# --low_quality_residue N
+# --low_quality_residue N \
+# --max_prop_low_quality_sites 0.10 \
+# --min_overlap 5 \
+# --mmmr_cutoff 0.85 \
+# --identity_threshold 0.90
 
-# ./rad.py \
+# time ./rad.py \
 # --output_dir /data/gbs-new \
 # --forward_file /data/gbs-andy-david/green_dzaya_DZAYA_R1.PF.fastq \
 # --reverse_file /data/gbs-andy-david/green_dzaya_DZAYA_R2.PF.fastq \
@@ -258,4 +497,8 @@ if __name__ == '__main__':
 # --trim_extra 5 \
 # --quality_score_treshold 30 \
 # --low_quality_residue N \
-# --commands split,demultiplex,mask
+# --max_prop_low_quality_sites 0.10 \
+# --min_overlap 5 \
+# --mmmr_cutoff 0.85 \
+# --identity_threshold 0.90 \
+# --commands bin

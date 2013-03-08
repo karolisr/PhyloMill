@@ -16,10 +16,12 @@ def cluster_file(
     strand='plus',  # plus both
     threads=1,
     quiet=True,
-        program='usearch6'):
+    program='usearch6'
+):
 
-    import os
+    # import os
     import subprocess
+    import os
 
     if quiet:
         quiet = ' -quiet'
@@ -27,13 +29,14 @@ def cluster_file(
         quiet = ''
 
     if algorithm == 'smallmem' and not sorted_input:
+        ifp_split = os.path.splitext(input_file_path)
         subprocess.call(
             (program + quiet +
              ' -sortbylength ' + input_file_path +
-             ' -output ' + input_file_path + '_sorted'
+             ' -output ' + ifp_split[0] + '_sorted' + ifp_split[1]
              ),
             shell=True)
-        input_file_path = input_file_path + '_sorted'
+        input_file_path = ifp_split[0] + '_sorted' + ifp_split[1]
 
     if algorithm == 'fast':
         threads = ' -threads ' + str(threads)
@@ -43,15 +46,15 @@ def cluster_file(
     subprocess.call(
         (program + quiet +
          ' -cluster_' + algorithm + ' ' + input_file_path +
-         ' -strand ' + strand +
+         ' -strand ' + strand +  # ' -fulldp' +
          ' -id ' + str(identity_threshold) +
          threads +
          ' -uc ' + output_file_path
          ),
         shell=True)
 
-    if algorithm == 'smallmem' and not sorted_input:
-        os.remove(input_file_path)
+    # if algorithm == 'smallmem' and not sorted_input:
+    #     os.remove(input_file_path)
 
     return output_file_path
 

@@ -46,8 +46,8 @@ def mask_low_quality_sites(bio_seq_record, quality_score_treshold,
 
 
 def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
-    sequence = str(bio_seq_record.seq).lower()
-    low_quality_sites = sequence.count(low_quality_residue.lower())
+    sequence = str(bio_seq_record.seq)
+    low_quality_sites = sequence.count(low_quality_residue)
     sequence_length = len(bio_seq_record.seq)
     prop_lq_sites = float(low_quality_sites) / float(sequence_length)
     return prop_lq_sites
@@ -225,6 +225,56 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
         message = 0
 
     ret_value = [o, r, message, cons]
+
+    return(ret_value)
+
+
+def bin_reads(f_record, r_record=None, max_prop_low_quality_sites=0.10,
+              min_overlap=5, mmmr_cutoff=0.85, low_quality_residue='N'):
+
+    from Bio import Seq
+    from Bio import SeqRecord
+
+    f_hq = False
+    r_hq = False
+
+    f_lq_sites = proportion_low_quality_sites(
+        bio_seq_record=f_record,
+        low_quality_residue=low_quality_residue)
+    if f_lq_sites <= max_prop_low_quality_sites:
+        f_hq = True
+
+    if r_record:
+        r_lq_sites = proportion_low_quality_sites(
+            bio_seq_record=r_record,
+            low_quality_residue=low_quality_residue)
+        if r_lq_sites <= max_prop_low_quality_sites:
+            r_hq = True
+
+    consensus = None
+    if f_hq and r_hq:
+        consensus = consensus_fr_read(
+            r1=str(f_record.seq),
+            r2=str(r_record.seq),
+            min_overlap=min_overlap,
+            mmmr_cutoff=mmmr_cutoff,
+            ignore=low_quality_residue)
+
+        cons_message = consensus[2]
+        # If reads were aligned but disagreed on certain nucleotides, we treat
+        # them as separate. Hopefully there were more reads at this locus and
+        # those were aligned successfully. These separate reads should cluster
+        # with the aligned reads later in the analysis and correct nucleotides
+        # will be judged based on the whole cluster.
+        if cons_message == 3:
+            consensus = None
+        else:
+            cons_seq = Seq.Seq(consensus[3])
+            cons_id = f_record.id.split('|')[0] + '|C0NS:' + str(cons_message)
+            consensus = SeqRecord.SeqRecord(
+                seq=cons_seq, id=cons_id, name='', description='')
+
+    ret_value = [f_hq, r_hq, consensus]
 
     return(ret_value)
 
