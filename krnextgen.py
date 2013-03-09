@@ -564,6 +564,78 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
     handle_counts.close()
 
 
+def nt_freq(nt_counts_file):
+    import krio
+    nt_counts = krio.read_table_file(
+        path=nt_counts_file,
+        has_headers=False,
+        headers=['A', 'C', 'G', 'T'],
+        delimiter='\t',
+        quotechar='"',
+        stripchar='',
+        commentchar=">",
+        rettype='dict'
+    )
+
+    total = 0
+
+    t_a = 0
+    t_c = 0
+    t_g = 0
+    t_t = 0
+
+    for r in nt_counts:
+
+        c_a = int(r['A'])
+        c_c = int(r['C'])
+        c_g = int(r['G'])
+        c_t = int(r['T'])
+
+        t_a = t_a + c_a
+        t_c = t_c + c_c
+        t_g = t_g + c_g
+        t_t = t_t + c_t
+
+        total = t_a + t_c + t_g + t_t
+
+    # print(t_a, t_c, t_g, t_t)
+    # print(float(t_a)/float(total),
+    #       float(t_c)/float(total),
+    #       float(t_g)/float(total),
+    #       float(t_t)/float(total))
+
+    return([float(t_a)/float(total),
+            float(t_c)/float(total),
+            float(t_g)/float(total),
+            float(t_t)/float(total)])
+
+
+def nt_site_counts(nt_counts_file):
+    import krio
+    nt_counts = krio.read_table_file(
+        path=nt_counts_file,
+        has_headers=False,
+        headers=['A', 'C', 'G', 'T'],
+        delimiter='\t',
+        quotechar='"',
+        stripchar='',
+        commentchar=">",
+        rettype='dict'
+    )
+
+    ret_value = list()
+
+    for r in nt_counts:
+
+        c_a = int(r['A'])
+        c_c = int(r['C'])
+        c_g = int(r['G'])
+        c_t = int(r['T'])
+
+        ret_value.append([c_a, c_c, c_g, c_t])
+
+    return(ret_value)
+
 # -----------------------------------------------------------------------------
 # Functions that follow are used to estimate various statistics used in
 # population genetics.
@@ -679,14 +751,40 @@ def neg_ll_homo_hetero(ns, p, e, pi):
 
     import numpy
     ll = 0
+    # Keep track of [A, C, G, T] configurations to not repeat unnecessary
+    # calculations
+    s_log = list()
+    # repeats_found = 0
     for s in ns:
-        l = like_homo_hetero(s, p, e, pi)
-        ll = ll + numpy.log(l)
+        # Check if this configuration has occured already
+        repeat = False
+        for sl in s_log:
+            if (
+                sl[0][0] == s[0] and
+                sl[0][1] == s[1] and
+                sl[0][2] == s[2] and
+                sl[0][3] == s[3]
+            ):
+                ll = ll + sl[1]
+                repeat = True
+                # repeats_found = repeats_found + 1
+                break
+
+        if not repeat:
+            l = like_homo_hetero(s, p, e, pi)
+            nl = numpy.log(l)
+            ll = ll + nl
+            s_log.append([s, nl])
+
     ll = ll * (-1.0)
+
+    print(ll)
+    # print('Repeat configurations:', len(s_log))
+    # print('Repeats:', repeats_found)
     return(ll)
 
 
-def mle_e_and_pi(ns, p):
+def mle_e_and_pi(ns, p, e0, pi0):
 
     '''
         Using neg_ll_homo_hetero, will produce a region-wide (could be whole
@@ -709,19 +807,28 @@ def mle_e_and_pi(ns, p):
     nll = lambda estimated, ns_l, p_l: (
         neg_ll_homo_hetero(ns_l, p_l, estimated[0], estimated[1])
     )
-    return(optimize.fmin_l_bfgs_b(
+
+    ml_est = optimize.fmin_l_bfgs_b(
         nll,
-        x0=(0.0001, 0.0001),
+        x0=(e0, pi0),
         args=(ns, p),
         bounds=((1E-10, 0.99999), (1E-10, 0.99999)),
         approx_grad=True
-    ))
+    )
+
+    return([ml_est[0][0], ml_est[0][1], ml_est[1]])
 
 
 if __name__ == '__main__':
     # Tests
     import os
     ps = os.path.sep
+
+    # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
+    # print(p)
+    # ns = nt_site_counts('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
+    # mle = mle_e_and_pi(ns, p, e0=0.001, pi0=0.001)
+    # print(mle)
 
     # read_barcodes
     # barcodes = read_barcodes(
