@@ -61,16 +61,99 @@ def cluster_file(
 
 def parse_uc_file(uc_file_path):
 
+    '''
+        UC file
+
+        Edited, from:
+            http://www.drive5.com/usearch/manual/ucout.html
+
+        USEARCH cluster format (UC) is a tab-separated text file. By
+        convention, the .uc filename extension is used. Each line is either a
+        comment (starts with #) or a record. Every input sequence generates one
+        record (H, S or N); additional record types give information about
+        clusters. If an input sequence matched a target sequence, then the
+        alignment and the identity computed from that alignment are also
+        provided. Fields that do not apply to a given record type are filled
+        with an asterisk placeholder (*).
+
+        Record  Description
+
+        H       Hit. Represents a query-target alignment. For clustering,
+                    indicates the cluster assignment for the query.
+
+        S       Centroid (clustering only). There is one S record for each
+                    cluster, this gives the centroid (representative) sequence
+                    label in the 9th field. Redundant with the C record;
+                    provided for backwards compatibility.
+
+        C       Cluster record (clustering only). The 3rd field is set to the
+                    cluster size (number of sequences in the cluster) and the
+                    9th field is set to the label of the centroid sequence.
+
+        Field   Description
+
+        0       Record type S, H, C or N (see table below).
+        1       Cluster number (0-based).
+        2       Sequence length (S, N and H) or cluster size (C).
+        3       For H records, percent identity with target.
+        4       For H records, the strand: + or - for nucleotides,
+                    . for proteins.
+        5       Not used. Included for backwards compatibility.
+        6       Not used. Included for backwards compatibility.
+        7       Compressed alignment or the symbol '=' (equals sign).
+                    The = indicates that the query is 100% identical to the
+                    target sequence (field 10).
+        8       Label of query sequence (always present).
+        9       Label of target sequence (H records only).
+
+
+        Compressed Alignments
+
+        Edited, from:
+            http://drive5.com/usearch/manual/compressed_alignments.html
+
+        A compressed alignments represents an alignment in a compact format
+        that does not include the sequence letters. The representation uses
+        run-length encoding, as follows. Each column in the alignment is
+        classified as M, D or I.
+
+        Column  Description
+        M       Match. A pair of letters.
+        D       Delete. A gap in the target.
+        I       Insert. A gap in the query.
+
+        If there are n consecutive columns of type C, this is represented as
+        nC. For example, 123M is 123 consecutive matches. As a special case, if
+        n=1 then n is omitted. So for example, D5M2I3M represents an alignment
+        of this form:
+
+           Query    XXXXXX--XXX
+           Target   -XXXXXXXXXX
+           Column   DMMMMMIIMMM
+    '''
+
     import csv
     uc = csv.reader(open(uc_file_path, 'rb'), delimiter=b'\t')
 
     cluster_dict = {}
 
     for row in uc:
-        if row[0].startswith('S'):
-            cluster_dict[row[1]] = [row[8]]
-        elif row[0].startswith('H'):
-            cluster_dict[row[1]].append(row[8])
+
+        rec_type = row[0]
+        clust_number = int(row[1])
+        #perc_id = row[3]
+        strand = row[4]
+        if strand == '*':
+            strand = '+'
+        #comp_aln = row[7]
+        query = row[8]
+        #target = row[9]
+
+        if rec_type == 'S':
+            cluster_dict[clust_number] = [[strand, query]]
+
+        elif rec_type == 'H':
+            cluster_dict[clust_number].append([strand, query])
 
     return cluster_dict
 
@@ -98,6 +181,50 @@ def cluster_records(records, similarity, temp_dir):
 
     return cluster_dict
 
+
+def decode_compressed_alignment(comp_aln):
+
+    idxs_in_str = lambda x: [i for i, ltr in enumerate(x[0]) if ltr in x[1]]
+    category_idxs = idxs_in_str((comp_aln, 'MDI'))
+
+    ret_value = list()
+
+    for i, j in enumerate(category_idxs):
+        count = 1
+        if j > 0:
+            count = comp_aln[category_idxs[i-1]+1:j]
+        if count == '':
+            count = 1
+        count = int(count)
+        ret_value.append([count, comp_aln[j:j+1]])
+
+    return(ret_value)
+
+
+def alignment_with_compressed_alignment(query, target, comp_aln):
+
+    decoded = decode_compressed_alignment(comp_aln=comp_aln)
+
+    q = bytearray(query)
+    t = bytearray(target)
+
+    seq_index = 0
+
+    for i in decoded:
+        count = i[0]
+        if i[1] == 'M':
+            seq_index = seq_index + count
+        elif i[1] == 'D':
+            for j in range(0, count):
+                t.insert(seq_index, '-')
+                seq_index = seq_index + 1
+        elif i[1] == 'I':
+            for j in range(0, count):
+                q.insert(seq_index, '-')
+                seq_index = seq_index + 1
+
+    return([q, t])
+
 if __name__ == '__main__':
 
     # Tests
@@ -124,3 +251,10 @@ if __name__ == '__main__':
     import krbioio
     records = krbioio.read_sequence_file(to_cluster_file, 'fasta')
     cluster_records(records, 0.99, 'testdata')
+
+    comp_aln = 'D5M2I3M'
+    query = 'GACTGCCTG'
+    target = 'ACTGCAACTG'
+    aln = alignment_with_compressed_alignment(query, target, comp_aln)
+    print(aln[0])
+    print(aln[1])

@@ -85,6 +85,12 @@ if __name__ == '__main__':
                         help='Identity value for within-sample read \
                         clustering')
 
+    parser.add_argument('--min_seq_cluster', type=int,
+                        help='Minimum number of sequences in a cluster.')
+
+    parser.add_argument('--max_seq_cluster', type=int,
+                        help='Maximum number of sequences in a cluster.')
+
     args = parser.parse_args()
 
     # Standardize output directory --------------------------------------------
@@ -122,6 +128,7 @@ if __name__ == '__main__':
         masked_output_dir = output_dir + '04-masked-fastq'
         binned_output_dir = output_dir + '05-binned-fasta'
         clustered_output_dir = output_dir + '06-clustered'
+        sample_alignments_output_dir = output_dir + '07-sample-alignments'
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -261,7 +268,8 @@ if __name__ == '__main__':
                     q.task_done()
 
             for f in file_list:
-                queue.put(f)
+                if 'mismatch' not in f['name']:
+                    queue.put(f)
 
             for i in range(args.threads):
                 worker = Process(target=t, args=(queue,))
@@ -297,8 +305,8 @@ if __name__ == '__main__':
             krio.prepare_directory(binned_output_dir)
             file_list = krpipe.parse_directory(masked_output_dir, '_')
 
-            print(('\nBinning results by quality\nand producing forward and '
-                   'reverse consensus sequences...\n'))
+            print(('\nBinning results by quality and producing\n'
+                   'forward and reverse consensus sequences...\n'))
 
             processes = list()
             queue = JoinableQueue()
@@ -433,7 +441,7 @@ if __name__ == '__main__':
             krio.prepare_directory(clustered_output_dir)
             file_list = krpipe.parse_directory(binned_output_dir, '_')
 
-            print('\nClustering...')
+            print('\nClustering reads within samples...')
 
             processes = list()
             queue = JoinableQueue()
@@ -469,9 +477,73 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+        # Produce sample alignments and nucleotide counts per site
+        if commands and ('align_samples' in commands):
+            if not args.min_seq_cluster:
+                print('min_seq_cluster is required.')
+                sys.exit(1)
+            if not args.max_seq_cluster:
+                print('max_seq_cluster is required.')
+                sys.exit(1)
+            if not args.threads:
+                print('threads is required.')
+                sys.exit(1)
+
+            binned_output_dir = binned_output_dir.rstrip(ps) + ps
+            clustered_output_dir = clustered_output_dir.rstrip(ps) + ps
+            sample_alignments_output_dir = (
+                sample_alignments_output_dir.rstrip(ps) + ps)
+            krio.prepare_directory(sample_alignments_output_dir)
+            file_list = krpipe.parse_directory(clustered_output_dir, '_')
+
+            print('\nProducing sample alignments and\n'
+                  'nucleotide counts per site...')
+
+            processes = list()
+            queue = JoinableQueue()
+
+            def t(q):
+                while True:
+                    q_input = q.get()
+                    f = q_input[0]
+                    q_id = str(q_input[1])
+                    fasta_file_path = binned_output_dir + f['name'] + '.fasta'
+                    aln_output_file_path = (
+                        sample_alignments_output_dir +
+                        f['name'] + '.alignment')
+                    counts_output_file_path = (
+                        sample_alignments_output_dir +
+                        f['name'] + '.counts')
+                    krnextgen.align_clusters(
+                        min_seq_cluster=args.min_seq_cluster,
+                        max_seq_cluster=args.max_seq_cluster,
+                        uc_file_path=f['path'],
+                        fasta_file_path=fasta_file_path,
+                        aln_output_file_path=aln_output_file_path,
+                        counts_output_file_path=counts_output_file_path,
+                        temp_dir_path=sample_alignments_output_dir,
+                        temp_file_id=q_id)
+                    q.task_done()
+
+            for i, f in enumerate(file_list):
+                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                    queue.put([f, i])
+
+            for i in range(args.threads):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
+
+# --commands split,demultiplex,mask,bin,cluster,align_samples \
+
 # time ./rad.py \
 # --output_dir /home/karolis/Dropbox/code/test/rad \
-# --commands split,demultiplex,mask,bin,cluster \
+# --commands split,demultiplex,mask,bin,cluster,align_samples \
 # --forward_file /home/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
 # --reverse_file /home/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
 # --threads 4 \
@@ -484,7 +556,9 @@ if __name__ == '__main__':
 # --max_prop_low_quality_sites 0.10 \
 # --min_overlap 5 \
 # --mmmr_cutoff 0.85 \
-# --identity_threshold 0.90
+# --identity_threshold 0.90 \
+# --min_seq_cluster 1 \
+# --max_seq_cluster 1000
 
 # time ./rad.py \
 # --output_dir /data/gbs-new \

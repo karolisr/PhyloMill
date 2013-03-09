@@ -487,6 +487,83 @@ def combine_demultiplexed_results(input_dir, output_dir):
         output_file_handle.close()
 
 
+def nucleotides_at_site(site):
+    c_a = site.count('A')
+    c_c = site.count('C')
+    c_g = site.count('G')
+    c_t = site.count('T')
+    return([c_a, c_c, c_g, c_t])
+
+
+def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
+                   fasta_file_path, aln_output_file_path,
+                   counts_output_file_path, temp_dir_path, temp_file_id):
+
+    import krusearch
+    import krbioio
+    import kralign
+    import krseq
+
+    records_dict = krbioio.read_sequence_file(fasta_file_path, 'fasta',
+                                              ret_type='dict')
+
+    cluster_dict = krusearch.parse_uc_file(uc_file_path)
+
+    handle_aln = open(aln_output_file_path, 'w')
+    handle_counts = open(counts_output_file_path, 'w')
+
+    keys = cluster_dict.keys()
+    keys.sort(key=lambda x: x, reverse=False)
+
+    for key in keys:
+        records = list()
+        members = cluster_dict[key]
+        spc = len(members)
+        if spc >= min_seq_cluster and spc <= max_seq_cluster:
+            handle_aln.write('>CLUSTER_' + str(key) + '\n')
+            handle_counts.write('>CLUSTER_' + str(key) + '\n')
+            if spc > 1:
+                for m in members:
+                    if m[0] == '+':
+                        records.append(records_dict[m[1]])
+                    else:
+                        records.append(
+                            krseq.reverse_complement(records_dict[m[1]]))
+                aln = kralign.align(
+                    records, 'muscle', 1, options='', temp_dir=temp_dir_path,
+                    temp_file_id=temp_file_id)
+                for l in range(0, aln.get_alignment_length()):
+                    column = aln[:, l]
+                    column = column.upper()
+                    handle_aln.write(column + '\n')
+                    counts = nucleotides_at_site(column)
+                    counts_str = (
+                        str(counts[0]) + '\t' +
+                        str(counts[1]) + '\t' +
+                        str(counts[2]) + '\t' +
+                        str(counts[3]) + '\n'
+                    )
+                    handle_counts.write(counts_str)
+            else:
+                record = records_dict[members[0][1]]
+                record = str(record.seq)
+                for l in range(0, len(record)):
+                    column = record[l]
+                    column = column.upper()
+                    handle_aln.write(column + '\n')
+                    counts = nucleotides_at_site(column)
+                    counts_str = (
+                        str(counts[0]) + '\t' +
+                        str(counts[1]) + '\t' +
+                        str(counts[2]) + '\t' +
+                        str(counts[3]) + '\n'
+                    )
+                    handle_counts.write(counts_str)
+
+    handle_aln.close()
+    handle_counts.close()
+
+
 # -----------------------------------------------------------------------------
 # Functions that follow are used to estimate various statistics used in
 # population genetics.

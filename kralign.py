@@ -78,7 +78,8 @@ def concatenate(alignments, padding_length=0):
     return result_alignment
 
 
-def align(records, program, threads, temp_dir='.'):
+def align(records, program, threads, options='', temp_dir='.',
+          temp_file_id='0'):
 
     import os
     import subprocess
@@ -86,8 +87,8 @@ def align(records, program, threads, temp_dir='.'):
 
     working_dir = os.getcwd()
 
-    temp_input_file = 'temp_to_be_aligned.fasta'
-    temp_output_file = 'temp_aligned.fasta'
+    temp_input_file = 'temp_to_be_aligned_' + temp_file_id + '.fasta'
+    temp_output_file = 'temp_aligned_' + temp_file_id + '.fasta'
 
     os.chdir(temp_dir)
 
@@ -98,8 +99,10 @@ def align(records, program, threads, temp_dir='.'):
                         ' -out ' + temp_output_file, shell=True)
 
     elif (program == 'mafft') or (program == 'einsi') or (program == 'linsi'):
-        subprocess.call(program + ' --quiet --thread ' + str(threads) + ' ' +
-                        temp_input_file + ' > ' + temp_output_file, shell=True)
+        prg_str = (program + ' --quiet --thread ' + str(threads) + ' ' +
+                   options + ' ' + temp_input_file + ' > ' + temp_output_file)
+        print(prg_str)
+        subprocess.call(prg_str, shell=True)
 
     results = krbioio.read_alignment_file(temp_output_file, 'fasta')
 
