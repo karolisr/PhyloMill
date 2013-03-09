@@ -56,6 +56,7 @@ def read_table_file(
     delimiter=',',
     quotechar='"',
     stripchar='',
+    commentchar="#",
     rettype='dict'  # dict, list, set
 ):
 
@@ -67,7 +68,7 @@ def read_table_file(
 
     import krother
 
-    handle = CommentedFile(open(path, 'rb'))
+    handle = CommentedFile(open(path, 'rb'), commentstring=commentchar)
     if headers is not None:
         has_headers = False
     if has_headers:
