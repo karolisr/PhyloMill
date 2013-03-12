@@ -49,6 +49,91 @@ def parse_directory(path, file_name_sep, sort='forward'):
     return return_list
 
 
+# Hacks!
+
+def sol_species_from_voucher(voucher):
+
+    '''
+        Some Lycopersicon / Solanum members have voucher numbers which resolve
+        most current species names. This function will take a voucher number
+        and will return a list:
+
+            [OLD_NAME, NEW_NAME]
+    '''
+
+    import urllib2
+    from bs4 import BeautifulSoup
+    import krbionames
+    import time
+    import sys
+    import re
+
+    # Let's not overwhelm the server.
+    time.sleep(2)
+
+    url = 'http://tgrc.ucdavis.edu/Data/Acc/AccDetail.aspx?AccessionNum='
+
+    voucher = str(voucher)
+
+    # More hacking, based on experience ---------------------------------------
+    voucher = re.findall('LA\d+', voucher)[0]
+    v_split_2 = re.findall('(\d+|[a-zA-Z]+)', voucher)
+    if len(v_split_2) > 1:
+        voucher = v_split_2[0] + "%04d" % (int(v_split_2[1]),)
+    # print(voucher)
+    # -------------------------------------------------------------------------
+
+    response = None
+
+    for i in range(0, 10):
+        while True:
+            try:
+                response = urllib2.urlopen(url + voucher)
+            except:
+                time.sleep(2 * (i + 1))
+                continue
+            break
+
+    html = ''
+    if response:
+        html = response.read()
+    else:
+        # HTTP Error
+        sys.exit(1)
+    doc = BeautifulSoup(html)
+
+    old_line = doc.find(id='lTaxon')
+    if old_line.font is None:
+        return(None)
+    old = str(old_line.font.text).strip()
+    new_line = doc.find(id='lTaxon2')
+    new = str(new_line.font.text).strip()
+
+    o_parsed = krbionames.parse_organism_name(
+        name=old,
+        sep=' ',
+        ncbi_authority=False)
+
+    n_parsed = krbionames.parse_organism_name(
+        name=new,
+        sep=' ',
+        ncbi_authority=False)
+
+    if o_parsed['genus'] == 'L.':
+        o_parsed['genus'] = 'Lycopersicon'
+    if o_parsed['genus'] == 'S.':
+        o_parsed['genus'] = 'Solanum'
+    if n_parsed['genus'] == 'L.':
+        n_parsed['genus'] = 'Lycopersicon'
+    if n_parsed['genus'] == 'S.':
+        n_parsed['genus'] = 'Solanum'
+
+    # print(old, '->', new)
+    # print(o_parsed, '->', n_parsed)
+
+    return([o_parsed, n_parsed, voucher])
+
+
 # Pipeline functions ----------------------------------------------------------
 
 
@@ -277,7 +362,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
 
 def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                  ncbi_names_table, min_similarity, temp_dir, file_name_sep,
-                 synonymy_table=None, auth_file=None):
+                 synonymy_table=None, auth_file=None, hacks=None):
 
     '''
     Extract relevant loci from the search results, do some filtering by length
@@ -297,6 +382,40 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
     import krusearch
 
     ps = os.path.sep
+
+    # HACKS ###################################################################
+
+    hack_sol_genus = None
+    hack_sol_species = None
+
+    found_previously = dict()
+    do_not_repeat = list()
+
+    if hacks and 'solanum' in hacks:
+        hack_sol_species_set = krio.read_table_file(
+            path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            stripchar='',
+            commentchar="#",
+            rettype='set'  # dict, list, set
+        )
+
+        hack_sol_genus = list()
+        hack_sol_species = list()
+
+        for r in hack_sol_species_set:
+            name = krbionames.parse_organism_name(
+                r,
+                sep=' ',
+                ncbi_authority=False)
+
+            hack_sol_genus.append(name['genus'])
+            hack_sol_species.append(name['species'])
+
+    ###########################################################################
 
     print('\tPreparing output directory "', output_dir, '"', sep='')
     krio.prepare_directory(output_dir)
@@ -364,6 +483,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
         locus = locus.split(',')
 
         for i, record in enumerate(records):
+            # print(record.id)
             krcl.print_progress(i + 1, records_count, 50, '\t')
 
             # genbank records contain "features" which conatin annotation
@@ -423,7 +543,50 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
             acc_name_flat = None
             organism_authority = None
 
-            if synonymy_table and auth_file:
+            # HACKS ###########################################################
+            hack_species_found = False
+            if hacks and 'solanum' in hacks:
+
+                hack_org = krbionames.parse_organism_name(
+                    organism,
+                    sep='_',
+                    ncbi_authority=True)
+
+                if (hack_org['genus'] in hack_sol_genus and
+                        hack_org['species'] in hack_sol_species):
+
+                    hack_fi = krseq.get_features_with_qualifier_label(
+                        record=record,
+                        qualifier_label='specimen_voucher',
+                        feature_type='source')
+
+                    if(hack_fi):
+                        hack_f = record.features[hack_fi[0]]
+                        voucher = hack_f.qualifiers['specimen_voucher'][0]
+                        # print(voucher)
+                        if voucher not in do_not_repeat:
+                            if voucher in found_previously.keys():
+                                hack_species_found = found_previously[voucher]
+                            else:
+                                hack_species_found = sol_species_from_voucher(
+                                    voucher)
+                            if hack_species_found:
+                                # print('FOUND')
+                                found_previously[voucher] = hack_species_found
+                                acc_name = hack_species_found[1]
+                                acc_name['id'] = (
+                                    'tgrc-' + hack_species_found[2])
+                                acc_name['status'] = 'TGRC'
+                                acc_name_flat = (
+                                    krbionames.flatten_organism_name(
+                                        acc_name, '_'))
+                            else:
+                                do_not_repeat.append(voucher)
+            ###################################################################
+
+            loose_mode = False
+
+            if not hack_species_found and synonymy_table and auth_file:
                 #print('--- --- --- --- --- ---')
                 #print('O', organism)
 
@@ -479,7 +642,6 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                 # If we find nothing using STRICT mode we look for matches
                 # using LOOSE mode
                 # First look if there is a best possible match "acc"
-                loose_mode = False
                 if not found_match:
                     for oa in organism_authority:
                         acc_name = krbionames.accepted_name(
@@ -538,8 +700,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                     #print('___!!!___!!!_______ LOOSE _______!!!___!!!___')
                     pass
 
-            else:
-
+            elif not hack_species_found:
                 acc_name = dict()
                 acc_name['id'] = tax_id
                 acc_name['status'] = 'NA'
@@ -605,6 +766,19 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
                         'Taxonomic match using LOOSE mode.' + '\t' +
+                        acc_name_flat.replace('_', ' ') + '\n')
+                elif acc_name['status'] == 'TGRC':
+                    ###
+                    # print('TGRC', record.id, tax_id,
+                    #       organism.replace('_', ' '), '->',
+                    #       acc_name_flat.replace('_', ' '))
+                    ###
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        organism.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'Match TGRC' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\n')
                 else:
                     log_handle.write(
@@ -764,6 +938,10 @@ def one_locus_per_organism(
 
             # Keys will be taxid and value will be the list of all sequences
             # for name2 with that taxid
+
+            ### ### ### ### ### ### ### ###
+            ### CANNOT USE TAXID BECAUSE OF SOLANUM HACK !!!
+            ### ### ### ### ### ### ### ###
             tax_records_dict_name2 = dict()
 
             for record in records:
@@ -1132,10 +1310,20 @@ if __name__ == '__main__':
         # parse_directory
         # t_parse_directory = parse_directory('testdata' + PS +
         #                                     'parse_directory', '$')
-        t_parse_directory = parse_directory(
-            '/data/gbs-new/02-demultiplexed-fastq', ' ')
-        for d in t_parse_directory:
-            print(d)
+
+        # t_parse_directory = parse_directory(
+        #     '/data/gbs-new/02-demultiplexed-fastq', ' ')
+        # for d in t_parse_directory:
+        #     print(d)
+
+        v1 = 'LA1964'
+        v2 = 'LA2744'
+
+        s1 = sol_species_from_voucher(v1)
+        print(s1)
+
+        s2 = sol_species_from_voucher(v2)
+        print(s2)
 
         sys.exit(0)
 

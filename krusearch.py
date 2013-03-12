@@ -184,6 +184,16 @@ def cluster_records(records, similarity, temp_dir):
 
 def decode_compressed_alignment(comp_aln):
 
+    # >>> import re
+    # >>> s = "5d4h2s"
+    # >>> p = re.compile("([0-9])([a-z])")
+    # >>> for m in p.findall(s):
+    # ...   print m
+    # ...
+    # ('5', 'd')
+    # ('4', 'h')
+    # ('2', 's')
+
     idxs_in_str = lambda x: [i for i, ltr in enumerate(x[0]) if ltr in x[1]]
     category_idxs = idxs_in_str((comp_aln, 'MDI'))
 
@@ -192,7 +202,10 @@ def decode_compressed_alignment(comp_aln):
     for i, j in enumerate(category_idxs):
         count = 1
         if j > 0:
-            count = comp_aln[category_idxs[i-1]+1:j]
+            if i == 0:
+                count = comp_aln[0:j]
+            else:
+                count = comp_aln[category_idxs[i-1]+1:j]
         if count == '':
             count = 1
         count = int(count)
@@ -225,36 +238,104 @@ def alignment_with_compressed_alignment(query, target, comp_aln):
 
     return([q, t])
 
+
+# def multiple_alignment_with_compressed_alignment(queries, target):
+#     import re
+#     decoded = list()
+
+#     for c in queries:
+#         d = decode_compressed_alignment(c['a'])
+#         l = 0
+#         for x in d:
+#             l = l + x[0]
+
+#         new_d = ''
+#         for x in d:
+#             new_d = new_d + x[0] * x[1]
+#         splitter = re.compile(r'.')
+#         new_d = splitter.findall(new_d)
+
+#         decoded.append({'q': c['q'], 'a': new_d, 'l': l})
+
+#     decoded.sort(key=lambda x: x['l'], reverse=True)
+
+#     for i in range(0, len(decoded[0]['a'])):
+#         longest = decoded[0]['a'][i]
+#         for q in decoded[1:len(decoded)]:
+#             s = set([q['a'][i], longest])
+#             if len(s) > 1 and 'D' in s:
+#                 q['a'][i] = ''
+#         print(i)
+
+#     return(decoded)
+
+
 if __name__ == '__main__':
+
+    pass
+
+    # queries = ['TTCGTACGT',
+    #            'TTCAAAGTAAAACGTA',
+    #            'TTTCAAAGCTAAAACGTA']
+
+    # comp_alns = ['2D1M3I6M',
+    #              '2D7M3D3M1D',
+    #              '3D5M1D2M3D3M1D']
+
+    # queries = [{'q': 'TTCGTACGT', 'a': '2D1M3I6M'},
+    #            {'q': 'TTCAAAGTAAAACGTA', 'a': '2D7M3D3M1D'},
+    #            {'q': 'TTTCAAAGCTAAAACGTA', 'a': '3D5M1D2M3D3M1D'}]
+
+    # target = 'CAAAGTACGT'
+
+    # x = multiple_alignment_with_compressed_alignment(queries, target)
 
     # Tests
 
-    import os
+    # import os
 
-    PS = os.path.sep
+    # PS = os.path.sep
 
-    to_cluster_file = 'testdata/to_cluster.fasta'
-    output_file = 'testdata/clustered.uc'
+    # to_cluster_file = 'testdata/to_cluster.fasta'
+    # output_file = 'testdata/clustered.uc'
 
-    # cluster_file
-    cluster_file(to_cluster_file,
-                 output_file,
-                 identity_threshold=0.99,
-                 sorted_input=False,
-                 algorithm='smallmem',
-                 strand='both',
-                 threads=4,
-                 quiet=False,
-                 program='usearch6')
+    # # cluster_file
+    # cluster_file(to_cluster_file,
+    #              output_file,
+    #              identity_threshold=0.99,
+    #              sorted_input=False,
+    #              algorithm='smallmem',
+    #              strand='both',
+    #              threads=4,
+    #              quiet=False,
+    #              program='usearch6')
 
-    # cluster_records
-    import krbioio
-    records = krbioio.read_sequence_file(to_cluster_file, 'fasta')
-    cluster_records(records, 0.99, 'testdata')
+    # # cluster_records
+    # import krbioio
+    # records = krbioio.read_sequence_file(to_cluster_file, 'fasta')
+    # cluster_records(records, 0.99, 'testdata')
 
-    comp_aln = 'D5M2I3M'
-    query = 'GACTGCCTG'
-    target = 'ACTGCAACTG'
-    aln = alignment_with_compressed_alignment(query, target, comp_aln)
-    print(aln[0])
-    print(aln[1])
+    # # comp_aln1 = '2DM3I6M'
+    # comp_aln1 = 'IDDMIIIMIMMIIIMMMI'
+    # query1 = 'TTCGTACGT'
+    # target1 = 'TTCAAAGTAAAACGTA'
+    # aln1 = alignment_with_compressed_alignment(query1, target1, comp_aln1)
+    # print(aln1[0])
+    # # print(aln1[1])
+
+    # # comp_aln2 = '2D7M3D3M'
+    # comp_aln2 = 'IDDMMMMMIMMDDDMMMD'
+    # query2 = 'TTCAAAGTAAAACGTA'
+    # target2 = 'TTTCAAAGCTAAAACGTA'
+    # aln2 = alignment_with_compressed_alignment(query2, target2, comp_aln2)
+    # print(aln2[0])
+    # # print(aln2[1])
+
+    # # comp_aln3 = '3D5M1D2M3D3M'
+    # comp_aln3 = 'DDDMMMMMDMMDDDMMMD'
+    # query3 = 'TTTCAAAGCTAAAACGTA'
+    # target3 = 'CAAAGTACGT'
+    # aln3 = alignment_with_compressed_alignment(query3, target3, comp_aln3)
+    # print(aln3[0])
+    # print(aln3[1])
+    # print()

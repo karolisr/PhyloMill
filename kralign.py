@@ -96,12 +96,13 @@ def align(records, program, threads, options='', temp_dir='.',
 
     if program == 'muscle':
         subprocess.call(program + ' -quiet -in ' + temp_input_file +
-                        ' -out ' + temp_output_file, shell=True)
+                        ' -out ' + temp_output_file + ' ' + options,
+                        shell=True)
 
     elif (program == 'mafft') or (program == 'einsi') or (program == 'linsi'):
         prg_str = (program + ' --quiet --thread ' + str(threads) + ' ' +
                    options + ' ' + temp_input_file + ' > ' + temp_output_file)
-        print(prg_str)
+        # print(prg_str)
         subprocess.call(prg_str, shell=True)
 
     results = krbioio.read_alignment_file(temp_output_file, 'fasta')

@@ -497,29 +497,44 @@ def nucleotides_at_site(site):
 
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                    fasta_file_path, aln_output_file_path,
-                   counts_output_file_path, temp_dir_path, temp_file_id):
+                   counts_output_file_path, temp_dir_path, temp_file_id,
+                   threads):
+
+    from Bio import SeqIO
 
     import krusearch
-    import krbioio
+    # import krbioio
     import kralign
     import krseq
+    # import krcl
 
-    records_dict = krbioio.read_sequence_file(fasta_file_path, 'fasta',
-                                              ret_type='dict')
+    # Uses too much RAM
+    # records_dict = krbioio.read_sequence_file(fasta_file_path, 'fasta',
+    #                                           ret_type='dict')
+
+    records_dict = SeqIO.index(fasta_file_path, 'fasta')
 
     cluster_dict = krusearch.parse_uc_file(uc_file_path)
 
     handle_aln = open(aln_output_file_path, 'w')
     handle_counts = open(counts_output_file_path, 'w')
 
+    f_id = uc_file_path.split('.')[0].split('/')[-1].split('_')[0]
+
     keys = cluster_dict.keys()
     keys.sort(key=lambda x: x, reverse=False)
+    cluster_count = len(keys)
 
-    for key in keys:
+    cluster_depths = list()
+    # krcl.hide_cursor()
+    for i, key in enumerate(keys):
         records = list()
         members = cluster_dict[key]
         spc = len(members)
+        cluster_depths.append(spc)
         if spc >= min_seq_cluster and spc <= max_seq_cluster:
+            # krcl.print_progress(i, cluster_count, 50, '')
+            print(f_id, i, '/', cluster_count)
             handle_aln.write('>CLUSTER_' + str(key) + '\n')
             handle_counts.write('>CLUSTER_' + str(key) + '\n')
             if spc > 1:
@@ -530,7 +545,8 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
                 aln = kralign.align(
-                    records, 'muscle', 1, options='', temp_dir=temp_dir_path,
+                    records, 'mafft', threads, options='--retree 1',
+                    temp_dir=temp_dir_path,
                     temp_file_id=temp_file_id)
                 for l in range(0, aln.get_alignment_length()):
                     column = aln[:, l]
@@ -559,9 +575,11 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                         str(counts[3]) + '\n'
                     )
                     handle_counts.write(counts_str)
-
+    # krcl.show_cursor()
     handle_aln.close()
     handle_counts.close()
+
+    return(cluster_depths)
 
 
 def nt_freq(nt_counts_file):
@@ -596,7 +614,7 @@ def nt_freq(nt_counts_file):
         t_g = t_g + c_g
         t_t = t_t + c_t
 
-        total = t_a + t_c + t_g + t_t
+    total = t_a + t_c + t_g + t_t
 
     # print(t_a, t_c, t_g, t_t)
     # print(float(t_a)/float(total),
@@ -610,7 +628,7 @@ def nt_freq(nt_counts_file):
             float(t_t)/float(total)])
 
 
-def nt_site_counts(nt_counts_file):
+def nt_site_counts(nt_counts_file, min_total_per_site=4):
     import krio
     nt_counts = krio.read_table_file(
         path=nt_counts_file,
@@ -632,9 +650,11 @@ def nt_site_counts(nt_counts_file):
         c_g = int(r['G'])
         c_t = int(r['T'])
 
-        ret_value.append([c_a, c_c, c_g, c_t])
+        if c_a + c_c + c_g + c_t >= min_total_per_site:
+            ret_value.append([c_a, c_c, c_g, c_t])
 
     return(ret_value)
+
 
 # -----------------------------------------------------------------------------
 # Functions that follow are used to estimate various statistics used in
@@ -722,7 +742,7 @@ def like_homo_hetero(s, p, e, pi):
             pi - nucleotide diversity
     '''
 
-    likelihood = (1-pi) * like_homo(s, p, e) + pi * like_hetero(s, p, e)
+    likelihood = (1.0-pi) * like_homo(s, p, e) + pi * like_hetero(s, p, e)
     return likelihood
 
 
@@ -772,12 +792,13 @@ def neg_ll_homo_hetero(ns, p, e, pi):
 
         if not repeat:
             l = like_homo_hetero(s, p, e, pi)
-            nl = numpy.log(l)
-            ll = ll + nl
-            s_log.append([s, nl])
+            if l > 0:
+                nl = numpy.log(l)
+                ll = ll + nl
+                # print(ll)
+                s_log.append([s, nl])
 
     ll = ll * (-1.0)
-
     print(ll)
     # print('Repeat configurations:', len(s_log))
     # print('Repeats:', repeats_found)
@@ -861,8 +882,10 @@ if __name__ == '__main__':
 
     # combine_demultiplexed_results
     # combine_demultiplexed_results(
-    #     input_dir='/home/karolis/Dropbox/code/test/rad/02-demultiplexed-fastq-parts',
-    #     output_dir='/home/karolis/Dropbox/code/test/rad/03-demultiplexed-fastq-combined')
+    #     input_dir='/home/karolis/Dropbox/code/test/rad/
+    #02-demultiplexed-fastq-parts',
+    #     output_dir='/home/karolis/Dropbox/code/test/rad/
+    #03-demultiplexed-fastq-combined')
 
     # ns = [[99, 1, 0, 0],
     #      [50, 49, 1, 0],

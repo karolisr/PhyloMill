@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from __future__ import print_function
 #from __future__ import unicode_literals
@@ -8,9 +9,12 @@ if __name__ == '__main__':
     import sys
     import os
     import argparse
+    import csv
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
+    from multiprocessing import Manager
+    import subprocess
 
     from Bio import SeqIO
 
@@ -83,13 +87,21 @@ if __name__ == '__main__':
 
     parser.add_argument('--identity_threshold', type=float,
                         help='Identity value for within-sample read \
-                        clustering')
+                        clustering.')
 
     parser.add_argument('--min_seq_cluster', type=int,
                         help='Minimum number of sequences in a cluster.')
 
     parser.add_argument('--max_seq_cluster', type=int,
                         help='Maximum number of sequences in a cluster.')
+
+    parser.add_argument('--error_rate_initial', type=float,
+                        help='Initial value of error rate (ε) for maximum \
+                        likelihood estimation.')
+
+    parser.add_argument('--heterozygosity_initial', type=float,
+                        help='Initial value of heterozygosity (π) for maximum \
+                        likelihood estimation.')
 
     args = parser.parse_args()
 
@@ -129,6 +141,7 @@ if __name__ == '__main__':
         binned_output_dir = output_dir + '05-binned-fasta'
         clustered_output_dir = output_dir + '06-clustered'
         sample_alignments_output_dir = output_dir + '07-sample-alignments'
+        analyzed_samples_output_dir = output_dir + '08-analyzed-samples'
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -441,7 +454,25 @@ if __name__ == '__main__':
             krio.prepare_directory(clustered_output_dir)
             file_list = krpipe.parse_directory(binned_output_dir, '_')
 
-            print('\nClustering reads within samples...')
+            print('\nSorting before clustering...\n')
+
+            # Sort files, this will take memory, so we will not parallelize
+            # this
+            for f in file_list:
+                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                    print('Sorting file:', f['full'])
+                    ifp_split = os.path.splitext(f['path'])
+                    subprocess.call(
+                        ('usearch6' + ' -quiet' +
+                            ' -sortbylength ' + f['path'] +
+                            ' -output ' + ifp_split[0] + '_sorted' +
+                            ifp_split[1]), shell=True)
+
+            # We need to do this again as now we have new (sorted) files in the
+            # directory
+            file_list = krpipe.parse_directory(binned_output_dir, '_')
+
+            print('\nClustering reads within samples...\n')
 
             processes = list()
             queue = JoinableQueue()
@@ -449,12 +480,15 @@ if __name__ == '__main__':
             def t(q):
                 while True:
                     f = q.get()
+                    # ifp_split = os.path.splitext(f['path'])
+                    # input_file_path = ifp_split[0] + '_sorted' + ifp_split[1]
                     output_file = clustered_output_dir + f['name'] + '.uc'
+                    print('Clustering file:', f['full'])
                     krusearch.cluster_file(
                         input_file_path=f['path'],
                         output_file_path=output_file,
                         identity_threshold=args.identity_threshold,
-                        sorted_input=False,
+                        sorted_input=True,
                         algorithm='smallmem',
                         strand='both',
                         threads=1,
@@ -464,7 +498,9 @@ if __name__ == '__main__':
                     q.task_done()
 
             for f in file_list:
-                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                if (f['split'][-1] == 'sorted' and
+                    f['split'][-2] == 'hq' and
+                        f['split'][-3] == 'all'):
                     queue.put(f)
 
             for i in range(args.threads):
@@ -489,15 +525,24 @@ if __name__ == '__main__':
                 print('threads is required.')
                 sys.exit(1)
 
+            analyzed_samples_output_dir = (
+                analyzed_samples_output_dir.rstrip(ps) + ps)
+
+            krio.prepare_directory(analyzed_samples_output_dir)
+
             binned_output_dir = binned_output_dir.rstrip(ps) + ps
+
             clustered_output_dir = clustered_output_dir.rstrip(ps) + ps
+
             sample_alignments_output_dir = (
                 sample_alignments_output_dir.rstrip(ps) + ps)
+
             krio.prepare_directory(sample_alignments_output_dir)
+
             file_list = krpipe.parse_directory(clustered_output_dir, '_')
 
             print('\nProducing sample alignments and\n'
-                  'nucleotide counts per site...')
+                  'nucleotide counts per site...\n')
 
             processes = list()
             queue = JoinableQueue()
@@ -514,7 +559,8 @@ if __name__ == '__main__':
                     counts_output_file_path = (
                         sample_alignments_output_dir +
                         f['name'] + '.counts')
-                    krnextgen.align_clusters(
+                    print('File:', f['full'])
+                    cluster_depths = krnextgen.align_clusters(
                         min_seq_cluster=args.min_seq_cluster,
                         max_seq_cluster=args.max_seq_cluster,
                         uc_file_path=f['path'],
@@ -522,12 +568,151 @@ if __name__ == '__main__':
                         aln_output_file_path=aln_output_file_path,
                         counts_output_file_path=counts_output_file_path,
                         temp_dir_path=sample_alignments_output_dir,
-                        temp_file_id=q_id)
+                        temp_file_id=q_id,
+                        threads=args.threads)
+
+                    handle = open((analyzed_samples_output_dir +
+                                   f['split'][0] + '_' +
+                                   f['split'][1] +
+                                   '_clusters.csv'), 'wb')
+                    for c in cluster_depths:
+                        handle.write(str(c) + '\n')
+                    handle.close()
+
                     q.task_done()
 
             for i, f in enumerate(file_list):
-                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                if (f['split'][-1] == 'sorted' and
+                    f['split'][-2] == 'hq' and
+                        f['split'][-3] == 'all'):
                     queue.put([f, i])
+
+            ### THREADS HARD-CODED ###
+            for i in range(1):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
+
+        # Estimate error rate, heterozygosity. Produce some statistics
+        if commands and ('analyze_samples' in commands):
+            if not args.error_rate_initial:
+                print('error_rate_initial is required.')
+                sys.exit(1)
+            if not args.heterozygosity_initial:
+                print('heterozygosity_initial is required.')
+                sys.exit(1)
+            if not args.threads:
+                print('threads is required.')
+                sys.exit(1)
+
+            sample_alignments_output_dir = (
+                sample_alignments_output_dir.rstrip(ps) + ps)
+            analyzed_samples_output_dir = (
+                analyzed_samples_output_dir.rstrip(ps) + ps)
+            krio.prepare_directory(analyzed_samples_output_dir)
+            file_list = krpipe.parse_directory(
+                sample_alignments_output_dir, '_')
+
+            print('\nAnalyzing samples...\n')
+
+            manager = Manager()
+            results = manager.list()
+
+            processes = list()
+            queue = JoinableQueue()
+
+            def t(q):
+                while True:
+                    q_input = q.get()
+                    f = q_input[0]
+                    results = q_input[1]
+                    print('File:', f['name'], 'starting...')
+                    p = krnextgen.nt_freq(f['path'])
+                    print(p)
+                    ns = krnextgen.nt_site_counts(
+                        f['path'], args.min_seq_cluster)
+                    mle = krnextgen.mle_e_and_pi(
+                        ns=ns,
+                        p=p,
+                        e0=args.error_rate_initial,
+                        pi0=args.heterozygosity_initial)
+
+                    results_dict = dict()
+
+                    results_dict['sample'] = str(f['split'][0])
+                    results_dict['barcode'] = str(f['split'][1])
+                    results_dict['fA'] = p[0]
+                    results_dict['fC'] = p[1]
+                    results_dict['fG'] = p[2]
+                    results_dict['fT'] = p[3]
+                    results_dict['e'] = mle[0]
+                    results_dict['pi'] = mle[1]
+                    results_dict['negll'] = mle[2]
+
+                    coverage_list = [sum(x) for x in ns]
+                    handle = open((analyzed_samples_output_dir +
+                                   results_dict['sample'] + '_' +
+                                   results_dict['barcode'] +
+                                   '_coverage.csv'), 'wb')
+                    for c in coverage_list:
+                        handle.write(str(c) + '\n')
+                    handle.close()
+                    rps = float(sum(coverage_list)) / float(len(coverage_list))
+                    results_dict['rps'] = rps
+                    results_dict['sites'] = len(coverage_list)
+
+                    cluster_list = list()
+                    handle = open((analyzed_samples_output_dir +
+                                   results_dict['sample'] + '_' +
+                                   results_dict['barcode'] +
+                                   '_clusters.csv'), 'rb')
+                    for c in handle:
+                        cluster_list.append(int(c))
+                    handle.close()
+                    rpc = float(sum(cluster_list)) / float(len(cluster_list))
+                    results_dict['rpc'] = rpc
+                    results_dict['clusters'] = len(cluster_list)
+
+                    handle = open((analyzed_samples_output_dir +
+                                   results_dict['sample'] + '_' +
+                                   results_dict['barcode'] +
+                                   '_stats.txt'), 'wb')
+
+                    handle.write('sample\t' + str(results_dict['sample']) +
+                                 '\n')
+                    handle.write('barcode\t' + str(results_dict['barcode']) +
+                                 '\n')
+                    # reads per cluster (rpc)
+                    handle.write('rpc\t' + str(rpc) + '\n')
+                    handle.write('clusters\t' +
+                                 str(results_dict['clusters']) + '\n')
+                    # reads per site (rps)
+                    handle.write('rps\t' + str(rps) + '\n')
+                    handle.write('sites\t' + str(results_dict['sites']) + '\n')
+                    handle.write('fA\t' + str(results_dict['fA']) + '\n')
+                    handle.write('fC\t' + str(results_dict['fC']) + '\n')
+                    handle.write('fG\t' + str(results_dict['fG']) + '\n')
+                    handle.write('fT\t' + str(results_dict['fT']) + '\n')
+                    handle.write('e\t' + str(results_dict['e']) + '\n')
+                    handle.write('pi\t' + str(results_dict['pi']) + '\n')
+                    handle.write('negll\t' + str(results_dict['negll']) + '\n')
+
+                    handle.close()
+
+                    results.append(results_dict)
+
+                    print('File:', f['name'], 'done.')
+
+                    q.task_done()
+
+            for f in file_list:
+                if f['ext'] == 'counts':
+                    queue.put([f, results])
 
             for i in range(args.threads):
                 worker = Process(target=t, args=(queue,))
@@ -539,14 +724,48 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
-# --commands split,demultiplex,mask,bin,cluster,align_samples \
+            results_new = list()
+            for r in results:
+                results_new.append(r)
+
+            results_new.sort(key=lambda x: x['sample'], reverse=False)
+
+            with open(analyzed_samples_output_dir+'stats.csv', 'wb') as f:
+                fieldnames = ['sample', 'barcode', 'rpc', 'clusters', 'rps',
+                              'sites', 'fA', 'fC', 'fG', 'fT', 'e', 'pi',
+                              'negll']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writerow({
+                    'sample': 'sample',
+                    'barcode': 'barcode',
+                    'rpc': 'rpc',
+                    'clusters': 'clusters',
+                    'rps': 'rps',
+                    'sites': 'sites',
+                    'fA': 'fA',
+                    'fC': 'fC',
+                    'fG': 'fG',
+                    'fT': 'fT',
+                    'e': 'e',
+                    'pi': 'pi',
+                    'negll': 'negll',
+                })
+                writer.writerows(results_new)
+
+
+# p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
+# print(p)
+# ns = nt_site_counts('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
+# mle = mle_e_and_pi(ns, p, e0=0.001, pi0=0.001)
+# print(mle)
+
+# --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples
 
 # time ./rad.py \
 # --output_dir /home/karolis/Dropbox/code/test/rad \
-# --commands split,demultiplex,mask,bin,cluster,align_samples \
 # --forward_file /home/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
 # --reverse_file /home/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
-# --threads 4 \
+# --threads 6 \
 # --barcodes '/home/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
@@ -557,8 +776,11 @@ if __name__ == '__main__':
 # --min_overlap 5 \
 # --mmmr_cutoff 0.85 \
 # --identity_threshold 0.90 \
-# --min_seq_cluster 1 \
-# --max_seq_cluster 1000
+# --min_seq_cluster 4 \
+# --max_seq_cluster 1000 \
+# --error_rate_initial 0.001 \
+# --heterozygosity_initial 0.001 \
+# --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples
 
 # time ./rad.py \
 # --output_dir /data/gbs-new \
@@ -575,4 +797,8 @@ if __name__ == '__main__':
 # --min_overlap 5 \
 # --mmmr_cutoff 0.85 \
 # --identity_threshold 0.90 \
-# --commands bin
+# --min_seq_cluster 10 \
+# --max_seq_cluster 1000 \
+# --error_rate_initial 0.0001 \
+# --heterozygosity_initial 0.001 \
+# --commands analyze_samples

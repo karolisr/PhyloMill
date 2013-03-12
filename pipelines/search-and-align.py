@@ -77,6 +77,8 @@ if __name__ == '__main__':
             for l in config:
                 config_dict[l['name']] = l['value']
 
+        hacks = config_dict['hacks'].split(',')
+
         # Parse queries file
         queries = krio.read_table_file(query_file, has_headers=True,
                                        headers=None, delimiter='\t')
@@ -133,7 +135,8 @@ if __name__ == '__main__':
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 synonymy_table=synonymy_table,
-                auth_file=authority_file)
+                auth_file=authority_file,
+                hacks=hacks)
 
         if not steps or 4 in steps:
 
