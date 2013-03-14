@@ -29,7 +29,9 @@ def parse_directory(path, file_name_sep, sort='forward'):
     return_list = list()
 
     for f in file_list:
-
+        # Mac hack
+        if f == '.DS_Store':
+            continue
         file_name = os.path.splitext(f)[0]
         file_ext = None
         if os.path.splitext(f)[1] != '':
@@ -970,8 +972,7 @@ def one_locus_per_organism(
                     if len(cluster_dict.keys()) == 1:
                         # We align the sequences in a cluster and produce
                         # a consensus
-                        aln = kralign.align(tax_records_name2, aln_program,
-                                            int(threads), temp_dir)
+                        aln = kralign.align(tax_records_name2, aln_program)
                         summary_aln = AlignInfo.SummaryInfo(aln)
                         consensus = summary_aln.dumb_consensus(
                             threshold=0.001, ambiguous='N')
@@ -1118,8 +1119,7 @@ def one_locus_per_organism(
             cons_ids = list(set(cons_ids))
 
             if len(consensus_list) > 1:
-                aln = kralign.align(consensus_list, aln_program, int(threads),
-                                    temp_dir)
+                aln = kralign.align(consensus_list, aln_program)
                 summary_aln = AlignInfo.SummaryInfo(aln)
                 consensus = summary_aln.dumb_consensus(threshold=0.001,
                                                        ambiguous='N')
@@ -1213,7 +1213,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
         # Align each locus individually first.
         print('\n\tAligning', file_name)
-        aln = kralign.align(records, program, int(threads), temp_dir)
+        aln = kralign.align(records, program)
         if aln:
             krbioio.write_alignment_file(aln, output_file, 'fasta')
             #alignments.append(aln)

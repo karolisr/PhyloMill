@@ -331,7 +331,7 @@ if __name__ == '__main__':
                     base_file_name = f['split'][0] + '_' + f['split'][1] + '_'
                     base_file_path = masked_output_dir + base_file_name
 
-                    print(f['split'][0] + '_' + f['split'][1])
+                    print('Sample', f['split'][0])
 
                     f_records = SeqIO.parse(base_file_path + 'f.fastq',
                                             'fastq')
@@ -544,59 +544,93 @@ if __name__ == '__main__':
             print('\nProducing sample alignments and\n'
                   'nucleotide counts per site...\n')
 
-            processes = list()
-            queue = JoinableQueue()
+            def t(f):
+                fasta_file_path = binned_output_dir + f['name'] + '.fasta'
+                aln_output_file_path = (
+                    sample_alignments_output_dir +
+                    f['name'] + '.alignment')
+                counts_output_file_path = (
+                    sample_alignments_output_dir +
+                    f['name'] + '.counts')
+                print('File:', f['full'])
+                cluster_depths = krnextgen.align_clusters(
+                    min_seq_cluster=args.min_seq_cluster,
+                    max_seq_cluster=args.max_seq_cluster,
+                    uc_file_path=f['path'],
+                    fasta_file_path=fasta_file_path,
+                    aln_output_file_path=aln_output_file_path,
+                    counts_output_file_path=counts_output_file_path,
+                    # temp_dir_path=sample_alignments_output_dir,
+                    # temp_file_id=q_id,
+                    threads=args.threads)
 
-            def t(q):
-                while True:
-                    q_input = q.get()
-                    f = q_input[0]
-                    q_id = str(q_input[1])
-                    fasta_file_path = binned_output_dir + f['name'] + '.fasta'
-                    aln_output_file_path = (
-                        sample_alignments_output_dir +
-                        f['name'] + '.alignment')
-                    counts_output_file_path = (
-                        sample_alignments_output_dir +
-                        f['name'] + '.counts')
-                    print('File:', f['full'])
-                    cluster_depths = krnextgen.align_clusters(
-                        min_seq_cluster=args.min_seq_cluster,
-                        max_seq_cluster=args.max_seq_cluster,
-                        uc_file_path=f['path'],
-                        fasta_file_path=fasta_file_path,
-                        aln_output_file_path=aln_output_file_path,
-                        counts_output_file_path=counts_output_file_path,
-                        temp_dir_path=sample_alignments_output_dir,
-                        temp_file_id=q_id,
-                        threads=args.threads)
+                handle = open((analyzed_samples_output_dir +
+                               f['split'][0] + '_' +
+                               f['split'][1] +
+                               '_clusters.csv'), 'wb')
+                for c in cluster_depths:
+                    handle.write(str(c) + '\n')
+                handle.close()
 
-                    handle = open((analyzed_samples_output_dir +
-                                   f['split'][0] + '_' +
-                                   f['split'][1] +
-                                   '_clusters.csv'), 'wb')
-                    for c in cluster_depths:
-                        handle.write(str(c) + '\n')
-                    handle.close()
-
-                    q.task_done()
-
-            for i, f in enumerate(file_list):
+            for f in file_list:
                 if (f['split'][-1] == 'sorted' and
                     f['split'][-2] == 'hq' and
                         f['split'][-3] == 'all'):
-                    queue.put([f, i])
+                    t(f)
+
+            # processes = list()
+            # queue = JoinableQueue()
+
+            # def t(q):
+            #     while True:
+            #         q_input = q.get()
+            #         f = q_input[0]
+            #         # q_id = str(q_input[1])
+            #         fasta_file_path = binned_output_dir + f['name'] + '.fasta'
+            #         aln_output_file_path = (
+            #             sample_alignments_output_dir +
+            #             f['name'] + '.alignment')
+            #         counts_output_file_path = (
+            #             sample_alignments_output_dir +
+            #             f['name'] + '.counts')
+            #         print('File:', f['full'])
+            #         cluster_depths = krnextgen.align_clusters(
+            #             min_seq_cluster=args.min_seq_cluster,
+            #             max_seq_cluster=args.max_seq_cluster,
+            #             uc_file_path=f['path'],
+            #             fasta_file_path=fasta_file_path,
+            #             aln_output_file_path=aln_output_file_path,
+            #             counts_output_file_path=counts_output_file_path,
+            #             # temp_dir_path=sample_alignments_output_dir,
+            #             # temp_file_id=q_id,
+            #             threads=args.threads)
+
+            #         handle = open((analyzed_samples_output_dir +
+            #                        f['split'][0] + '_' +
+            #                        f['split'][1] +
+            #                        '_clusters.csv'), 'wb')
+            #         for c in cluster_depths:
+            #             handle.write(str(c) + '\n')
+            #         handle.close()
+
+            #         q.task_done()
+
+            # for i, f in enumerate(file_list):
+            #     if (f['split'][-1] == 'sorted' and
+            #         f['split'][-2] == 'hq' and
+            #             f['split'][-3] == 'all'):
+            #         queue.put([f, i])
 
             ### THREADS HARD-CODED ###
-            for i in range(1):
-                worker = Process(target=t, args=(queue,))
-                worker.start()
-                processes.append(worker)
+            # for i in range(1):
+            #     worker = Process(target=t, args=(queue,))
+            #     worker.start()
+            #     processes.append(worker)
 
-            queue.join()
+            # queue.join()
 
-            for p in processes:
-                p.terminate()
+            # for p in processes:
+            #     p.terminate()
 
         # Estimate error rate, heterozygosity. Produce some statistics
         if commands and ('analyze_samples' in commands):
@@ -762,11 +796,11 @@ if __name__ == '__main__':
 # --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples
 
 # time ./rad.py \
-# --output_dir /home/karolis/Dropbox/code/test/rad \
-# --forward_file /home/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
-# --reverse_file /home/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
-# --threads 6 \
-# --barcodes '/home/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
+# --output_dir /Users/karolis/Dropbox/code/test/rad \
+# --forward_file /Users/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
+# --reverse_file /Users/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
+# --threads 2 \
+# --barcodes '/Users/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
 # --max_barcode_mismatch_count 1 \
 # --trim_barcode \
 # --trim_extra 5 \

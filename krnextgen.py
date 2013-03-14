@@ -497,7 +497,7 @@ def nucleotides_at_site(site):
 
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                    fasta_file_path, aln_output_file_path,
-                   counts_output_file_path, temp_dir_path, temp_file_id,
+                   counts_output_file_path,
                    threads):
 
     from Bio import SeqIO
@@ -519,11 +519,11 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
     handle_aln = open(aln_output_file_path, 'w')
     handle_counts = open(counts_output_file_path, 'w')
 
-    f_id = uc_file_path.split('.')[0].split('/')[-1].split('_')[0]
+    # f_id = uc_file_path.split('.')[0].split('/')[-1].split('_')[0]
 
     keys = cluster_dict.keys()
     keys.sort(key=lambda x: x, reverse=False)
-    cluster_count = len(keys)
+    # cluster_count = len(keys)
 
     cluster_depths = list()
     # krcl.hide_cursor()
@@ -534,7 +534,7 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
         cluster_depths.append(spc)
         if spc >= min_seq_cluster and spc <= max_seq_cluster:
             # krcl.print_progress(i, cluster_count, 50, '')
-            print(f_id, i, '/', cluster_count)
+            # print(f_id, i, '/', cluster_count)
             handle_aln.write('>CLUSTER_' + str(key) + '\n')
             handle_counts.write('>CLUSTER_' + str(key) + '\n')
             if spc > 1:
@@ -544,10 +544,8 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                     else:
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
-                aln = kralign.align(
-                    records, 'mafft', threads, options='--retree 1',
-                    temp_dir=temp_dir_path,
-                    temp_file_id=temp_file_id)
+                # aln = kralign.align(records, 'mafft', options='--retree 1')
+                aln = kralign.align(records, 'muscle', options='')
                 for l in range(0, aln.get_alignment_length()):
                     column = aln[:, l]
                     column = column.upper()

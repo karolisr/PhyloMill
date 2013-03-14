@@ -78,38 +78,47 @@ def concatenate(alignments, padding_length=0):
     return result_alignment
 
 
-def align(records, program, threads, options='', temp_dir='.',
-          temp_file_id='0'):
+def align(records, program, options=''):
 
-    import os
     import subprocess
-    import krbioio
+    from StringIO import StringIO
+    from Bio import AlignIO
+    from Bio import SeqIO
+    import shlex
 
-    working_dir = os.getcwd()
+    input_handle = StringIO()
+    SeqIO.write(records, input_handle, 'fasta')
 
-    temp_input_file = 'temp_to_be_aligned_' + temp_file_id + '.fasta'
-    temp_output_file = 'temp_aligned_' + temp_file_id + '.fasta'
+    args = None
 
-    os.chdir(temp_dir)
-
-    krbioio.write_sequence_file(records, temp_input_file, 'fasta')
+    options = shlex.split(options)
 
     if program == 'muscle':
-        subprocess.call(program + ' -quiet -in ' + temp_input_file +
-                        ' -out ' + temp_output_file + ' ' + options,
-                        shell=True)
+        args = ['muscle', '-quiet'] + options + ['-in', '-', '-out', '-']
 
-    elif (program == 'mafft') or (program == 'einsi') or (program == 'linsi'):
-        prg_str = (program + ' --quiet --thread ' + str(threads) + ' ' +
-                   options + ' ' + temp_input_file + ' > ' + temp_output_file)
-        # print(prg_str)
-        subprocess.call(prg_str, shell=True)
+    elif program == 'mafft':
+        args = ['mafft', '--quiet'] + options + ['-']
 
-    results = krbioio.read_alignment_file(temp_output_file, 'fasta')
+    alignment = None
 
-    os.remove(temp_input_file)
-    os.remove(temp_output_file)
+    if args:
+        pipe = subprocess.Popen(
+            args=args,
+            bufsize=0,
+            executable=None,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=None,
+            close_fds=False,
+            shell=False,
+            cwd=None,
+            env=None,
+            universal_newlines=True,
+            startupinfo=None,
+            creationflags=0)
 
-    os.chdir(working_dir)
+        data = pipe.communicate(input=input_handle.getvalue())
+        alignment = AlignIO.read(StringIO(data[0]), 'fasta')
 
-    return results
+    return alignment
