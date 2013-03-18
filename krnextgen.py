@@ -50,7 +50,7 @@ def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
     low_quality_sites = sequence.count(low_quality_residue)
     sequence_length = len(bio_seq_record.seq)
     prop_lq_sites = float(low_quality_sites) / float(sequence_length)
-    return prop_lq_sites
+    return(prop_lq_sites)
 
 
 def compare_sequences(s1, s2, ignore='N'):
@@ -251,6 +251,7 @@ def bin_reads(f_record, r_record=None, max_prop_low_quality_sites=0.10,
         if r_lq_sites <= max_prop_low_quality_sites:
             r_hq = True
 
+    cons_message = ''
     consensus = None
     if f_hq and r_hq:
         consensus = consensus_fr_read(
@@ -274,7 +275,7 @@ def bin_reads(f_record, r_record=None, max_prop_low_quality_sites=0.10,
             consensus = SeqRecord.SeqRecord(
                 seq=cons_seq, id=cons_id, name='', description='')
 
-    ret_value = [f_hq, r_hq, consensus]
+    ret_value = [f_hq, r_hq, consensus, cons_message]
 
     return(ret_value)
 
@@ -347,7 +348,6 @@ def demultiplex(barcodes,
                                                'wa')
 
         if reverse_reads_file_path is not None:
-
             barcode['result_batch_reverse'] = list()
             barcode['file_path_reverse'] = (base_file_name + '_r.' +
                                             output_file_format)
@@ -451,6 +451,8 @@ def demultiplex(barcodes,
     if reverse_reads_file_path is not None:
         write_handle_reverse_other.close()
 
+    return()
+
 
 def combine_demultiplexed_results(input_dir, output_dir):
 
@@ -530,14 +532,15 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
     for i, key in enumerate(keys):
         records = list()
         members = cluster_dict[key]
-        spc = len(members)
-        cluster_depths.append(spc)
-        if spc >= min_seq_cluster and spc <= max_seq_cluster:
+        rpc = len(members)
+        cluster_depths.append(rpc)
+        if rpc >= min_seq_cluster and (rpc <= max_seq_cluster or
+                                       max_seq_cluster == 0):
             # krcl.print_progress(i, cluster_count, 50, '')
             # print(f_id, i, '/', cluster_count)
             handle_aln.write('>CLUSTER_' + str(key) + '\n')
             handle_counts.write('>CLUSTER_' + str(key) + '\n')
-            if spc > 1:
+            if rpc > 1:
                 for m in members:
                     if m[0] == '+':
                         records.append(records_dict[m[1]])
@@ -626,7 +629,7 @@ def nt_freq(nt_counts_file):
             float(t_t)/float(total)])
 
 
-def nt_site_counts(nt_counts_file, min_total_per_site=4):
+def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0):
     import krio
     nt_counts = krio.read_table_file(
         path=nt_counts_file,
@@ -648,7 +651,8 @@ def nt_site_counts(nt_counts_file, min_total_per_site=4):
         c_g = int(r['G'])
         c_t = int(r['T'])
 
-        if c_a + c_c + c_g + c_t >= min_total_per_site:
+        if (c_a+c_c+c_g+c_t >= min_total_per_site and
+           (c_a+c_c+c_g+c_t <= max_total_per_site or max_total_per_site == 0)):
             ret_value.append([c_a, c_c, c_g, c_t])
 
     return(ret_value)
@@ -797,7 +801,7 @@ def neg_ll_homo_hetero(ns, p, e, pi):
                 s_log.append([s, nl])
 
     ll = ll * (-1.0)
-    print(ll)
+    # print(ll)
     # print('Repeat configurations:', len(s_log))
     # print('Repeats:', repeats_found)
     return(ll)
