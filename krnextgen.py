@@ -285,26 +285,46 @@ def _write_demultiplex_results_(barcodes,
                                 result_batch_forward_other,
                                 write_handle_forward_other,
                                 result_batch_reverse_other,
-                                write_handle_reverse_other,
-                                output_file_format):
-    from Bio import SeqIO
+                                write_handle_reverse_other
+                                ):
+    # from Bio import SeqIO
 
     for barcode in barcodes:
-        SeqIO.write(barcode['result_batch_forward'],
-                    barcode['write_handle_forward'], output_file_format)
+        # SeqIO.write(barcode['result_batch_forward'],
+                    # barcode['write_handle_forward'], output_file_format)
+        for r in barcode['result_batch_forward']:
+            barcode['write_handle_forward'].write(r[0] + '\n')
+            barcode['write_handle_forward'].write(r[1] + '\n')
+            barcode['write_handle_forward'].write('+\n')
+            barcode['write_handle_forward'].write(r[2] + '\n')
         del barcode['result_batch_forward'][:]
         if reverse_reads_file_path is not None:
-            SeqIO.write(barcode['result_batch_reverse'],
-                        barcode['write_handle_reverse'], output_file_format)
+            # SeqIO.write(barcode['result_batch_reverse'],
+                        # barcode['write_handle_reverse'], output_file_format)
+            for r in barcode['result_batch_reverse']:
+                barcode['write_handle_reverse'].write(r[0] + '\n')
+                barcode['write_handle_reverse'].write(r[1] + '\n')
+                barcode['write_handle_reverse'].write('+\n')
+                barcode['write_handle_reverse'].write(r[2] + '\n')
             del barcode['result_batch_reverse'][:]
 
-    SeqIO.write(result_batch_forward_other,
-                write_handle_forward_other, output_file_format)
+    for r in result_batch_forward_other:
+        write_handle_forward_other.write(r[0] + '\n')
+        write_handle_forward_other.write(r[1] + '\n')
+        write_handle_forward_other.write('+\n')
+        write_handle_forward_other.write(r[2] + '\n')
+    # SeqIO.write(result_batch_forward_other,
+                # write_handle_forward_other, output_file_format)
     del result_batch_forward_other[:]
 
     if reverse_reads_file_path is not None:
-        SeqIO.write(result_batch_reverse_other,
-                    write_handle_reverse_other, output_file_format)
+        for r in result_batch_reverse_other:
+            write_handle_reverse_other.write(r[0] + '\n')
+            write_handle_reverse_other.write(r[1] + '\n')
+            write_handle_reverse_other.write('+\n')
+            write_handle_reverse_other.write(r[2] + '\n')
+        # SeqIO.write(result_batch_reverse_other,
+                    # write_handle_reverse_other, output_file_format)
         del result_batch_reverse_other[:]
 
 
@@ -312,7 +332,6 @@ def demultiplex(barcodes,
                 forward_reads_file_path,
                 reverse_reads_file_path=None,
                 input_file_format='fastq',
-                output_file_format='fastq',
                 max_barcode_mismatch_count=1,
                 output_dir='.',
                 trim_barcode=True,
@@ -322,19 +341,30 @@ def demultiplex(barcodes,
 
     import os
     import Levenshtein
-    from Bio import SeqIO
-    from Bio import SeqRecord
+    # from Bio import SeqIO
+    from Bio.SeqIO.QualityIO import FastqGeneralIterator
+    from Bio.Seq import Seq
+    # from Bio import SeqRecord
     import krio
-    import krseq
+    # import krseq
 
     ps = os.path.sep
     output_dir = output_dir.rstrip(ps) + ps
     krio.prepare_directory(output_dir)
 
-    forward_reads = SeqIO.parse(forward_reads_file_path, input_file_format)
+# >>> handle = open("Quality/tricky.fastq", "rU")
+# >>> for (title, sequence, quality) in FastqGeneralIterator(handle):
+# ...     print title
+# ...     print sequence, quality
+
+    # forward_reads = SeqIO.parse(forward_reads_file_path, input_file_format)
+    forward_reads_handle = open(forward_reads_file_path, "rU")
+    forward_reads = FastqGeneralIterator(forward_reads_handle)
     reverse_reads = None
     if reverse_reads_file_path is not None:
-        reverse_reads = SeqIO.parse(reverse_reads_file_path, input_file_format)
+        # reverse_reads = SeqIO.parse(reverse_reads_file_path, input_file_format)
+        reverse_reads_handle = open(reverse_reads_file_path, "rU")
+        reverse_reads = FastqGeneralIterator(reverse_reads_handle)
 
     for barcode in barcodes:
 
@@ -342,40 +372,38 @@ def demultiplex(barcodes,
         base_file_name = output_dir + barcode['id'] + '_' + barcode['barcode']
 
         barcode['result_batch_forward'] = list()
-        barcode['file_path_forward'] = (base_file_name + '_f.' +
-                                        output_file_format)
+        barcode['file_path_forward'] = (base_file_name + '_f.' + 'fastq')
         barcode['write_handle_forward'] = open(barcode['file_path_forward'],
                                                'wa')
 
         if reverse_reads_file_path is not None:
             barcode['result_batch_reverse'] = list()
-            barcode['file_path_reverse'] = (base_file_name + '_r.' +
-                                            output_file_format)
+            barcode['file_path_reverse'] = (base_file_name + '_r.' + 'fastq')
             barcode['write_handle_reverse'] = open(
                 barcode['file_path_reverse'], 'wa')
 
-    write_handle_forward_other = open(output_dir + 'mismatch_f.' +
-                                      output_file_format, 'wa')
+    write_handle_forward_other = open(output_dir + 'mismatch_f.' + 'fastq',
+                                      'wa')
     result_batch_forward_other = list()
     write_handle_reverse_other = None
     result_batch_reverse_other = None
     if reverse_reads_file_path is not None:
-        write_handle_reverse_other = open(output_dir + 'mismatch_r.' +
-                                          output_file_format, 'wa')
+        write_handle_reverse_other = open(output_dir + 'mismatch_r.' + 'fastq',
+                                          'wa')
         result_batch_reverse_other = list()
 
     # Loop over all reads
-    for i, f_record in enumerate(forward_reads):
+    for i, (f_title, f_seq, f_qual) in enumerate(forward_reads):
         # print(i+1, end='\r')
-        f_record = SeqRecord.SeqRecord(
-            f_record.seq,
-            f_record.description.replace(' ', '|'),
-            '',
-            '',
-            f_record.dbxrefs,
-            f_record.features,
-            f_record.annotations,
-            f_record.letter_annotations)
+        # f_record = SeqRecord.SeqRecord(
+        #     f_record.seq,
+        #     f_record.description.replace(' ', '|'),
+        #     '',
+        #     '',
+        #     f_record.dbxrefs,
+        #     f_record.features,
+        #     f_record.annotations,
+        #     f_record.letter_annotations)
 
         # Try all barcodes
         barcode_match_found = False
@@ -383,47 +411,75 @@ def demultiplex(barcodes,
 
             l = barcode['length']
             b = barcode['barcode'].lower()
-            r = str(f_record.seq[0:l]).lower()
+            r = str(f_seq[0:l]).lower()
             ld = Levenshtein.distance(b, r)
 
             # Barcode match found
             if ld <= max_barcode_mismatch_count:
                 barcode_match_found = True
+                f_title = f_title.replace(' ', '|')
+                f_title = '@' + f_title
                 if trim_barcode:
-                    f_record = krseq.trim_residues(f_record, l, False)
+                    # f_record = krseq.trim_residues(f_record, l, False)
+                    f_seq = f_seq[l:]
+                    f_qual = f_qual[l:]
                     if trim_extra > 0:
-                        f_record = krseq.trim_residues(f_record, trim_extra,
-                                                       False)
-                barcode['result_batch_forward'].append(f_record)
+                        # f_record = krseq.trim_residues(f_record, trim_extra,
+                        #                                False)
+                        f_seq = f_seq[trim_extra:]
+                        f_qual = f_qual[trim_extra:]
+                # barcode['result_batch_forward'].append(f_record)
+                f_read = (f_title, f_seq, f_qual)
+                barcode['result_batch_forward'].append(f_read)
 
                 # If there are reverse reads to consider
                 if reverse_reads_file_path is not None:
-                    r_record = reverse_reads.next()
-                    r_record = krseq.reverse_complement(r_record)
-                    r_record = SeqRecord.SeqRecord(
-                        r_record.seq,
-                        r_record.description.replace(' ', '|'),
-                        '',
-                        '',
-                        r_record.dbxrefs,
-                        r_record.features,
-                        r_record.annotations,
-                        r_record.letter_annotations)
+                    r_title, r_seq, r_qual = reverse_reads.next()
+                    # r_record = reverse_reads.next()
+                    # r_record = krseq.reverse_complement(r_record)
+                    # r_record = SeqRecord.SeqRecord(
+                    #     r_record.seq,
+                    #     r_record.description.replace(' ', '|'),
+                    #     '',
+                    #     '',
+                    #     r_record.dbxrefs,
+                    #     r_record.features,
+                    #     r_record.annotations,
+                    #     r_record.letter_annotations)
+
+                    r_seq = Seq(r_seq)
+                    r_seq = str(r_seq.reverse_complement())
+                    r_qual = r_qual[::-1]
+
+                    r_title = r_title.replace(' ', '|')
+                    r_title = '@' + r_title
 
                     if trim_barcode and trim_extra > 0:
-                        r_record = krseq.trim_residues(r_record, trim_extra,
-                                                       True)
+                        # r_record = krseq.trim_residues(r_record, trim_extra,
+                        #                                True)
 
-                    barcode['result_batch_reverse'].append(r_record)
+                        r_seq = r_seq[:-trim_extra]
+                        r_qual = r_qual[:-trim_extra]
+
+                    # barcode['result_batch_reverse'].append(r_record)
+                    r_read = (r_title, r_seq, r_qual)
+                    barcode['result_batch_reverse'].append(r_read)
 
                 # Barcode match found, breakout of the loop
                 break
 
         if not barcode_match_found:
-            result_batch_forward_other.append(f_record)
+            f_title = f_title.replace(' ', '|')
+            f_title = '@' + f_title
+            f_read = (f_title, f_seq, f_qual)
+            result_batch_forward_other.append(f_read)
             if reverse_reads_file_path is not None:
-                r_record = reverse_reads.next()
-                result_batch_reverse_other.append(r_record)
+                # r_record = reverse_reads.next()
+                r_title, r_seq, r_qual = reverse_reads.next()
+                r_title = r_title.replace(' ', '|')
+                r_title = '@' + r_title
+                r_read = (r_title, r_seq, r_qual)
+                result_batch_reverse_other.append(r_read)
 
         if i % write_every == write_every - 1 and i > 0:
             _write_demultiplex_results_(barcodes,
@@ -431,16 +487,14 @@ def demultiplex(barcodes,
                                         result_batch_forward_other,
                                         write_handle_forward_other,
                                         result_batch_reverse_other,
-                                        write_handle_reverse_other,
-                                        output_file_format)
+                                        write_handle_reverse_other)
 
     _write_demultiplex_results_(barcodes,
                                 reverse_reads_file_path,
                                 result_batch_forward_other,
                                 write_handle_forward_other,
                                 result_batch_reverse_other,
-                                write_handle_reverse_other,
-                                output_file_format)
+                                write_handle_reverse_other)
 
     for barcode in barcodes:
         barcode['write_handle_forward'].close()
@@ -459,20 +513,19 @@ def combine_demultiplexed_results(input_dir, output_dir):
     import os
     import shutil
     import krio
-    import krpipe
 
     ps = os.path.sep
     input_dir = input_dir.rstrip(ps) + ps
     output_dir = output_dir.rstrip(ps) + ps
     krio.prepare_directory(output_dir)
-    directory_list = krpipe.parse_directory(
+    directory_list = krio.parse_directory(
         path=input_dir,
         file_name_sep=' ',
         sort='forward'
     )
 
     file_dir_path = directory_list[0]['path'].rstrip(ps) + ps
-    file_list = krpipe.parse_directory(
+    file_list = krio.parse_directory(
         path=file_dir_path,
         file_name_sep='_',
         sort='forward'
