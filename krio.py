@@ -2,6 +2,51 @@ from __future__ import print_function
 #from __future__ import unicode_literals
 
 
+def parse_directory(path, file_name_sep, sort='forward'):
+
+    '''
+    Will parse a directory at a given path and return a list of dictionary
+    objects with keys:
+        name: name of a file without extension
+        ext: file extension
+        full: file name with extension
+        path: full file path, relative to the input path
+        split: file name split using file_name_sep input variable
+    '''
+
+    import os
+
+    ps = os.path.sep
+    path = path.rstrip(ps) + ps
+    file_list = os.listdir(path)
+    file_list.sort(reverse=False)
+    if sort == 'reverse':
+        file_list.sort(reverse=True)
+    return_list = list()
+
+    for f in file_list:
+        # Mac hack
+        if f == '.DS_Store':
+            continue
+        file_name = os.path.splitext(f)[0]
+        file_ext = None
+        if os.path.splitext(f)[1] != '':
+            file_ext = os.path.splitext(f)[1].split('.')[1]
+        isdir = os.path.isdir(path + f)
+        file_name_split = file_name.split(file_name_sep)
+
+        file_dict = dict()
+        file_dict['name'] = file_name
+        file_dict['ext'] = file_ext
+        file_dict['full'] = f
+        file_dict['path'] = path + f
+        file_dict['split'] = file_name_split
+        file_dict['isdir'] = isdir
+        return_list.append(file_dict)
+
+    return return_list
+
+
 def prepare_directory(path):
 
     '''
