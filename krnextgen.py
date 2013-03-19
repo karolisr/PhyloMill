@@ -29,28 +29,64 @@ def read_barcodes(file_path, delimiter, id_header, barcode_header):
     return(barcodes)
 
 
-def mask_low_quality_sites(bio_seq_record, quality_score_treshold,
+def mask_low_quality_sites(seq_str, qual_str, quality_score_treshold,
                            low_quality_residue='N'):
-    from Bio.SeqRecord import SeqRecord
-    r = bio_seq_record
-    quality_scores = r.letter_annotations['phred_quality']
-    sequence = r.seq.tomutable()
-    for index, score in enumerate(quality_scores):
-        if score < quality_score_treshold:
-            sequence[index] = low_quality_residue
-    new_r = SeqRecord(seq=sequence.toseq(), id=r.id, name=r.name,
-                      description=r.description, dbxrefs=r.dbxrefs,
-                      features=r.features, annotations=r.annotations,
-                      letter_annotations=r.letter_annotations)
-    return(new_r)
+
+    # phred_dict = dict((chr(min(126, qp + 33)), qp) for qp in range(0, 93 + 1))
+
+    phred_dict = {
+        '$': 3, '(': 7, ',': 11, '0': 15, '4': 19, '8': 23, '<': 27, '@': 31,
+        'D': 35, 'H': 39, 'L': 43, 'P': 47, 'T': 51, 'X': 55, '\\': 59,
+        '`': 63, 'd': 67, 'h': 71, 'l': 75, 'p': 79, 't': 83, 'x': 87,
+        '|': 91, '#': 2, "'": 6, '+': 10, '/': 14, '3': 18, '7': 22, ';': 26,
+        '?': 30, 'C': 34, 'G': 38, 'K': 42, 'O': 46, 'S': 50, 'W': 54, '[': 58,
+        '_': 62, 'c': 66, 'g': 70, 'k': 74, 'o': 78, 's': 82, 'w': 86, '{': 90,
+        '"': 1, '&': 5, '*': 9, '.': 13, '2': 17, '6': 21, ':': 25, '>': 29,
+        'B': 33, 'F': 37, 'J': 41, 'N': 45, 'R': 49, 'V': 53, 'Z': 57, '^': 61,
+        'b': 65, 'f': 69, 'j': 73, 'n': 77, 'r': 81, 'v': 85, 'z': 89, '~': 93,
+        '!': 0, '%': 4, ')': 8, '-': 12, '1': 16, '5': 20, '9': 24, '=': 28,
+        'A': 32, 'E': 36, 'I': 40, 'M': 44, 'Q': 48, 'U': 52, 'Y': 56, ']': 60,
+        'a': 64, 'e': 68, 'i': 72, 'm': 76, 'q': 80, 'u': 84, 'y': 88, '}': 92}
+
+    quality_scores = [phred_dict[y] for y in qual_str]
+    masked = ''
+    for i, q in enumerate(quality_scores):
+        bp = seq_str[i]
+        if q < quality_score_treshold:
+            bp = low_quality_residue
+        masked = masked + bp
+    return(masked)
 
 
-def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
-    sequence = str(bio_seq_record.seq)
-    low_quality_sites = sequence.count(low_quality_residue)
-    sequence_length = len(bio_seq_record.seq)
+# def mask_low_quality_sites(bio_seq_record, quality_score_treshold,
+#                            low_quality_residue='N'):
+#     from Bio.SeqRecord import SeqRecord
+#     r = bio_seq_record
+#     quality_scores = r.letter_annotations['phred_quality']
+#     sequence = r.seq.tomutable()
+#     for index, score in enumerate(quality_scores):
+#         if score < quality_score_treshold:
+#             sequence[index] = low_quality_residue
+#     new_r = SeqRecord(seq=sequence.toseq(), id=r.id, name=r.name,
+#                       description=r.description, dbxrefs=r.dbxrefs,
+#                       features=r.features, annotations=r.annotations,
+#                       letter_annotations=r.letter_annotations)
+#     return(new_r)
+
+
+def proportion_low_quality_sites(seq_str, low_quality_residue='N'):
+    low_quality_sites = seq_str.count(low_quality_residue)
+    sequence_length = len(seq_str)
     prop_lq_sites = float(low_quality_sites) / float(sequence_length)
     return(prop_lq_sites)
+
+
+# def proportion_low_quality_sites(bio_seq_record, low_quality_residue='N'):
+#     sequence = str(bio_seq_record.seq)
+#     low_quality_sites = sequence.count(low_quality_residue)
+#     sequence_length = len(bio_seq_record.seq)
+#     prop_lq_sites = float(low_quality_sites) / float(sequence_length)
+#     return(prop_lq_sites)
 
 
 def compare_sequences(s1, s2, ignore='N'):
@@ -229,34 +265,36 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
     return(ret_value)
 
 
-def bin_reads(f_record, r_record=None, max_prop_low_quality_sites=0.10,
-              min_overlap=5, mmmr_cutoff=0.85, low_quality_residue='N'):
+def bin_reads(title, f_seq_str, r_seq_str=None,
+              max_prop_low_quality_sites=0.10, min_overlap=5, mmmr_cutoff=0.85,
+              low_quality_residue='N'):
 
-    from Bio import Seq
-    from Bio import SeqRecord
+    # from Bio import Seq
+    # from Bio import SeqRecord
 
     f_hq = False
     r_hq = False
 
     f_lq_sites = proportion_low_quality_sites(
-        bio_seq_record=f_record,
+        seq_str=f_seq_str,
         low_quality_residue=low_quality_residue)
     if f_lq_sites <= max_prop_low_quality_sites:
         f_hq = True
 
-    if r_record:
+    if r_seq_str:
         r_lq_sites = proportion_low_quality_sites(
-            bio_seq_record=r_record,
+            seq_str=r_seq_str,
             low_quality_residue=low_quality_residue)
         if r_lq_sites <= max_prop_low_quality_sites:
             r_hq = True
 
     cons_message = ''
     consensus = None
+    cons_title = None
     if f_hq and r_hq:
         consensus = consensus_fr_read(
-            r1=str(f_record.seq),
-            r2=str(r_record.seq),
+            r1=f_seq_str,
+            r2=r_seq_str,
             min_overlap=min_overlap,
             mmmr_cutoff=mmmr_cutoff,
             ignore=low_quality_residue)
@@ -270,12 +308,12 @@ def bin_reads(f_record, r_record=None, max_prop_low_quality_sites=0.10,
         if cons_message == 3:
             consensus = None
         else:
-            cons_seq = Seq.Seq(consensus[3])
-            cons_id = f_record.id.split('|')[0] + '|C0NS:' + str(cons_message)
-            consensus = SeqRecord.SeqRecord(
-                seq=cons_seq, id=cons_id, name='', description='')
+            consensus = consensus[3]
+            cons_title = title.split('|')[0] + '|C0NS:' + str(cons_message)
+            # consensus = SeqRecord.SeqRecord(
+            #     seq=cons_seq, id=cons_id, name='', description='')
 
-    ret_value = [f_hq, r_hq, consensus, cons_message]
+    ret_value = [f_hq, r_hq, consensus, cons_title, cons_message]
 
     return(ret_value)
 
@@ -568,9 +606,7 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
     #                                           ret_type='dict')
 
     records_dict = SeqIO.index(fasta_file_path, 'fasta')
-
     cluster_dict = krusearch.parse_uc_file(uc_file_path)
-
     handle_aln = open(aln_output_file_path, 'w')
     handle_counts = open(counts_output_file_path, 'w')
 
@@ -600,7 +636,9 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                     else:
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
-                # aln = kralign.align(records, 'mafft', options='--retree 1')
+                # aln = kralign.align(
+                #     records, 'mafft',
+                #     options='--retree 1 --thread '+str(threads))
                 aln = kralign.align(records, 'muscle', options='')
                 for l in range(0, aln.get_alignment_length()):
                     column = aln[:, l]
@@ -704,8 +742,10 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0):
         c_g = int(r['G'])
         c_t = int(r['T'])
 
-        if (c_a+c_c+c_g+c_t >= min_total_per_site and
-           (c_a+c_c+c_g+c_t <= max_total_per_site or max_total_per_site == 0)):
+        t = c_a + c_c + c_g + c_t
+
+        if (t >= min_total_per_site and
+           (t <= max_total_per_site or max_total_per_site == 0)):
             ret_value.append([c_a, c_c, c_g, c_t])
 
     return(ret_value)
