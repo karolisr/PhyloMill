@@ -674,8 +674,8 @@ if __name__ == '__main__':
                     threads=cpu)
 
                 handle = open((analyzed_samples_output_dir +
-                               f['split'][0] + '_' +
-                               # f['split'][1] +
+                               f['split'][0] +
+                               #  '_' + f['split'][1] +
                                '.clusters'), 'wb')
                 for c in cluster_depths:
                     handle.write(str(c) + '\n')
@@ -684,8 +684,8 @@ if __name__ == '__main__':
                 ns = krnextgen.nt_site_counts(counts_output_file_path, 1, 0)
                 coverage_list = [sum(x) for x in ns]
                 handle = open((analyzed_samples_output_dir +
-                               f['split'][0] + '_' +
-                               # f['split'][1] +
+                               f['split'][0] +
+                               #  '_' + f['split'][1] +
                                '.coverage'), 'wb')
                 for c in coverage_list:
                     handle.write(str(c) + '\n')
