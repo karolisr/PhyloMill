@@ -584,7 +584,7 @@ if __name__ == '__main__':
                     print(f['full'])
                     ifp_split = os.path.splitext(f['path'])
                     subprocess.call(
-                        ('usearch6' + ' -quiet' +
+                        (config.get('Cluster', 'usearch6_executable') + ' -quiet' +
                             ' -sortbylength ' + f['path'] +
                             ' -output ' + ifp_split[0] + '_sorted' +
                             ifp_split[1]), shell=True)

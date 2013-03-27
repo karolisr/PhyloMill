@@ -13,7 +13,7 @@ if __name__ == '__main__':
     import os
     import sys
     import argparse
-    import krpipe
+    import krseqsearch
     import krio
     import krbioio
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         if not steps or 1 in steps:
 
             # Search and download
-            krpipe.search_and_download(
+            krseqsearch.search_and_download(
                 queries=queries,
                 output_dir=search_results_dir,
                 file_name_sep=file_name_sep,
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         if not steps or 2 in steps:
 
             # Filter records
-            krpipe.filter_records(
+            krseqsearch.filter_records(
                 search_results_dir=search_results_dir,
                 output_dir=filtered_results_dir,
                 cutlist_records_file=cutlist_records_file,
@@ -125,7 +125,7 @@ if __name__ == '__main__':
                 sequence_samples_file, 'fasta', ret_type='dict')
 
             # Extract loci
-            krpipe.extract_loci(
+            krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
                 output_dir=extract_loci_dir,
                 queries=queries,
@@ -141,7 +141,7 @@ if __name__ == '__main__':
         if not steps or 4 in steps:
 
             # One locus per organism
-            krpipe.one_locus_per_organism(
+            krseqsearch.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
                 output_dir=one_locus_per_organism_dir,
                 queries=queries,
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         if not steps or 5 in steps:
 
             # Align loci and produce a concatenated alignment
-            krpipe.align_loci(
+            krseqsearch.align_loci(
                 processed_results_dir=one_locus_per_organism_dir,
                 output_dir=aligned_dir,
                 program=config_dict['alnprg'],

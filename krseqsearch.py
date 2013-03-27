@@ -31,7 +31,11 @@ def sol_species_from_voucher(voucher):
     voucher = str(voucher)
 
     # More hacking, based on experience ---------------------------------------
-    voucher = re.findall('LA\d+', voucher)[0]
+    # print(voucher)
+    voucher = re.findall('LA\d+', voucher)
+    if len(voucher) == 0:
+        return(None)
+    voucher = voucher[0]
     v_split_2 = re.findall('(\d+|[a-zA-Z]+)', voucher)
     if len(v_split_2) > 1:
         voucher = v_split_2[0] + "%04d" % (int(v_split_2[1]),)
@@ -152,7 +156,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
         if query.lower().startswith('donotdownload'):
             all_records = dict()
-            file_list = parse_directory(output_dir, file_name_sep)
+            file_list = krio.parse_directory(output_dir, file_name_sep)
             for f in file_list:
                 if not f['ext'].startswith('gb'):
                     continue
@@ -243,7 +247,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
             quotechar='"',
             rettype='set')
 
-    file_list = parse_directory(search_results_dir, ' ')
+    file_list = krio.parse_directory(search_results_dir, ' ')
 
     # Iterate over search results
     for f in file_list:
@@ -377,7 +381,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
     print('\tPreparing temporary directory "', temp_dir, '"', sep='')
     krio.prepare_directory(temp_dir)
 
-    file_list = parse_directory(search_results_dir, file_name_sep)
+    file_list = krio.parse_directory(search_results_dir, file_name_sep)
 
     # Iterate over search results
     for f in file_list:
@@ -758,7 +762,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
         krcl.show_cursor()
 
     all_logs = set()
-    file_list = parse_directory(output_dir, file_name_sep)
+    file_list = krio.parse_directory(output_dir, file_name_sep)
     for f in file_list:
         if not f['ext'].startswith('log'):
             continue
@@ -810,7 +814,7 @@ def one_locus_per_organism(
 
     name_dict = dict()
 
-    file_list = parse_directory(extracted_results_dir, file_name_sep)
+    file_list = krio.parse_directory(extracted_results_dir, file_name_sep)
 
     #
     # Iterate over each file that corresponds to a single query line
@@ -1151,7 +1155,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
     print('\tPreparing temporary directory "', temp_dir, '"', sep='')
     krio.prepare_directory(temp_dir)
 
-    file_list = parse_directory(processed_results_dir, ' ')
+    file_list = krio.parse_directory(processed_results_dir, ' ')
 
     alignments = [x.strip() for x in order.split(',')]
 
