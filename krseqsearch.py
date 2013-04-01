@@ -837,7 +837,7 @@ def one_locus_per_organism(
         if not f['ext'].startswith('fasta'):
             continue
 
-        # Not sur if this will be used
+        # Not sure if this will be used
         #if f['split'][-1].startswith('excluded'):
         #    continue
 
@@ -904,7 +904,8 @@ def one_locus_per_organism(
             tax_records_dict_name2 = dict()
 
             for record in records:
-                taxid = record.description.split('|')[4]
+                # taxid is acc_name_flat
+                taxid = record.description.split('|')[3]
                 if not taxid in tax_records_dict_name2:
                     tax_records_dict_name2[taxid] = list()
                 tax_records_dict_name2[taxid].append(record)
@@ -917,6 +918,9 @@ def one_locus_per_organism(
             for i, taxid in enumerate(tax_records_dict_name2.keys()):
 
                 krcl.print_progress(i + 1, records_count, 50, '\t\t')
+
+                ### Make sure to remove id field from the log file or put
+                ### multiple ids as each species can have multiple ids now
 
                 tax_records_name2 = tax_records_dict_name2[taxid]
 
@@ -1112,10 +1116,11 @@ def one_locus_per_organism(
             if acc_in_result[0] == 'consensus':
                 acc_in_result.remove('consensus')
             acc_in_result = ' '.join(acc_in_result)
-            log_handle.write(desc[-2] + '\t' + desc[-1] + '\t' +
+            log_handle.write(desc[-2] + '\t' +
+                             # desc[-1] + '\t' +
                              acc_in_result + '\n')
 
-            desc = desc[-2] + '|' + desc[-1]
+            desc = desc[-2]  # + '|' + desc[-1]
             result.id = desc
             result.name = ''
             result.description = ''
