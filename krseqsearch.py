@@ -416,6 +416,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
             if name1 == query_dict['name1'] and name2 == query_dict['name2']:
                 #name1 = query_dict['name1']
                 #name2 = query_dict['name2']
+                force_rev_comp = query_dict['force_rev_comp']
                 locus = query_dict['locus']
                 minlen = int(query_dict['minlen'])
                 feature_type = query_dict['ncbi_feature_type']
@@ -489,7 +490,7 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
             # Extract relevant region
             seq = record.seq[start:end]
             # If the feature is in reverse orientation, reverse-complement.
-            if strand == -1:
+            if strand == -1 or force_rev_comp == 'yes':
                 seq = seq.reverse_complement()
 
             # Deal with the organism name
@@ -740,6 +741,9 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                         'Match TGRC' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\n')
                 else:
+                    ###
+                    # print(record.id, acc_name_flat)
+                    ###
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
                         record.id + '\t' +
