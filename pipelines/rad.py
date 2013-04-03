@@ -442,6 +442,21 @@ if __name__ == '__main__':
 
                     handle_lengths.write(reads_string)
 
+                    # Forward read oligo components
+                    # These can be found in overreaching reverse reads
+                    # barcode_adapter-barcode-f_sticky
+                    barcode_adapter = config.get('Bin', 'barcode_adapter')
+                    barcode = f['split'][1]
+                    f_sticky = config.get('Bin', 'f_sticky')
+                    f_oligo = barcode_adapter + barcode.upper() + f_sticky
+
+                    # Reverse read oligo components
+                    # These can be found in overreaching forward reads
+                    # r_sticky-common_adapter
+                    common_adapter = config.get('Bin', 'common_adapter')
+                    r_sticky = config.get('Bin', 'r_sticky')
+                    r_oligo = r_sticky + common_adapter
+
                     for f_title, f_seq, f_qual in f_reads:
                         r_title = None
                         r_seq = None
@@ -469,9 +484,13 @@ if __name__ == '__main__':
                         consensus_message = binned[4]
 
                         ### COMMON FIND IN F READS
-                        ### TGCAA GATCGGAAGAGCGGTTCAGCAGGAATGCCGAG
+                        ### CTGCAA GATCGGAAGAGCGGTTCAGCAGGAATGCCGAG
                         ### FIND IN REVERSE READS
                         ### ACACTCTTTCCCTACACGACGCTCTTCCGATCT barcode TGCAG
+
+                        # Low quality may mean:
+                        #   Too many N residues
+                        #   Sequences are too short
 
                         if (consensus and len(consensus) <
                                 config.getint('Bin', 'min_read_length')):
@@ -479,6 +498,31 @@ if __name__ == '__main__':
                             r_hq = False
                             consensus = False
                             consensus_message = ''
+
+                        # Look for sequencing oligos within reads
+
+                        # (match, total, ratio, (a, b), (c, d))
+
+                        # [a:b] - is the alignment range on the first sequence
+                        # [c:d] - is the alignment range on the second sequence
+
+                        aln = krnextgen.align_reads(
+                            r_oligo, f_seq, mmmr_cutoff=0.85, ignore='N')
+                        if aln[1] >= 5:
+                            print('F READ', aln)
+                            print(aln[4][0] * ' ' + r_oligo)
+                            print(aln[3][0] * ' ' + f_seq)
+
+                        aln = krnextgen.align_reads(
+                            f_oligo, r_seq, mmmr_cutoff=0.85, ignore='N')
+                        if aln[1] >= 5:
+                            print('R READ', aln)
+                            print(aln[4][0] * ' ' + f_oligo)
+                            print(aln[3][0] * ' ' + r_seq)
+
+                        print(consensus)
+
+                        print('----------------------------------------------')
 
                         str_fhq = ''
                         str_rhq = ''

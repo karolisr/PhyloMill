@@ -1,6 +1,11 @@
 # krpy
 
-krpy is a collection of Python scripts, classes and functions written by Karolis Ramanauskas.
+krpy is a collection of Python tools for:
+
+1. Analyzing next generation (geared for RAD) sequencing data.
+2. Retrieving sequence data from NCBI and preparing this data for phylogenetic analyses.
+
+<!---
 
 ## Files
 
@@ -41,6 +46,8 @@ Dealing with various biological sequence annotations.
 ### krusearch.py
 
 Working with [USEARCH](http://drive5.com/usearch)
+
+-->
 
 ## Dependencies
 

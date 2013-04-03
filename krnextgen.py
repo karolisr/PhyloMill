@@ -118,7 +118,7 @@ def compare_sequences(s1, s2, ignore='N'):
     return(mask)
 
 
-def align_fr_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
+def align_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
 
     '''
         Aligns forward and reverse reads. Returns position of the best
@@ -200,8 +200,8 @@ def align_fr_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
 
 def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
 
-    best_alignment = align_fr_reads(r1, r2, mmmr_cutoff=mmmr_cutoff,
-                                    ignore=ignore)
+    best_alignment = align_reads(r1, r2, mmmr_cutoff=mmmr_cutoff,
+                                 ignore=ignore)
 
     # best_alignment = (match, total, ratio, (a, b), (c, d))
 
