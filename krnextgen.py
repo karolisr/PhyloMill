@@ -260,14 +260,15 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
         cons = r1 + r2
         message = 0
 
-    ret_value = [o, r, message, cons]
+    ret_value = [o, r, message, cons, best_alignment]
 
     return(ret_value)
 
 
 def bin_reads(title, f_seq_str, r_seq_str=None,
               max_prop_low_quality_sites=0.10, min_overlap=5, mmmr_cutoff=0.85,
-              low_quality_residue='N'):
+              low_quality_residue='N', f_oligo=None, r_oligo=None,
+              min_read_length=10):
 
     # from Bio import Seq
     # from Bio import SeqRecord
@@ -275,22 +276,79 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
     f_hq = False
     r_hq = False
 
-    f_lq_sites = proportion_low_quality_sites(
-        seq_str=f_seq_str,
-        low_quality_residue=low_quality_residue)
-    if f_lq_sites <= max_prop_low_quality_sites:
-        f_hq = True
+    # Look for sequencing oligonucleotides within the reads
 
-    if r_seq_str:
-        r_lq_sites = proportion_low_quality_sites(
-            seq_str=r_seq_str,
+    #   (match, total, ratio, (a, b), (c, d))
+    #
+    #   [a:b] - is the alignment range on the first sequence
+    #   [c:d] - is the alignment range on the second sequence
+
+    mmmr_cutoff_seq_oligo = 0.8
+
+    # Forward
+    if r_oligo and f_seq_str:
+        f_seq_oligo = align_reads(
+            r_oligo, f_seq_str, mmmr_cutoff=mmmr_cutoff_seq_oligo,
+            ignore=low_quality_residue)
+
+        if ((f_seq_oligo[1] >= 10) or
+           (f_seq_oligo[4][1] == len(f_seq_str)) and f_seq_oligo[1] >= 1):
+
+            # print('F READ', f_seq_oligo)
+            # print(f_seq_oligo[4][0] * ' ' + r_oligo)
+            # print(f_seq_oligo[3][0] * ' ' + f_seq_str)
+
+            f_seq_str = f_seq_str[0:f_seq_oligo[4][0]]
+
+            # print(f_seq_oligo[3][0] * ' ' + f_seq_str)
+
+        # print('F READ', f_seq_str)
+
+    # Reverse
+    if f_oligo and r_seq_str:
+        r_seq_oligo = align_reads(
+            f_oligo, r_seq_str, mmmr_cutoff=mmmr_cutoff_seq_oligo,
+            ignore=low_quality_residue)
+
+        if ((r_seq_oligo[1] >= 10) or
+           (r_seq_oligo[4][0] == 0) and r_seq_oligo[1] >= 1):
+
+            # print('R READ', r_seq_oligo)
+            # print(r_seq_oligo[4][0] * ' ' + f_oligo)
+            # print(r_seq_oligo[3][0] * ' ' + r_seq_str)
+
+            r_seq_str = r_seq_str[r_seq_oligo[4][1]:len(r_seq_str)]
+
+            # print((r_seq_oligo[3][0] + r_seq_oligo[4][1]) * ' ' + r_seq_str)
+
+        # print('R READ', r_seq_str)
+
+    # Determine the proportion of low quality sites
+    # Check the length of the read
+    if len(f_seq_str) < min_read_length:
+        f_hq = False
+    else:
+        f_lq_sites = proportion_low_quality_sites(
+            seq_str=f_seq_str,
             low_quality_residue=low_quality_residue)
-        if r_lq_sites <= max_prop_low_quality_sites:
-            r_hq = True
+        if f_lq_sites <= max_prop_low_quality_sites:
+            f_hq = True
+    if r_seq_str:
+        # Check the length of the read
+        if len(r_seq_str) < min_read_length:
+            r_hq = False
+        else:
+            r_lq_sites = proportion_low_quality_sites(
+                seq_str=r_seq_str,
+                low_quality_residue=low_quality_residue)
+            if r_lq_sites <= max_prop_low_quality_sites:
+                r_hq = True
 
+    # Produce F/R read consensus
     cons_message = ''
     consensus = None
     cons_title = None
+    cons_alignment = None
     if f_hq and r_hq:
         consensus = consensus_fr_read(
             r1=f_seq_str,
@@ -307,13 +365,17 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
         # will be judged based on the whole cluster.
         if cons_message == 3:
             consensus = None
+        elif len(consensus[3]) < min_read_length:
+            consensus = None
         else:
+            cons_alignment = consensus[4]
             consensus = consensus[3]
             cons_title = title.split('|')[0] + '|C0NS:' + str(cons_message)
             # consensus = SeqRecord.SeqRecord(
             #     seq=cons_seq, id=cons_id, name='', description='')
 
-    ret_value = [f_hq, r_hq, consensus, cons_title, cons_message]
+    ret_value = [f_hq, r_hq, f_seq_str, r_seq_str, consensus, cons_title,
+                 cons_message, cons_alignment]
 
     return(ret_value)
 

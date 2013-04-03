@@ -457,6 +457,14 @@ if __name__ == '__main__':
                     r_sticky = config.get('Bin', 'r_sticky')
                     r_oligo = r_sticky + common_adapter
 
+                    max_prop_low_quality_sites = config.getfloat(
+                        'Bin', 'max_prop_low_quality_sites')
+                    min_overlap = config.getint('Bin', 'min_overlap')
+                    mmmr_cutoff = config.getfloat('Bin', 'mmmr_cutoff')
+                    low_quality_residue = config.get(
+                        'General', 'low_quality_residue')
+                    min_read_length = config.getint('Bin', 'min_read_length')
+
                     for f_title, f_seq, f_qual in f_reads:
                         r_title = None
                         r_seq = None
@@ -468,61 +476,35 @@ if __name__ == '__main__':
                             title=f_title,
                             f_seq_str=f_seq,
                             r_seq_str=r_seq,
-                            max_prop_low_quality_sites=
-                            config.getfloat('Bin',
-                                            'max_prop_low_quality_sites'),
-                            min_overlap=config.getint('Bin', 'min_overlap'),
-                            mmmr_cutoff=config.getfloat('Bin', 'mmmr_cutoff'),
-                            low_quality_residue=
-                            config.get('General', 'low_quality_residue')
+                            max_prop_low_quality_sites=max_prop_low_quality_sites,
+                            min_overlap=min_overlap,
+                            mmmr_cutoff=mmmr_cutoff,
+                            low_quality_residue=low_quality_residue,
+                            f_oligo=f_oligo,
+                            r_oligo=r_oligo,
+                            min_read_length=min_read_length
                         )
 
                         f_hq = binned[0]
                         r_hq = binned[1]
-                        consensus = binned[2]
-                        consensus_title = binned[3]
-                        consensus_message = binned[4]
+                        f_seq = binned[2]
+                        r_seq = binned[3]
+                        consensus = binned[4]
+                        consensus_title = binned[5]
+                        consensus_message = binned[6]
+                        # cons_alignment = binned[7]
 
-                        ### COMMON FIND IN F READS
-                        ### CTGCAA GATCGGAAGAGCGGTTCAGCAGGAATGCCGAG
-                        ### FIND IN REVERSE READS
-                        ### ACACTCTTTCCCTACACGACGCTCTTCCGATCT barcode TGCAG
+                        # print(f_hq, f_seq)
+                        # print(r_hq, r_seq)
 
-                        # Low quality may mean:
-                        #   Too many N residues
-                        #   Sequences are too short
+                        # if cons_alignment and cons_alignment[0] > 0:
+                        #     print()
+                        #     print(cons_alignment[4][0] * ' ' + f_seq)
+                        #     print(cons_alignment[3][0] * ' ' + r_seq)
 
-                        if (consensus and len(consensus) <
-                                config.getint('Bin', 'min_read_length')):
-                            f_hq = False
-                            r_hq = False
-                            consensus = False
-                            consensus_message = ''
-
-                        # Look for sequencing oligos within reads
-
-                        # (match, total, ratio, (a, b), (c, d))
-
-                        # [a:b] - is the alignment range on the first sequence
-                        # [c:d] - is the alignment range on the second sequence
-
-                        aln = krnextgen.align_reads(
-                            r_oligo, f_seq, mmmr_cutoff=0.85, ignore='N')
-                        if aln[1] >= 5:
-                            print('F READ', aln)
-                            print(aln[4][0] * ' ' + r_oligo)
-                            print(aln[3][0] * ' ' + f_seq)
-
-                        aln = krnextgen.align_reads(
-                            f_oligo, r_seq, mmmr_cutoff=0.85, ignore='N')
-                        if aln[1] >= 5:
-                            print('R READ', aln)
-                            print(aln[4][0] * ' ' + f_oligo)
-                            print(aln[3][0] * ' ' + r_seq)
-
-                        print(consensus)
-
-                        print('----------------------------------------------')
+                        # print(consensus)
+                        # print(consensus_message)
+                        # print('----------------------------------------------')
 
                         str_fhq = ''
                         str_rhq = ''
