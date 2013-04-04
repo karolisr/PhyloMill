@@ -152,13 +152,16 @@ if __name__ == '__main__':
                 threads=int(config_dict['threads']))
 
         if not steps or 5 in steps:
-
+            alnprg = config_dict['alnprg']
+            options = ''
+            if alnprg == 'mafft':
+                options = '--thread ' + config_dict['threads']
             # Align loci and produce a concatenated alignment
             krseqsearch.align_loci(
                 processed_results_dir=one_locus_per_organism_dir,
                 output_dir=aligned_dir,
-                program=config_dict['alnprg'],
-                threads=int(config_dict['threads']),
+                program=alnprg,
+                options=options,
                 spacing=int(config_dict['alngaps']),
                 temp_dir=temp_dir,
                 order=config_dict['algnorder'])

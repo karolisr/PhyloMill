@@ -1139,8 +1139,8 @@ def one_locus_per_organism(
     os.removedirs(temp_dir)
 
 
-def align_loci(processed_results_dir, output_dir, program, threads, spacing,
-               temp_dir, order):
+def align_loci(processed_results_dir, output_dir, program, options,
+               spacing, temp_dir, order):
 
     '''
     Align individual loci, then concatenate alignments.
@@ -1154,6 +1154,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
     import krio
     import krbioio
     import kralign
+    import copy
 
     ps = os.path.sep
 
@@ -1166,6 +1167,7 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
     file_list = krio.parse_directory(processed_results_dir, ' ')
 
+    order_list = [x.strip() for x in order.split(',')]
     alignments = [x.strip() for x in order.split(',')]
 
     for f in file_list:
@@ -1179,12 +1181,12 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
         # Align each locus individually first.
         print('\n\tAligning', file_name)
-        aln = kralign.align(records, program)
+        aln = kralign.align(records, program, options=options)
         if aln:
             krbioio.write_alignment_file(aln, output_file, 'fasta')
             #alignments.append(aln)
             i = alignments.index(file_name)
-            alignments[i] = aln
+            alignments[i] = (aln, file_name)
 
     for aln in alignments:
         if isinstance(aln, basestring):
@@ -1192,7 +1194,33 @@ def align_loci(processed_results_dir, output_dir, program, threads, spacing,
 
     print('\n\tProducing concatenated alignment.')
     if alignments:
-        concatenated = kralign.concatenate(alignments, int(spacing))
+
+        # Produce presence matrix
+        presence_list = list()
+        for p in range(0, len(order_list)):
+            presence_list.append('0')
+        matrix = dict()
+        for a in alignments:
+            for s in a[0]:
+                if not s.id in matrix:
+                    matrix[s.id] = copy.copy(presence_list)
+        for a in alignments:
+            for s in a[0]:
+                idx = order_list.index(a[1])
+                matrix[s.id][idx] = '1'
+        matrix_output_file = output_dir + ps + 'presence' + '.csv'
+        f = open(matrix_output_file, 'wb')
+        f.write('taxon' + ',' + 'count' + ',' + ','.join(order_list) + '\n')
+        for key in matrix.keys():
+            f.write(key + ',' + str(matrix[key].count('1')) + ',' +
+                    ','.join(matrix[key]) + '\n')
+        f.close()
+
+        # Concatenate
+        raw_alignments = list()
+        for a in alignments:
+            raw_alignments.append(a[0])
+        concatenated = kralign.concatenate(raw_alignments, int(spacing))
         concatenated_output_file = output_dir + ps + 'concatenated' + '.fasta'
         krbioio.write_alignment_file(concatenated, concatenated_output_file,
                                      'fasta')
