@@ -49,23 +49,36 @@ def esearch(esearch_terms, db, email):
         A set of UID's.
     '''
 
+    import time
     from Bio import Entrez
     Entrez.email = email
     if isinstance(esearch_terms, basestring):
         esearch_terms = [esearch_terms]
     retmax = None
     uid_set = []
-    for term in esearch_terms:
-        handle = Entrez.egquery(term=term)
-        record = Entrez.read(handle)
-        for row in record['eGQueryResult']:
-            if row['DbName'] == db:
-                retmax = int(row['Count'])
+    i = 0
+    while True:
+        try:
+            for term in esearch_terms:
+                handle = Entrez.egquery(term=term)
+                record = Entrez.read(handle)
+                for row in record['eGQueryResult']:
+                    if row['DbName'] == db:
+                        retmax = int(row['Count'])
+                        break
+                handle = Entrez.esearch(db=db, term=term, retmax=retmax)
+                record = Entrez.read(handle)
+                uid_set = uid_set + record['IdList']
+            uid_set = set(uid_set)
+        except:
+            print('    HTTP problem, retrying...')
+            i = i + 1
+            if i == 10:
                 break
-        handle = Entrez.esearch(db=db, term=term, retmax=retmax)
-        record = Entrez.read(handle)
-        uid_set = uid_set + record['IdList']
-    uid_set = set(uid_set)
+            time.sleep(2 * i)
+            continue
+        break
+
     return uid_set
 
 
@@ -74,6 +87,8 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     '''
     Will download sequence records for uids and database (db) given from NCBI.
     '''
+
+    import time
 
     from Bio import Entrez
     from Bio import SeqIO
@@ -95,44 +110,49 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     retmode = 'text'
 
     for uid_start in range(0, uid_count, large_batch_size):
-        retry = True
-        while retry:
-            uid_end = min(uid_count, uid_start + large_batch_size)
-            print('Downloading records %i to %i of %i.'
-                  % (uid_start + 1, uid_end, uid_count))
-            small_batch = uids[uid_start:uid_end]
-            small_batch_count = len(small_batch)
-            epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
-            webenv = epost['WebEnv']
-            query_key = epost['QueryKey']
+        while True:
+            try:
+                uid_end = min(uid_count, uid_start + large_batch_size)
+                print('Downloading records %i to %i of %i.'
+                      % (uid_start + 1, uid_end, uid_count))
+                small_batch = uids[uid_start:uid_end]
+                small_batch_count = len(small_batch)
+                epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
+                webenv = epost['WebEnv']
+                query_key = epost['QueryKey']
 
-            temp_records = []
+                temp_records = []
 
-            for start in range(0, small_batch_count, small_batch_size):
-                end = min(small_batch_count, start + small_batch_size)
-                print ('  Going to download record %i to %i of %i.'
-                       % (start + 1, end, small_batch_count))
+                for start in range(0, small_batch_count, small_batch_size):
+                    end = min(small_batch_count, start + small_batch_size)
+                    print ('  Going to download record %i to %i of %i.'
+                           % (start + 1, end, small_batch_count))
 
-                fetch_handle = Entrez.efetch(db=db, rettype=rettype,
-                                             retmode=retmode, retstart=start,
-                                             retmax=small_batch_size,
-                                             webenv=webenv,
-                                             query_key=query_key)
+                    fetch_handle = Entrez.efetch(
+                        db=db, rettype=rettype, retmode=retmode,
+                        retstart=start, retmax=small_batch_size,
+                        webenv=webenv, query_key=query_key)
 
-                batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
-                temp_records = temp_records + batch_data
+                    batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
+                    temp_records = temp_records + batch_data
 
-            n_rec_to_download = uid_end - uid_start
-            rec_downloaded = len(temp_records)
-            print('    Downloaded', rec_downloaded, 'of',
-                  n_rec_to_download, 'records.')
+                n_rec_to_download = uid_end - uid_start
+                rec_downloaded = len(temp_records)
+            except:
+                print('    HTTP problem, retrying...')
+                time.sleep(5)
+                continue
+
             if rec_downloaded == n_rec_to_download:
-                retry = False
+                print('    Downloaded', rec_downloaded, 'of',
+                      n_rec_to_download, 'records.')
                 SeqIO.write(temp_records, out_handle, 'gb')
                 fetch_handle.close()
+                break
             else:
                 fetch_handle.close()
-                print('    Retrying...')
+                print('    Download corrupted, retrying...')
+                continue
 
     out_handle.close()
 

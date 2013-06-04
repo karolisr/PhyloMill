@@ -698,10 +698,10 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                     else:
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
-                # aln = kralign.align(
-                #     records, 'mafft',
-                #     options='--retree 1 --thread '+str(threads))
-                aln = kralign.align(records, 'muscle', options='')
+                aln = kralign.align(
+                    records, 'mafft',
+                    options='--retree 1 --thread '+str(threads))
+                # aln = kralign.align(records, 'muscle', options='')
                 for l in range(0, aln.get_alignment_length()):
                     column = aln[:, l]
                     column = column.upper()
@@ -926,6 +926,9 @@ def neg_ll_homo_hetero(ns, p, e, pi):
             pi - nucleotide diversity
     '''
 
+    if (e > 1.0 or e < 0) or (pi > 1.0 or pi < 0):
+        return(float("inf"))
+
     import numpy
     ll = 0
     # Keep track of [A, C, G, T] configurations to not repeat unnecessary
@@ -986,15 +989,33 @@ def mle_e_and_pi(ns, p, e0, pi0):
         neg_ll_homo_hetero(ns_l, p_l, estimated[0], estimated[1])
     )
 
-    ml_est = optimize.fmin_l_bfgs_b(
+    ml_est = optimize.fmin(
         nll,
         x0=(e0, pi0),
         args=(ns, p),
-        bounds=((1E-10, 0.99999), (1E-10, 0.99999)),
-        approx_grad=True
+        # xtol=0.0001,
+        # ftol=0.0001,
+        # maxiter=None,
+        # maxfun=None,
+        full_output=1,
+        disp=0
+        # retall=0,
+        # callback=None
     )
 
-    return([ml_est[0][0], ml_est[0][1], ml_est[1]])
+    # ml_est = optimize.fmin_l_bfgs_b(
+    #     nll,
+    #     x0=(e0, pi0),
+    #     args=(ns, p),
+    #     bounds=((1E-10, 0.99999), (1E-10, 0.99999)),
+    #     approx_grad=True
+    # )
+
+    ret_value = [ml_est[0][0], ml_est[0][1], ml_est[1]]
+
+    # print(ret_value)
+
+    return(ret_value)
 
 
 if __name__ == '__main__':

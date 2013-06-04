@@ -24,7 +24,7 @@ def sol_species_from_voucher(voucher):
     import re
 
     # Let's not overwhelm the server.
-    time.sleep(2)
+    time.sleep(1)
 
     url = 'http://tgrc.ucdavis.edu/Data/Acc/AccDetail.aspx?AccessionNum='
 
@@ -44,14 +44,17 @@ def sol_species_from_voucher(voucher):
 
     response = None
 
-    for i in range(0, 10):
-        while True:
-            try:
-                response = urllib2.urlopen(url + voucher)
-            except:
-                time.sleep(2 * (i + 1))
-                continue
-            break
+    i = 0
+    while True:
+        try:
+            response = urllib2.urlopen(url + voucher)
+        except:
+            i = i + 1
+            if i == 10:
+                break
+            time.sleep(2 * i)
+            continue
+        break
 
     html = ''
     if response:
@@ -1195,12 +1198,14 @@ def align_loci(processed_results_dir, output_dir, program, options,
     print('\n\tProducing concatenated alignment.')
     if alignments:
 
-        # Produce presence matrix
+        # Produce presence/absence matrix
         presence_list = list()
+        length_list = list()
         for p in range(0, len(order_list)):
             presence_list.append('0')
         matrix = dict()
         for a in alignments:
+            length_list.append(str(a[0].get_alignment_length()))
             for s in a[0]:
                 if not s.id in matrix:
                     matrix[s.id] = copy.copy(presence_list)
@@ -1211,6 +1216,7 @@ def align_loci(processed_results_dir, output_dir, program, options,
         matrix_output_file = output_dir + ps + 'presence' + '.csv'
         f = open(matrix_output_file, 'wb')
         f.write('taxon' + ',' + 'count' + ',' + ','.join(order_list) + '\n')
+        f.write('' + ',' + '' + ',' + ','.join(length_list) + '\n')
         for key in matrix.keys():
             f.write(key + ',' + str(matrix[key].count('1')) + ',' +
                     ','.join(matrix[key]) + '\n')
@@ -1231,179 +1237,179 @@ def align_loci(processed_results_dir, output_dir, program, options,
 # End pipeline functions ------------------------------------------------------
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    import sys
-    import argparse
-    import os
-    import krio
-    import krbioio
+#     import sys
+#     import argparse
+#     import os
+#     import krio
+#     import krbioio
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
-    parser.add_argument(
-        '-c', '--command', type=unicode,
-        choices=['search_and_download', 'filter_records', 'extract_loci',
-        'one_locus_per_organism', 'align_loci'], help='Run a command.')
-    parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
-    parser.add_argument(
-        '-o', '--output', type=unicode,
-        help='Output directory path.')
-    parser.add_argument(
-        '-s', '--sep', type=unicode,
-        help='Output file name separator.')
-    parser.add_argument('-e', '--email', type=unicode, help='Email.')
-    parser.add_argument(
-        '-i', '--input', type=unicode,
-        help='Input directory path.')
-    parser.add_argument(
-        '--ncbinames', type=unicode,
-        help='NCBI organism names file.')
-    parser.add_argument('--synonymy', type=unicode, help='Synonymy file.')
-    parser.add_argument(
-        '--authority', type=unicode,
-        help='Authority alternates file.')
-    parser.add_argument(
-        '--samples', type=unicode,
-        help='Sequence samples file in FASTA format.')
-    parser.add_argument(
-        '--similarity', type=float,
-        help='Minimum sequence similarity.')
-    parser.add_argument(
-        '--tempdir', type=unicode,
-        help='Temporary directory path.')
-    parser.add_argument(
-        '--alignprog', type=unicode,
-        choices=['mafft', 'einsi', 'linsi', 'muscle'],
-        help='Alignment program to be used.')
-    parser.add_argument(
-        '--threads', type=int,
-        help='Number of CPU cores to use.')
-    parser.add_argument(
-        '--alignspacing', type=int,
-        help='Number of gaps to add between alignments \
-        in concatenated alignment.')
-    parser.add_argument('--clrec', type=unicode, help='Cutlist records file.')
-    parser.add_argument('--klrec', type=unicode, help='Keeplist records file.')
-    parser.add_argument('--cltax', type=unicode, help='Cutlist taxonomy file.')
-    parser.add_argument('--kltax', type=unicode,
-                        help='Keeplist taxonomy file.')
-    parser.add_argument('--alignorder', type=unicode,
-                        help='Order of loci in the concatenated alignment.')
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('-t', '--test', action='store_true', help='Run tests.')
+#     parser.add_argument(
+#         '-c', '--command', type=unicode,
+#         choices=['search_and_download', 'filter_records', 'extract_loci',
+#         'one_locus_per_organism', 'align_loci'], help='Run a command.')
+#     parser.add_argument('-q', '--query', type=unicode, help='Query file path.')
+#     parser.add_argument(
+#         '-o', '--output', type=unicode,
+#         help='Output directory path.')
+#     parser.add_argument(
+#         '-s', '--sep', type=unicode,
+#         help='Output file name separator.')
+#     parser.add_argument('-e', '--email', type=unicode, help='Email.')
+#     parser.add_argument(
+#         '-i', '--input', type=unicode,
+#         help='Input directory path.')
+#     parser.add_argument(
+#         '--ncbinames', type=unicode,
+#         help='NCBI organism names file.')
+#     parser.add_argument('--synonymy', type=unicode, help='Synonymy file.')
+#     parser.add_argument(
+#         '--authority', type=unicode,
+#         help='Authority alternates file.')
+#     parser.add_argument(
+#         '--samples', type=unicode,
+#         help='Sequence samples file in FASTA format.')
+#     parser.add_argument(
+#         '--similarity', type=float,
+#         help='Minimum sequence similarity.')
+#     parser.add_argument(
+#         '--tempdir', type=unicode,
+#         help='Temporary directory path.')
+#     parser.add_argument(
+#         '--alignprog', type=unicode,
+#         choices=['mafft', 'einsi', 'linsi', 'muscle'],
+#         help='Alignment program to be used.')
+#     parser.add_argument(
+#         '--threads', type=int,
+#         help='Number of CPU cores to use.')
+#     parser.add_argument(
+#         '--alignspacing', type=int,
+#         help='Number of gaps to add between alignments \
+#         in concatenated alignment.')
+#     parser.add_argument('--clrec', type=unicode, help='Cutlist records file.')
+#     parser.add_argument('--klrec', type=unicode, help='Keeplist records file.')
+#     parser.add_argument('--cltax', type=unicode, help='Cutlist taxonomy file.')
+#     parser.add_argument('--kltax', type=unicode,
+#                         help='Keeplist taxonomy file.')
+#     parser.add_argument('--alignorder', type=unicode,
+#                         help='Order of loci in the concatenated alignment.')
 
-    args = parser.parse_args()
+#     args = parser.parse_args()
 
-    PS = os.path.sep
+#     PS = os.path.sep
 
-    if args.test:
+#     if args.test:
 
-        print('Running tests.')
+#         print('Running tests.')
 
-        # Tests
+#         # Tests
 
-        # parse_directory
-        # t_parse_directory = parse_directory('testdata' + PS +
-        #                                     'parse_directory', '$')
+#         # parse_directory
+#         # t_parse_directory = parse_directory('testdata' + PS +
+#         #                                     'parse_directory', '$')
 
-        # t_parse_directory = parse_directory(
-        #     '/data/gbs-new/02-demultiplexed-fastq', ' ')
-        # for d in t_parse_directory:
-        #     print(d)
+#         # t_parse_directory = parse_directory(
+#         #     '/data/gbs-new/02-demultiplexed-fastq', ' ')
+#         # for d in t_parse_directory:
+#         #     print(d)
 
-        v1 = 'LA1964'
-        v2 = 'LA2744'
+#         v1 = 'LA1964'
+#         v2 = 'LA2744'
 
-        s1 = sol_species_from_voucher(v1)
-        print(s1)
+#         s1 = sol_species_from_voucher(v1)
+#         print(s1)
 
-        s2 = sol_species_from_voucher(v2)
-        print(s2)
+#         s2 = sol_species_from_voucher(v2)
+#         print(s2)
 
-        sys.exit(0)
+#         sys.exit(0)
 
-    else:
+#     else:
 
-        queries = krio.read_table_file(args.query, has_headers=True,
-                                       headers=None, delimiter='\t')
+#         queries = krio.read_table_file(args.query, has_headers=True,
+#                                        headers=None, delimiter='\t')
 
-        if args.command == 'search_and_download':
+#         if args.command == 'search_and_download':
 
-            search_and_download(queries, args.output + PS, args.sep,
-                                args.email)
+#             search_and_download(queries, args.output + PS, args.sep,
+#                                 args.email)
 
-        if args.command == 'filter_records':
-            filter_records(
-                search_results_dir=args.input,
-                output_dir=args.output,
-                cutlist_records_file=args.clrec,
-                keeplist_records_file=args.klrec,
-                cutlist_taxonomy_file=args.cltax,
-                keeplist_taxonomy_file=args.kltax
-            )
+#         if args.command == 'filter_records':
+#             filter_records(
+#                 search_results_dir=args.input,
+#                 output_dir=args.output,
+#                 cutlist_records_file=args.clrec,
+#                 keeplist_records_file=args.klrec,
+#                 cutlist_taxonomy_file=args.cltax,
+#                 keeplist_taxonomy_file=args.kltax
+#             )
 
-        if args.command == 'extract_loci':
+#         if args.command == 'extract_loci':
 
-            ncbi_names = None
-            synonymy_table = None
-            sequence_samples = None
+#             ncbi_names = None
+#             synonymy_table = None
+#             sequence_samples = None
 
-            if args.ncbinames:
+#             if args.ncbinames:
 
-                ncbi_names = krio.read_table_file(
-                    path=args.ncbinames,
-                    has_headers=False,
-                    headers=('tax_id', 'name_txt', 'unique_name',
-                             'name_class'),
-                    delimiter='\t|',
-                    quotechar=None,
-                    stripchar='"',
-                    rettype='dict')
+#                 ncbi_names = krio.read_table_file(
+#                     path=args.ncbinames,
+#                     has_headers=False,
+#                     headers=('tax_id', 'name_txt', 'unique_name',
+#                              'name_class'),
+#                     delimiter='\t|',
+#                     quotechar=None,
+#                     stripchar='"',
+#                     rettype='dict')
 
-            if args.authority and args.synonymy:
+#             if args.authority and args.synonymy:
 
-                synonymy_table = krio.read_table_file(
-                    args.synonymy, has_headers=True, headers=None,
-                    delimiter=',')
+#                 synonymy_table = krio.read_table_file(
+#                     args.synonymy, has_headers=True, headers=None,
+#                     delimiter=',')
 
-            if args.samples:
+#             if args.samples:
 
-                sequence_samples = krbioio.read_sequence_file(
-                    args.samples, 'fasta', ret_type='dict')
+#                 sequence_samples = krbioio.read_sequence_file(
+#                     args.samples, 'fasta', ret_type='dict')
 
-            extract_loci(
-                search_results_dir=args.input,
-                output_dir=args.output,
-                queries=queries,
-                sequence_samples=sequence_samples,
-                ncbi_names_table=ncbi_names,
-                synonymy_table=synonymy_table,
-                auth_file=args.authority,
-                min_similarity=args.similarity,
-                temp_dir=args.tempdir,
-                file_name_sep=args.sep
-            )
+#             extract_loci(
+#                 search_results_dir=args.input,
+#                 output_dir=args.output,
+#                 queries=queries,
+#                 sequence_samples=sequence_samples,
+#                 ncbi_names_table=ncbi_names,
+#                 synonymy_table=synonymy_table,
+#                 auth_file=args.authority,
+#                 min_similarity=args.similarity,
+#                 temp_dir=args.tempdir,
+#                 file_name_sep=args.sep
+#             )
 
-        if args.command == 'one_locus_per_organism':
+#         if args.command == 'one_locus_per_organism':
 
-            one_locus_per_organism(
-                extracted_results_dir=args.input,
-                output_dir=args.output,
-                queries=queries,
-                min_similarity=args.similarity,
-                temp_dir=args.tempdir,
-                file_name_sep=args.sep,
-                aln_program=args.alignprog,
-                threads=args.threads
-            )
+#             one_locus_per_organism(
+#                 extracted_results_dir=args.input,
+#                 output_dir=args.output,
+#                 queries=queries,
+#                 min_similarity=args.similarity,
+#                 temp_dir=args.tempdir,
+#                 file_name_sep=args.sep,
+#                 aln_program=args.alignprog,
+#                 threads=args.threads
+#             )
 
-        if args.command == 'align_loci':
+#         if args.command == 'align_loci':
 
-            align_loci(
-                processed_results_dir=args.input,
-                output_dir=args.output,
-                program=args.alignprog,
-                threads=args.threads,
-                spacing=args.alignspacing,
-                temp_dir=args.tempdir,
-                order=args.alignorder
-            )
+#             align_loci(
+#                 processed_results_dir=args.input,
+#                 output_dir=args.output,
+#                 program=args.alignprog,
+#                 threads=args.threads,
+#                 spacing=args.alignspacing,
+#                 temp_dir=args.tempdir,
+#                 order=args.alignorder
+#             )

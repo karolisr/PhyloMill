@@ -115,7 +115,7 @@ if __name__ == '__main__':
     #     print('Output directory is required.')
     #     sys.exit(1)
     if not args.config:
-        print('config_file is required.')
+        print('config is required.')
         sys.exit(1)
     if not args.commands:
         print('commands are required.')
@@ -827,7 +827,7 @@ if __name__ == '__main__':
                     results_dict = dict()
 
                     results_dict['sample'] = str(f['split'][0])
-                    results_dict['barcode'] = str(f['split'][1])
+                    # results_dict['barcode'] = str(f['split'][1])
                     results_dict['fA'] = p[0]
                     results_dict['fC'] = p[1]
                     results_dict['fG'] = p[2]
@@ -860,8 +860,8 @@ if __name__ == '__main__':
 
                     handle.write('sample\t' + str(results_dict['sample']) +
                                  '\n')
-                    handle.write('barcode\t' + str(results_dict['barcode']) +
-                                 '\n')
+                    # handle.write('barcode\t' + str(results_dict['barcode']) +
+                                 # '\n')
 #                     # reads per cluster (rpc)
 #                     # handle.write('rpc\t' + str(rpc) + '\n')
 #                     # handle.write('clusters\t' +
@@ -909,12 +909,12 @@ if __name__ == '__main__':
                 # fieldnames = ['sample', 'barcode', 'rpc', 'clusters', 'rps',
                 #               'sites', 'fA', 'fC', 'fG', 'fT', 'e', 'pi',
                 #               'negll']
-                fieldnames = ['sample', 'barcode', 'fA', 'fC', 'fG', 'fT', 'e',
+                fieldnames = ['sample', 'fA', 'fC', 'fG', 'fT', 'e',
                               'pi', 'negll']
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writerow({
                     'sample': 'sample',
-                    'barcode': 'barcode',
+                    # 'barcode': 'barcode',
                     # 'rpc': 'rpc',
                     # 'clusters': 'clusters',
                     # 'rps': 'rps',
