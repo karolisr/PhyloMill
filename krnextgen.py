@@ -1018,10 +1018,107 @@ def mle_e_and_pi(ns, p, e0, pi0):
     return(ret_value)
 
 
+def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
+
+    '''
+        Calls consensus base for column in alignment.
+
+        Parameters:
+            s - a list of counts of nucleotides for a given site
+                 0  1  2  3
+                [A, C, G, T]
+
+            e - error rate
+
+            pi - nucleotide diversity
+
+        Returns:
+            (rel_prob, het, bases_at_site, consensus)
+
+            rel_prob - relative probability of the base at site
+            het - heterozygous (True/False)
+            bases_at_site - list of bases at site
+            consensus - consensus base or ambiguity
+    '''
+
+    from scipy import special
+    from scipy import stats
+    from heapq import nlargest
+
+    # Indexes of the two most common bases at the site
+    # TODO What happens if there are more than two common bases?
+    indexes = [0, 1, 2, 3]
+    common = nlargest(2, indexes, key=lambda i: s[i])
+
+    # print(common[0], common[1])
+
+    bases = ['A', 'C', 'G', 'T']
+    b1 = bases[common[0]]
+    b2 = bases[common[1]]
+
+    # print(b1, b2)
+
+    k1 = s[common[0]]
+    k2 = s[common[1]]
+    n = s[common[0]] + s[common[1]]
+
+    # print(k1, k2, n)
+
+    prob_het = special.binom(n, k1) / (2.0 ** n)
+    prob_hom_1 = stats.binom.pmf(k1, n, e)
+    prob_hom_2 = stats.binom.pmf(k2, n, e)
+
+    prior_het = pi
+    prior_hom = (1.0-pi) / 2.0
+
+    prob_het = prob_het * prior_het
+    prob_hom_1 = prob_hom_1 * prior_hom
+    prob_hom_2 = prob_hom_2 * prior_hom
+
+    probs = [prob_het, prob_hom_1, prob_hom_2]
+    prob_max = max(probs)
+    rel_prob = prob_max / sum(probs)
+
+    het = False
+
+    if probs.index(prob_max) == 0:
+        het = True
+
+    bases_at_site = (b1, b1)
+    consensus = b1
+
+    ambiguity_dict = {
+        'AG': 'R',
+        'CT': 'Y',
+        'AC': 'M',
+        'GT': 'K',
+        'AT': 'W',
+        'CG': 'S'}
+
+    if rel_prob < p:
+        bases_at_site = (low_quality_residue, low_quality_residue)
+        consensus = low_quality_residue
+    elif het:
+        bases_at_site = [b1, b2]
+        bases_at_site.sort()
+        consensus = ambiguity_dict[''.join(bases_at_site)]
+
+    ret_value = (rel_prob, het, bases_at_site, consensus)
+
+    return(ret_value)
+
+
 if __name__ == '__main__':
     # Tests
     import os
     ps = os.path.sep
+
+    # # consensus_base
+    # s = [69, 3, 10, 600]
+    # e = 0.001
+    # pi = 0.01
+    # cb = consensus_base(s, e, pi, p=0.95, low_quality_residue='N')
+    # print(cb)
 
     # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
     # print(p)
