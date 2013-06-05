@@ -1021,16 +1021,21 @@ def mle_e_and_pi(ns, p, e0, pi0):
 def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
 
     '''
-        Calls consensus base for column in alignment.
+        Given nucleotide counts (from multiple NextGen reads) at a site,
+        determine if the site is heterozygous and return nucleotides present.
 
         Parameters:
-            s - a list of counts of nucleotides for a given site
+            s - A list of counts of nucleotides for a given site
                  0  1  2  3
                 [A, C, G, T]
 
-            e - error rate
+            e - Error rate
 
-            pi - nucleotide diversity
+            pi - Nucleotide diversity
+
+            p - Threshold probability value. When the relative probability of a
+                base at site is below this value, the site will be called as
+                low quality.
 
         Returns:
             (rel_prob, het, bases_at_site, consensus)
@@ -1079,11 +1084,6 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
     prob_max = max(probs)
     rel_prob = prob_max / sum(probs)
 
-    het = False
-
-    if probs.index(prob_max) == 0:
-        het = True
-
     bases_at_site = (b1, b1)
     consensus = b1
 
@@ -1094,6 +1094,10 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
         'GT': 'K',
         'AT': 'W',
         'CG': 'S'}
+
+    het = False
+    if probs.index(prob_max) == 0:
+        het = True
 
     if rel_prob < p:
         bases_at_site = (low_quality_residue, low_quality_residue)
