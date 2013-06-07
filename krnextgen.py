@@ -782,33 +782,64 @@ def nt_freq(nt_counts_file):
             float(t_t)/float(total)])
 
 
-def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0):
+def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
+                   rettype='list'):
     import krio
+
+    commentchar = '>'
+
+    if rettype == 'dict':
+        commentchar = '#'
+
     nt_counts = krio.read_table_file(
         path=nt_counts_file,
         has_headers=False,
-        headers=['A', 'C', 'G', 'T'],
+        # headers=['A', 'C', 'G', 'T'],
+        headers=None,
         delimiter='\t',
         quotechar='"',
         stripchar='',
-        commentchar=">",
-        rettype='dict'
+        commentchar=commentchar,
+        rettype='list'  # This rettype is always list
     )
 
     ret_value = list()
 
+    if rettype == 'dict':
+        ret_value = dict()
+
+    cluster_name = None
+
     for r in nt_counts:
 
-        c_a = int(r['A'])
-        c_c = int(r['C'])
-        c_g = int(r['G'])
-        c_t = int(r['T'])
+        print(r)
+
+        if r[0].startswith('>'):
+            cluster_name = r[0].split('>')[1]
+            ret_value[cluster_name] = list()
+            print(cluster_name)
+            continue
+
+        # c_a = int(r['A'])
+        # c_c = int(r['C'])
+        # c_g = int(r['G'])
+        # c_t = int(r['T'])
+
+        c_a = int(r[0])
+        c_c = int(r[1])
+        c_g = int(r[2])
+        c_t = int(r[3])
 
         t = c_a + c_c + c_g + c_t
 
         if (t >= min_total_per_site and
            (t <= max_total_per_site or max_total_per_site == 0)):
-            ret_value.append([c_a, c_c, c_g, c_t])
+            if rettype == 'dict':
+                ret_value[cluster_name].append([c_a, c_c, c_g, c_t])
+            else:
+                ret_value.append([c_a, c_c, c_g, c_t])
+
+    print(ret_value)
 
     return(ret_value)
 
@@ -1116,6 +1147,9 @@ if __name__ == '__main__':
     # Tests
     import os
     ps = os.path.sep
+
+    # ns = nt_site_counts('/home/karolis/Dropbox/Code/krpy/testdata/nt.counts',
+    #                     rettype='dict')
 
     # # consensus_base
     # s = [69, 3, 10, 600]
