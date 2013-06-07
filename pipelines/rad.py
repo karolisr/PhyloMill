@@ -154,6 +154,7 @@ if __name__ == '__main__':
         binned_output_dir = output_dir + '05-binned-fasta' + ps
         clustered_output_dir = output_dir + '06-clustered' + ps
         sample_alignments_output_dir = output_dir + '07-sample-alignments' + ps
+        consensus_output_dir = output_dir + '08-consensus' + ps
         analyzed_samples_output_dir = output_dir + '99-analyzed-samples' + ps
         krio.prepare_directory(analyzed_samples_output_dir)
 
@@ -929,6 +930,86 @@ if __name__ == '__main__':
                 })
                 writer.writerows(results_new)
 
+        # Call consensus bases
+        if commands and ('consensus' in commands):
+
+            krio.prepare_directory(consensus_output_dir)
+            file_list = krio.parse_directory(sample_alignments_output_dir, '_')
+
+            print('\nCalling consensus bases...\n')
+
+            processes = list()
+            queue = JoinableQueue()
+
+            def t(q):
+                while True:
+                    q_input = q.get()
+                    f = q_input
+                    print(f['split'][0], 'starting...')
+                    ns = krnextgen.nt_site_counts(
+                        f['path'],
+                        1,
+                        0,
+                        rettype='dict')
+
+                    handle = open((consensus_output_dir +
+                                   f['split'][0] +
+                                   '_' +
+                                   'consensus' +
+                                   '.fasta'), 'wb')
+
+                    samples_stats_file_path = (
+                        analyzed_samples_output_dir + f['split'][0] + '.stats')
+                    samples_stats_handle = open(samples_stats_file_path, 'rb')
+                    lines = samples_stats_handle.readlines()
+
+                    error = float("inf")
+                    heter = 0
+
+                    for l in lines:
+                        if l.startswith('e'):
+                            error = float(l.split('\t')[1])
+                        if l.startswith('pi'):
+                            heter = float(l.split('\t')[1])
+
+                    # print('e', error)
+                    # print('pi', heter)
+
+                    for k in ns.keys():
+                        handle.write('>' + k + '\n')
+                        sites = ns[k]
+                        sequence = ''
+                        for site in sites:
+                            c = krnextgen.consensus_base(
+                                site,
+                                e=error,
+                                pi=heter,
+                                p=config.getfloat('Consensus', 'threshold_probability'),
+                                low_quality_residue=config.get('General', 'low_quality_residue'),
+                                min_total_per_site=config.getint('General', 'min_seq_cluster'))
+                            # print(site, c)
+                            sequence = sequence + c[3]
+                        handle.write(sequence + '\n')
+
+                    handle.close()
+
+                    print(f['split'][0], 'done.')
+
+                    q.task_done()
+
+            for f in file_list:
+                if f['ext'] == 'counts':
+                    queue.put(f)
+
+            for i in range(cpu):
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
 
 # # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
 # # print(p)

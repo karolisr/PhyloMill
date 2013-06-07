@@ -812,12 +812,12 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
 
     for r in nt_counts:
 
-        print(r)
+        # print(r)
 
         if r[0].startswith('>'):
             cluster_name = r[0].split('>')[1]
             ret_value[cluster_name] = list()
-            print(cluster_name)
+            # print(cluster_name)
             continue
 
         # c_a = int(r['A'])
@@ -839,7 +839,7 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
             else:
                 ret_value.append([c_a, c_c, c_g, c_t])
 
-    print(ret_value)
+    # print(ret_value)
 
     return(ret_value)
 
@@ -1049,7 +1049,7 @@ def mle_e_and_pi(ns, p, e0, pi0):
     return(ret_value)
 
 
-def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
+def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site=4):
 
     '''
         Given nucleotide counts (from multiple NextGen reads) at a site,
@@ -1097,6 +1097,10 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N'):
     k1 = s[common[0]]
     k2 = s[common[1]]
     n = s[common[0]] + s[common[1]]
+
+    if n < min_total_per_site:
+        ret_value = (0, False, (low_quality_residue, low_quality_residue), low_quality_residue)
+        return(ret_value)
 
     # print(k1, k2, n)
 
