@@ -17,6 +17,8 @@ if __name__ == '__main__':
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
 
+    # import datrie  # ##
+
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
     import krio
@@ -155,6 +157,8 @@ if __name__ == '__main__':
         clustered_output_dir = output_dir + '06-clustered' + ps
         sample_alignments_output_dir = output_dir + '07-sample-alignments' + ps
         consensus_output_dir = output_dir + '08-consensus' + ps
+        grouped_consensus_output_dir = output_dir + '09-consensus-grouped' + ps
+        between_sample_clusters_output_dir = output_dir + '10-between-sample-clusters' + ps
         analyzed_samples_output_dir = output_dir + '99-analyzed-samples' + ps
         krio.prepare_directory(analyzed_samples_output_dir)
 
@@ -611,7 +615,7 @@ if __name__ == '__main__':
                     print(f['full'])
                     ifp_split = os.path.splitext(f['path'])
                     subprocess.call(
-                        (config.get('Cluster', 'usearch6_executable') + ' -quiet' +
+                        (config.get('General', 'usearch6_executable') + ' -quiet' +
                             ' -sortbylength ' + f['path'] +
                             ' -output ' + ifp_split[0] + '_sorted' +
                             ifp_split[1]), shell=True)
@@ -636,13 +640,13 @@ if __name__ == '__main__':
                         input_file_path=f['path'],
                         output_file_path=output_file,
                         identity_threshold=
-                        config.getfloat('Cluster', 'identity_threshold'),
+                        config.getfloat('Cluster Within Samples', 'identity_threshold'),
                         sorted_input=True,
                         algorithm='smallmem',
                         strand='both',
                         threads=1,
                         quiet=True,
-                        program=config.get('Cluster', 'usearch6_executable')
+                        program=config.get('General', 'usearch6_executable')
                     )
                     q.task_done()
 
@@ -952,6 +956,8 @@ if __name__ == '__main__':
                         0,
                         rettype='dict')
 
+                    print('Done counts ' + f['path'])
+
                     handle = open((consensus_output_dir +
                                    f['split'][0] +
                                    '_' +
@@ -975,6 +981,12 @@ if __name__ == '__main__':
                     # print('e', error)
                     # print('pi', heter)
 
+                    threshold_probability = config.getfloat(
+                        'Consensus', 'threshold_probability')
+                    low_quality_residue = config.get(
+                        'General', 'low_quality_residue')
+                    min_seq_cluster = config.getint('General', 'min_seq_cluster')
+
                     for k in ns.keys():
                         handle.write('>' + k + '\n')
                         sites = ns[k]
@@ -984,9 +996,9 @@ if __name__ == '__main__':
                                 site,
                                 e=error,
                                 pi=heter,
-                                p=config.getfloat('Consensus', 'threshold_probability'),
-                                low_quality_residue=config.get('General', 'low_quality_residue'),
-                                min_total_per_site=config.getint('General', 'min_seq_cluster'))
+                                p=threshold_probability,
+                                low_quality_residue=low_quality_residue,
+                                min_total_per_site=min_seq_cluster)
                             # print(site, c)
                             sequence = sequence + c[3]
                         handle.write(sequence + '\n')
@@ -1011,13 +1023,86 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+            # Create a master consensus file
+            print('\nCreating grouped-consensus files...\n')
+            krio.prepare_directory(grouped_consensus_output_dir)
+            # file_list = krio.parse_directory(consensus_output_dir, '_')
+
+            low_quality_residue = config.get('General', 'low_quality_residue')
+            min_read_length = config.getint('Bin', 'min_read_length')
+            max_prop_low_quality_sites = config.getfloat(
+                'Bin', 'max_prop_low_quality_sites')
+
+            sample_groups = config.items('Sample Groups')
+
+            for group in sample_groups:
+
+                group_samples = group[1].split(',')
+
+                consensus_handle = open((grouped_consensus_output_dir + group[0]
+                                        + '_consensus' + '.fasta'), 'wb')
+
+                # for f in file_list:
+                for sample in group_samples:
+                    # sample = f['split'][0]
+                    # f_handle = open(f['path'], 'rb')
+                    f_handle = open(consensus_output_dir + sample + '_consensus.fasta', 'rb')
+                    lines = f_handle.readlines()
+                    label = ''
+                    for l in lines:
+                        if l.startswith('>'):
+                            label = l.split('>')[1]
+                        else:
+                            l = l.strip()
+                            seq = l.strip(low_quality_residue)
+
+                            prop_lq = krnextgen.proportion_low_quality_sites(
+                                seq, low_quality_residue=low_quality_residue)
+
+                            # print(str(len(seq)) + ' ' + str(prop_lq) + ' ' + seq)
+
+                            if len(seq) >= min_read_length and prop_lq <= max_prop_low_quality_sites:
+                                consensus_handle.write('>' + sample + '_' + label)
+                                consensus_handle.write(seq + '\n')
+
+                consensus_handle.close()
+
+        # Cluster sequences between samples
+        if commands and ('cluster_between' in commands):
+
+            krio.prepare_directory(between_sample_clusters_output_dir)
+            file_list = krio.parse_directory(grouped_consensus_output_dir, '_')
+
+            print('\nClustering loci between samples...\n')
+
+            for f in file_list:
+                # f_path = consensus_output_dir + 'consensus.fasta'
+                f_path = f['path']
+                ifp_split = os.path.splitext(f_path)
+                f_path_sorted = ifp_split[0] + '_sorted' + ifp_split[1]
+                subprocess.call((config.get('General', 'usearch6_executable') + ' -quiet' + ' -sortbylength ' + f_path + ' -output ' + f_path_sorted), shell=True)
+
+                output_file = between_sample_clusters_output_dir + f['split'][0] + '_clustered' + '.uc'
+                krusearch.cluster_file(
+                    input_file_path=f_path_sorted,
+                    output_file_path=output_file,
+                    identity_threshold=
+                    config.getfloat('Cluster Between Samples', 'identity_threshold'),
+                    sorted_input=True,
+                    algorithm='smallmem',
+                    strand='both',
+                    threads=1,
+                    quiet=True,
+                    program=config.get('General', 'usearch6_executable')
+                )
+
 # # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
 # # print(p)
 # # ns = nt_site_counts('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
 # # mle = mle_e_and_pi(ns, p, e0=0.001, pi0=0.001)
 # # print(mle)
 
-# # --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples
+# # --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples,consensus,cluster_between
 
 # # time ./rad.py \
 # # --output_dir /Users/karolis/Dropbox/code/test/rad \

@@ -77,7 +77,10 @@ def mask_low_quality_sites(seq_str, qual_str, quality_score_treshold,
 def proportion_low_quality_sites(seq_str, low_quality_residue='N'):
     low_quality_sites = seq_str.count(low_quality_residue)
     sequence_length = len(seq_str)
-    prop_lq_sites = float(low_quality_sites) / float(sequence_length)
+    if sequence_length > 0:
+        prop_lq_sites = float(low_quality_sites) / float(sequence_length)
+    else:
+        prop_lq_sites = 1.0
     return(prop_lq_sites)
 
 
@@ -784,29 +787,39 @@ def nt_freq(nt_counts_file):
 
 def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
                    rettype='list'):
-    import krio
 
-    commentchar = '>'
+    # from Bio import trie  # ##
+    import string  # ##
+    import datrie  # ##
+    # import krio
 
-    if rettype == 'dict':
-        commentchar = '#'
+    # commentchar = '>'
+    # if rettype == 'dict':
+    #     commentchar = '#'
 
-    nt_counts = krio.read_table_file(
-        path=nt_counts_file,
-        has_headers=False,
-        # headers=['A', 'C', 'G', 'T'],
-        headers=None,
-        delimiter='\t',
-        quotechar='"',
-        stripchar='',
-        commentchar=commentchar,
-        rettype='list'  # This rettype is always list
-    )
+    # nt_counts = krio.read_table_file(
+    #     path=nt_counts_file,
+    #     has_headers=False,
+    #     # headers=['A', 'C', 'G', 'T'],
+    #     headers=None,
+    #     delimiter='\t',
+    #     quotechar='"',
+    #     stripchar='',
+    #     commentchar=commentchar,
+    #     rettype='list'  # This rettype is always a list
+    # )
+
+    input_handle = open(nt_counts_file, 'rb')
+    nt_counts = input_handle.readlines()
+
+    print('Done ' + nt_counts_file)
 
     ret_value = list()
 
     if rettype == 'dict':
-        ret_value = dict()
+        # ret_value = dict()
+        # ret_value = trie.trie()  # ##
+        ret_value = datrie.Trie(string.printable)  # ##
 
     cluster_name = None
 
@@ -814,16 +827,26 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
 
         # print(r)
 
-        if r[0].startswith('>'):
-            cluster_name = r[0].split('>')[1]
-            ret_value[cluster_name] = list()
+        r = r.strip()
+
+        # if r[0].startswith('>'):
+        if rettype == 'dict' and r.startswith('>'):
+            cluster_name = unicode(r.split('>')[1])  # ## datrie wants unicode keys
             # print(cluster_name)
+            ret_value[cluster_name] = list()
+            # print(len(ret_value.keys()))
+            # print(ret_value[cluster_name])
+            continue
+
+        if rettype == 'list' and r.startswith('>'):
             continue
 
         # c_a = int(r['A'])
         # c_c = int(r['C'])
         # c_g = int(r['G'])
         # c_t = int(r['T'])
+
+        r = r.split('\t')
 
         c_a = int(r[0])
         c_c = int(r[1])
@@ -835,9 +858,11 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
         if (t >= min_total_per_site and
            (t <= max_total_per_site or max_total_per_site == 0)):
             if rettype == 'dict':
-                ret_value[cluster_name].append([c_a, c_c, c_g, c_t])
+                ret_value[cluster_name].append((c_a, c_c, c_g, c_t))
+                # print(cluster_name)
+                # print(ret_value[cluster_name])
             else:
-                ret_value.append([c_a, c_c, c_g, c_t])
+                ret_value.append((c_a, c_c, c_g, c_t))
 
     # print(ret_value)
 
