@@ -13,6 +13,8 @@ if __name__ == '__main__':
     import argparse
     import csv
     import subprocess
+    import re
+
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
@@ -702,7 +704,8 @@ if __name__ == '__main__':
                     fasta_file_path=fasta_file_path,
                     aln_output_file_path=aln_output_file_path,
                     counts_output_file_path=counts_output_file_path,
-                    threads=cpu)
+                    program='mafft',
+                    options='--retree 1 --thread '+str(cpu))
 
                 handle = open((analyzed_samples_output_dir +
                                f['split'][0] +
@@ -1042,6 +1045,10 @@ if __name__ == '__main__':
                 consensus_handle = open((grouped_consensus_output_dir + group[0]
                                         + '_consensus' + '.fasta'), 'wb')
 
+                consensus_handle_masked = open((grouped_consensus_output_dir
+                                               + group[0] + '_consensus_masked'
+                                               + '.fasta'), 'wb')
+
                 # for f in file_list:
                 for sample in group_samples:
                     # sample = f['split'][0]
@@ -1065,7 +1072,14 @@ if __name__ == '__main__':
                                 consensus_handle.write('>' + sample + '_' + label)
                                 consensus_handle.write(seq + '\n')
 
+                                consensus_handle_masked.write('>' + sample + '_' + label)
+                                print(seq)
+                                seq = re.sub('[RYMKWS]', low_quality_residue, seq)
+                                print(seq)
+                                consensus_handle_masked.write(seq + '\n')
+
                 consensus_handle.close()
+                consensus_handle_masked.close()
 
         # Cluster sequences between samples
         if commands and ('cluster_between' in commands):
@@ -1076,6 +1090,8 @@ if __name__ == '__main__':
             print('\nClustering loci between samples...\n')
 
             for f in file_list:
+                if f['split'][-1] != 'masked':
+                    continue
                 # f_path = consensus_output_dir + 'consensus.fasta'
                 f_path = f['path']
                 ifp_split = os.path.splitext(f_path)

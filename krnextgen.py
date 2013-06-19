@@ -655,8 +655,7 @@ def nucleotides_at_site(site):
 
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                    fasta_file_path, aln_output_file_path,
-                   counts_output_file_path,
-                   threads):
+                   counts_output_file_path, program='mafft', options=''):
 
     from Bio import SeqIO
 
@@ -702,8 +701,8 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
                 aln = kralign.align(
-                    records, 'mafft',
-                    options='--retree 1 --thread '+str(threads))
+                    records, program=program, options=options)
+                    # options='--retree 1 --thread '+str(threads))
                 # aln = kralign.align(records, 'muscle', options='')
                 for l in range(0, aln.get_alignment_length()):
                     column = aln[:, l]
