@@ -16,7 +16,10 @@ def cluster_file(
     strand='plus',  # plus both
     threads=1,
     quiet=True,
-    program='usearch'
+    program='usearch',
+    heuristics=True,
+    query_coverage=0.5,
+    target_coverage=0.5
 ):
 
     # import os
@@ -43,15 +46,25 @@ def cluster_file(
     else:
         threads = ''
 
-    subprocess.call(
-        (program + quiet +
-         ' -cluster_' + algorithm + ' ' + input_file_path +
-         ' -strand ' + strand +  # ' -fulldp' +
-         ' -id ' + str(identity_threshold) +
-         threads +
-         ' -uc ' + output_file_path
-         ),
-        shell=True)
+    if heuristics:
+        heuristics = ''
+    else:
+        heuristics = ' -fulldp'
+
+    command = (
+        program + quiet + heuristics +
+        ' -query_cov ' + str(query_coverage) +
+        ' -target_cov ' + str(target_coverage) +
+        ' -cluster_' + algorithm + ' ' + input_file_path +
+        ' -strand ' + strand +
+        ' -id ' + str(identity_threshold) +
+        threads +
+        ' -uc ' + output_file_path
+    )
+
+    print(command)
+
+    subprocess.call(command, shell=True)
 
     # if algorithm == 'smallmem' and not sorted_input:
     #     os.remove(input_file_path)

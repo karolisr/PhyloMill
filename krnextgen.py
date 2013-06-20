@@ -1105,6 +1105,8 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site
     from scipy import stats
     from heapq import nlargest
 
+    import kriupac
+
     # Indexes of the two most common bases at the site
     # TODO What happens if there are more than two common bases?
     indexes = [0, 1, 2, 3]
@@ -1146,14 +1148,6 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site
     bases_at_site = (b1, b1)
     consensus = b1
 
-    ambiguity_dict = {
-        'AG': 'R',
-        'CT': 'Y',
-        'AC': 'M',
-        'GT': 'K',
-        'AT': 'W',
-        'CG': 'S'}
-
     het = False
     if probs.index(prob_max) == 0:
         het = True
@@ -1164,7 +1158,7 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site
     elif het:
         bases_at_site = [b1, b2]
         bases_at_site.sort()
-        consensus = ambiguity_dict[''.join(bases_at_site)]
+        consensus = kriupac.IUPAC_DOUBLE_DNA_DICT[''.join(bases_at_site)]
 
     ret_value = (rel_prob, het, bases_at_site, consensus)
 

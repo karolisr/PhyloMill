@@ -13,11 +13,13 @@ if __name__ == '__main__':
     import argparse
     import csv
     import subprocess
-    import re
+    # import re
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
+
+    from scipy.stats import binom
 
     # import datrie  # ##
 
@@ -27,6 +29,7 @@ if __name__ == '__main__':
     import krbioio
     import krnextgen
     import krusearch
+    import kriupac
 
     ps = os.path.sep
 
@@ -648,7 +651,10 @@ if __name__ == '__main__':
                         strand='both',
                         threads=1,
                         quiet=True,
-                        program=config.get('General', 'usearch6_executable')
+                        program=config.get('General', 'usearch6_executable'),
+                        heuristics=False,
+                        query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
+                        target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage')
                     )
                     q.task_done()
 
@@ -1031,10 +1037,12 @@ if __name__ == '__main__':
             krio.prepare_directory(grouped_consensus_output_dir)
             # file_list = krio.parse_directory(consensus_output_dir, '_')
 
+            iupac = kriupac.IUPAC_DOUBLE_DNA_DICT
+
             low_quality_residue = config.get('General', 'low_quality_residue')
-            min_read_length = config.getint('Bin', 'min_read_length')
+            min_read_length = config.getint('Consensus', 'min_read_length')
             max_prop_low_quality_sites = config.getfloat(
-                'Bin', 'max_prop_low_quality_sites')
+                'Consensus', 'max_prop_low_quality_sites')
 
             sample_groups = config.items('Sample Groups')
 
@@ -1073,8 +1081,13 @@ if __name__ == '__main__':
                                 consensus_handle.write(seq + '\n')
 
                                 consensus_handle_masked.write('>' + sample + '_' + label)
+                                # seq = re.sub('[RYMKWS]', low_quality_residue, seq)
                                 print(seq)
-                                seq = re.sub('[RYMKWS]', low_quality_residue, seq)
+                                for k in iupac.keys():
+                                    # scipy.random.seed(87655678)
+                                    for i in range(0, seq.count(iupac[k])):
+                                        rand = binom.rvs(1, 0.5)
+                                        seq = seq.replace(iupac[k], k[rand], 1)
                                 print(seq)
                                 consensus_handle_masked.write(seq + '\n')
 
@@ -1109,7 +1122,10 @@ if __name__ == '__main__':
                     strand='both',
                     threads=1,
                     quiet=True,
-                    program=config.get('General', 'usearch6_executable')
+                    program=config.get('General', 'usearch6_executable'),
+                    heuristics=False,
+                    query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
+                    target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
                 )
 
 # # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
