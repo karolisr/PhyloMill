@@ -179,8 +179,8 @@ if __name__ == '__main__':
 
             print()
 
-            f_file = config.get('Demultiplex', 'forward_reads_file')
-            r_file = config.get('Demultiplex', 'reverse_reads_file')
+            f_file = config.get('General', 'forward_reads_file')
+            r_file = config.get('General', 'reverse_reads_file')
 
             krbioio.split_fastq_file(
                 pieces=cpu,
@@ -217,6 +217,8 @@ if __name__ == '__main__':
             processes = list()
             queue = JoinableQueue()
 
+            trim_extra = len(config.get('General', 'f_sticky'))
+
             def t(q):
                 while True:
                     f = q.get()
@@ -241,7 +243,7 @@ if __name__ == '__main__':
                             'max_bp_mismatch_in_barcode'),
                         output_dir=output_dir_split,
                         trim_barcode=True,
-                        trim_extra=config.getint('Demultiplex', 'trim'),
+                        trim_extra=trim_extra,
                         write_every=1000
                     )
                     q.task_done()
@@ -455,16 +457,16 @@ if __name__ == '__main__':
                     # Forward read oligo components
                     # These can be found in overreaching reverse reads
                     # barcode_adapter-barcode-f_sticky
-                    barcode_adapter = config.get('Bin', 'barcode_adapter')
+                    barcode_adapter = config.get('General', 'barcode_adapter')
                     barcode = f['split'][1]
-                    f_sticky = config.get('Bin', 'f_sticky')
+                    f_sticky = config.get('General', 'f_sticky')
                     f_oligo = barcode_adapter + barcode.upper() + f_sticky
 
                     # Reverse read oligo components
                     # These can be found in overreaching forward reads
                     # r_sticky-common_adapter
-                    common_adapter = config.get('Bin', 'common_adapter')
-                    r_sticky = config.get('Bin', 'r_sticky')
+                    common_adapter = config.get('General', 'common_adapter')
+                    r_sticky = config.get('General', 'r_sticky')
                     r_oligo = r_sticky + common_adapter
 
                     max_prop_low_quality_sites = config.getfloat(
