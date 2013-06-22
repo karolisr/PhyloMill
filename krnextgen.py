@@ -520,7 +520,7 @@ def demultiplex(barcodes,
             # Barcode match found
             if ld <= max_barcode_mismatch_count:
                 barcode_match_found = True
-                f_title = f_title.replace(' ', '|')
+                f_title = f_title.replace(' ', '|') ### Hack?
                 f_title = '@' + f_title
                 if trim_barcode:
                     # f_record = krseq.trim_residues(f_record, l, False)
