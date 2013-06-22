@@ -19,7 +19,9 @@ if __name__ == '__main__':
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
 
-    from scipy.stats import binom
+    import numpy
+
+    # from scipy.stats import binom
 
     # import datrie  # ##
 
@@ -131,6 +133,8 @@ if __name__ == '__main__':
 
         config = ConfigParser.SafeConfigParser()
         config.read(args.config)
+
+        numpy.random.seed(config.getint('General', 'random_seed'))
 
         # Standardize output directory ----------------------------------------
         output_dir = config.get('General', 'output_directory')
@@ -1084,13 +1088,14 @@ if __name__ == '__main__':
 
                                 consensus_handle_masked.write('>' + sample + '_' + label)
                                 # seq = re.sub('[RYMKWS]', low_quality_residue, seq)
-                                print(seq)
+                                # print(seq)
                                 for k in iupac.keys():
-                                    # scipy.random.seed(87655678)
                                     for i in range(0, seq.count(iupac[k])):
-                                        rand = binom.rvs(1, 0.5)
+                                        # rand = binom.rvs(1, 0.5)
+                                        # rand = binomial(1, 0.5)
+                                        rand = numpy.random.randint(0, 2)
                                         seq = seq.replace(iupac[k], k[rand], 1)
-                                print(seq)
+                                # print(seq)
                                 consensus_handle_masked.write(seq + '\n')
 
                 consensus_handle.close()
@@ -1129,53 +1134,3 @@ if __name__ == '__main__':
                     query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
                     target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
                 )
-
-# # p = nt_freq('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
-# # print(p)
-# # ns = nt_site_counts('/home/karolis/Dropbox/code/krpy/testdata/nt.counts')
-# # mle = mle_e_and_pi(ns, p, e0=0.001, pi0=0.001)
-# # print(mle)
-
-# # --commands split,demultiplex,mask,bin,cluster,align_samples,analyze_samples,consensus,cluster_between
-
-# # time ./rad.py \
-# # --output_dir /Users/karolis/Dropbox/code/test/rad \
-# # --forward_file /Users/karolis/Dropbox/code/krpy/testdata/rad_forward.fastq \
-# # --reverse_file /Users/karolis/Dropbox/code/krpy/testdata/rad_reverse.fastq \
-# # --threads 4 \
-# # --barcodes '/Users/karolis/Dropbox/code/krpy/testdata/rad_barcodes.tsv' \
-# # --max_barcode_mismatch_count 1 \
-# # --trim_barcode \
-# # --trim_extra 5 \
-# # --quality_score_treshold 30 \
-# # --low_quality_residue N \
-# # --max_prop_low_quality_sites 0.10 \
-# # --min_overlap 5 \
-# # --mmmr_cutoff 0.85 \
-# # --identity_threshold 0.90 \
-# # --min_seq_cluster 2 \
-# # --max_seq_cluster 1000 \
-# # --error_rate_initial 0.001 \
-# # --heterozygosity_initial 0.001 \
-# # --commands split
-
-# # time ./rad.py \
-# # --output_dir /data/gbs-new \
-# # --forward_file /data/gbs-andy-david/green_dzaya_DZAYA_R1.PF.fastq \
-# # --reverse_file /data/gbs-andy-david/green_dzaya_DZAYA_R2.PF.fastq \
-# # --threads 6 \
-# # --barcodes /data/gbs-andy-david/barcodes.tsv \
-# # --max_barcode_mismatch_count 1 \
-# # --trim_barcode \
-# # --trim_extra 5 \
-# # --quality_score_treshold 30 \
-# # --low_quality_residue N \
-# # --max_prop_low_quality_sites 0.10 \
-# # --min_overlap 5 \
-# # --mmmr_cutoff 0.85 \
-# # --identity_threshold 0.90 \
-# # --min_seq_cluster 10 \
-# # --max_seq_cluster 1000 \
-# # --error_rate_initial 0.0001 \
-# # --heterozygosity_initial 0.001 \
-# # --commands analyze_samples

@@ -62,7 +62,7 @@ def cluster_file(
         ' -uc ' + output_file_path
     )
 
-    print(command)
+    # print(command)
 
     subprocess.call(command, shell=True)
 
