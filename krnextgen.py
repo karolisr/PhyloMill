@@ -485,13 +485,13 @@ def demultiplex(barcodes,
             barcode['write_handle_reverse'] = open(
                 barcode['file_path_reverse'], 'wa')
 
-    write_handle_forward_other = open(output_dir + 'mismatch_f.' + 'fastq',
+    write_handle_forward_other = open(output_dir + 'Mismatch_f.' + 'fastq',
                                       'wa')
     result_batch_forward_other = list()
     write_handle_reverse_other = None
     result_batch_reverse_other = None
     if reverse_reads_file_path is not None:
-        write_handle_reverse_other = open(output_dir + 'mismatch_r.' + 'fastq',
+        write_handle_reverse_other = open(output_dir + 'Mismatch_r.' + 'fastq',
                                           'wa')
         result_batch_reverse_other = list()
 
@@ -656,7 +656,7 @@ def nucleotides_at_site(site):
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                    fasta_file_path, aln_clustal_phylip_file_path=None,
                    aln_output_file_path=None, counts_output_file_path=None,
-                   program='mafft', options=''):
+                   program='mafft', options='', program_executable='mafft'):
 
     from Bio import SeqIO
     from Bio import AlignIO
@@ -722,7 +722,7 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                 # if X: ####
                 #     print('---') ####
                 aln = kralign.align(
-                    records, program=program, options=options)
+                    records, program=program, options=options, program_executable=program_executable)
                     # options='--retree 1 --thread '+str(threads))
                 # aln = kralign.align(records, 'muscle', options='')
                 # if X: ####
@@ -857,7 +857,7 @@ def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
     input_handle = open(nt_counts_file, 'rb')
     nt_counts = input_handle.readlines()
 
-    print('Done ' + nt_counts_file)
+    # print('Done ' + nt_counts_file)
 
     ret_value = list()
 

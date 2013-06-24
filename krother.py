@@ -72,3 +72,8 @@ def parse_line(line, delimiter, quotechar, stripchar):
 
     #print(final_list)
     return(final_list)
+
+
+def timestamp():
+    import datetime
+    return(str(datetime.datetime.now()).split('.')[0])

@@ -4,6 +4,19 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+
+def write_log(msg, log_file_path, append=True):
+    log_handle = None
+    if append:
+        log_handle = open(log_file_path, 'a')
+    else:
+        log_handle = open(log_file_path, 'wb')
+    log_handle.write(msg)
+    log_handle.write('\n')
+    log_handle.close()
+    return()
+
+
 if __name__ == '__main__':
 
     import ConfigParser
@@ -14,11 +27,13 @@ if __name__ == '__main__':
     import csv
     import subprocess
     import string
+    import datetime
     # import re
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
+    # from multiprocessing import Lock
 
     import numpy
 
@@ -35,6 +50,7 @@ if __name__ == '__main__':
     import krusearch
     import kriupac
     import kralign
+    import krother
 
     # Alignment concatenation function is recursive.
     sys.setrecursionlimit(500000)
@@ -130,10 +146,10 @@ if __name__ == '__main__':
     #     print('Output directory is required.')
     #     sys.exit(1)
     if not args.config:
-        print('config is required.')
+        print('--config is required.')
         sys.exit(1)
     if not args.commands:
-        print('commands are required.')
+        print('--commands are required.')
         sys.exit(1)
     else:
 
@@ -177,6 +193,19 @@ if __name__ == '__main__':
         between_sample_alignments_output_dir = output_dir + '11-between-sample-alignments' + ps
         analyzed_samples_output_dir = output_dir + '99-analyzed-samples' + ps
         krio.prepare_directory(analyzed_samples_output_dir)
+
+        lfp = output_dir + 'log.txt'
+
+        start_time = datetime.datetime.now()
+
+        print()
+        msg = krother.timestamp()
+        print(msg)
+        if os.path.exists(lfp):
+            write_log('', lfp, append=True)
+            write_log('--- Logging started - ' + msg + ' ------------------------------------', lfp, append=True)
+        else:
+            write_log('--- Logging started - ' + msg + ' ------------------------------------', lfp, append=False)
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -224,6 +253,7 @@ if __name__ == '__main__':
                     break
 
             print()
+            write_log('', lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -233,7 +263,11 @@ if __name__ == '__main__':
             def t(q):
                 while True:
                     f = q.get()
-                    print('Demultiplexing file', f['split'][1])
+                    # lock.acquire()
+                    msg = krother.timestamp() + ' - Demultiplexing file ' + f['split'][1]
+                    print(msg)
+                    write_log(msg, lfp)
+                    # lock.release()
                     input_file_format = f['ext']
                     output_dir_split = (dmltplx_output_dir_split +
                                         f['split'][1])
@@ -264,6 +298,7 @@ if __name__ == '__main__':
                     queue.put(f)
 
             for i in range(cpu):
+                # lock = Lock()
                 worker = Process(target=t, args=(queue,))
                 worker.start()
                 processes.append(worker)
@@ -274,7 +309,9 @@ if __name__ == '__main__':
                 p.terminate()
 
             # Combine demultiplexed files
-            print('\nCombining demultiplexed results...')
+            msg = '\nCombining demultiplexed results...'
+            print(msg)
+            write_log(msg, lfp)
             krnextgen.combine_demultiplexed_results(
                 input_dir=dmltplx_output_dir_split,
                 output_dir=dmltplx_output_dir_combined)
@@ -282,7 +319,9 @@ if __name__ == '__main__':
             # Produce read lengths files
             combined_file_list = krio.parse_directory(
                 dmltplx_output_dir_combined, '_')
-            print('\nProducing read lengths files...\n')
+            msg = '\nProducing read lengths files...\n'
+            print(msg)
+            write_log(msg, lfp)
             for f in combined_file_list:
                 handle = open(f['path'], "rU")
                 records = FastqGeneralIterator(handle)
@@ -291,7 +330,12 @@ if __name__ == '__main__':
                 for r in records:
                     lengths.append(len(r[1]))
                 handle.close()
-                print(f['split'][0], f['split'][-1], len(lengths), 'reads.')
+                sample = 'Sample '
+                if f['split'][0] == 'Mismatch':
+                    sample = ''
+                msg = sample + f['split'][0] + ' ' + f['split'][-1].upper() + ', ' + str(len(lengths)) + ' reads.'
+                print(msg)
+                write_log(msg, lfp)
                 lengths_fp = (analyzed_samples_output_dir + f['split'][0] +
                               '_' + f['split'][-1] + '.lengths')
                 handle = open(lengths_fp, 'wb')
@@ -317,7 +361,9 @@ if __name__ == '__main__':
             krio.prepare_directory(masked_output_dir)
             file_list = krio.parse_directory(dmltplx_output_dir_combined, ' ')
 
-            print('\nMasking low quality sites...')
+            msg = '\nMasking low quality sites...'
+            print(msg)
+            write_log(msg, lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -358,7 +404,7 @@ if __name__ == '__main__':
                     q.task_done()
 
             for f in file_list:
-                if 'mismatch' not in f['name']:
+                if 'Mismatch' not in f['name']:
                     queue.put(f)
 
             for i in range(cpu):
@@ -393,8 +439,10 @@ if __name__ == '__main__':
             krio.prepare_directory(binned_output_dir)
             file_list = krio.parse_directory(masked_output_dir, '_')
 
-            print(('\nBinning results by quality and producing\n'
-                   'forward and reverse consensus sequences...\n'))
+            msg = ('\nBinning results by quality and producing\n'
+                   'forward and reverse consensus sequences...\n')
+            print(msg)
+            write_log(msg, lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -409,7 +457,9 @@ if __name__ == '__main__':
                     base_file_path = (masked_output_dir + base_file_name +
                                       f['split'][1] + '_')
 
-                    print('Sample', f['split'][0])
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    print(msg)
+                    write_log(msg, lfp)
 
                     # f_records = SeqIO.parse(base_file_path + 'f.fastq', 'fastq')
                     f_reads_handle = open(base_file_path + 'f.fastq', "rU")
@@ -599,7 +649,7 @@ if __name__ == '__main__':
                     q.task_done()
 
             for f in file_list:
-                if f['name'] != 'mismatch_f' and f['split'][-1] == 'f':
+                if f['name'] != 'Mismatch_f' and f['split'][-1] == 'f':
                     queue.put(f)
 
             for i in range(cpu):
@@ -613,7 +663,7 @@ if __name__ == '__main__':
                 p.terminate()
 
         # Cluster
-        if commands and ('cluster' in commands):
+        if commands and ('cluster_samples' in commands):
             # if not args.threads:
             #     print('threads is required.')
             #     sys.exit(1)
@@ -624,13 +674,17 @@ if __name__ == '__main__':
             krio.prepare_directory(clustered_output_dir)
             file_list = krio.parse_directory(binned_output_dir, '_')
 
-            print('\nSorting before clustering...\n')
+            msg = '\nSorting before clustering...\n'
+            print(msg)
+            write_log(msg, lfp)
 
             # Sort files, this will take memory, so we will not parallelize
             # this
             for f in file_list:
                 if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
-                    print(f['full'])
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    print(msg)
+                    write_log(msg, lfp)
                     ifp_split = os.path.splitext(f['path'])
                     subprocess.call(
                         (config.get('General', 'usearch6_executable') + ' -quiet' +
@@ -653,7 +707,9 @@ if __name__ == '__main__':
                     # ifp_split = os.path.splitext(f['path'])
                     # input_file_path = ifp_split[0] + '_sorted' + ifp_split[1]
 
-                    print(f['name'])
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    print(msg)
+                    write_log(msg, lfp)
 
                     first_uc = clustered_output_dir + f['name'] + '_1_1_uc'
                     first_cons_path = clustered_output_dir + f['name'] + '_1_2_cons'
@@ -670,7 +726,7 @@ if __name__ == '__main__':
                         threads=1,
                         quiet=True,
                         program=config.get('General', 'usearch6_executable'),
-                        heuristics=False,
+                        heuristics=config.getboolean('Cluster Within Samples', 'heuristics'),
                         query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
                         target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage'),
                         sizeout=True,
@@ -769,11 +825,17 @@ if __name__ == '__main__':
             krio.prepare_directory(sample_alignments_output_dir)
             file_list = krio.parse_directory(clustered_output_dir, '_')
 
-            print('\nProducing sample alignments and\n'
-                  'nucleotide counts per site...\n')
+            msg = ('\nProducing sample alignments and\n'
+                   'read counts per site...\n')
+            print(msg)
+            write_log(msg, lfp)
 
             processes = list()
             queue = JoinableQueue()
+
+            aln_program = config.get('Align Within Samples', 'program')
+            aln_program_exe = config.get('General', aln_program+'_executable')
+            aln_program_options = config.get('Align Within Samples', 'options')
 
             # def t(f):
             def t(q):
@@ -786,7 +848,9 @@ if __name__ == '__main__':
                     counts_output_file_path = (
                         sample_alignments_output_dir +
                         f['name'] + '.counts')
-                    print(f['full'])
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    print(msg)
+                    write_log(msg, lfp)
                     cluster_depths = krnextgen.align_clusters(
                         min_seq_cluster=config.getint('General',
                                                       'min_seq_cluster'),
@@ -796,8 +860,10 @@ if __name__ == '__main__':
                         fasta_file_path=fasta_file_path,
                         aln_output_file_path=aln_output_file_path,
                         counts_output_file_path=counts_output_file_path,
-                        program='muscle'
+                        program=aln_program,
+                        options=aln_program_options,
                         # options='--retree 1 --thread '+str(cpu)
+                        program_executable=aln_program_exe
                     )
 
                     handle = open((analyzed_samples_output_dir +
@@ -828,7 +894,11 @@ if __name__ == '__main__':
                     # t(f)
                     queue.put(f)
 
-            for i in range(cpu*2): ###
+            threads_local = cpu
+            if aln_program == 'muscle':
+                threads_local = cpu * 2
+
+            for i in range(threads_local):
                 worker = Process(target=t, args=(queue,))
                 worker.start()
                 processes.append(worker)
@@ -912,7 +982,10 @@ if __name__ == '__main__':
 
             file_list = krio.parse_directory(sample_alignments_output_dir, '_')
 
-            print('\nAnalyzing samples...\n')
+            msg = ('\nEstimating error rate and within-sample\n'
+                   'nucleotide diversity...\n')
+            print(msg)
+            write_log(msg, lfp)
 
             manager = Manager()
             results = manager.list()
@@ -925,7 +998,9 @@ if __name__ == '__main__':
                     q_input = q.get()
                     f = q_input[0]
                     results = q_input[1]
-                    print(f['split'][0], 'starting...')
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
+                    print(msg)
+                    write_log(msg, lfp)
                     p = krnextgen.nt_freq(f['path'])
                     # print(f['split'][0], p)
                     ns = krnextgen.nt_site_counts(
@@ -996,7 +1071,9 @@ if __name__ == '__main__':
 
                     results.append(results_dict)
 
-                    print(f['split'][0], 'done.')
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
 
                     q.task_done()
 
@@ -1050,7 +1127,9 @@ if __name__ == '__main__':
             krio.prepare_directory(consensus_output_dir)
             file_list = krio.parse_directory(sample_alignments_output_dir, '_')
 
-            print('\nCalling consensus bases...\n')
+            msg = '\nCalling consensus bases...\n'
+            print(msg)
+            write_log(msg, lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -1059,14 +1138,14 @@ if __name__ == '__main__':
                 while True:
                     q_input = q.get()
                     f = q_input
-                    print(f['split'][0], 'starting...')
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
+                    print(msg)
+                    write_log(msg, lfp)
                     ns = krnextgen.nt_site_counts(
                         f['path'],
                         1,
                         0,
                         rettype='dict')
-
-                    print('Done counts ' + f['path'])
 
                     handle = open((consensus_output_dir +
                                    f['split'][0] +
@@ -1115,7 +1194,9 @@ if __name__ == '__main__':
 
                     handle.close()
 
-                    print(f['split'][0], 'done.')
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
 
                     q.task_done()
 
@@ -1134,7 +1215,9 @@ if __name__ == '__main__':
                 p.terminate()
 
             # Create a master consensus file
-            print('\nCreating grouped-consensus files...\n')
+            msg = '\nCreating grouped-consensus files...'
+            print(msg)
+            write_log(msg, lfp)
             krio.prepare_directory(grouped_consensus_output_dir)
             # file_list = krio.parse_directory(consensus_output_dir, '_')
 
@@ -1202,12 +1285,17 @@ if __name__ == '__main__':
             krio.prepare_directory(between_sample_clusters_output_dir)
             file_list = krio.parse_directory(grouped_consensus_output_dir, '_')
 
-            print('\nClustering loci between samples...\n')
+            msg = '\nClustering loci between samples...\n'
+            print(msg)
+            write_log(msg, lfp)
 
             for f in file_list:
                 if f['split'][-1] != 'masked':
                     continue
                 # f_path = consensus_output_dir + 'consensus.fasta'
+                msg = krother.timestamp() + ' - ' + f['split'][0]
+                print(msg)
+                write_log(msg, lfp)
                 f_path = f['path']
                 ifp_split = os.path.splitext(f_path)
                 f_path_sorted = ifp_split[0] + '_sorted' + ifp_split[1]
@@ -1225,7 +1313,7 @@ if __name__ == '__main__':
                     threads=1,
                     quiet=True,
                     program=config.get('General', 'usearch6_executable'),
-                    heuristics=False,
+                    heuristics=config.getboolean('Cluster Between Samples', 'heuristics'),
                     query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
                     target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
                 )
@@ -1236,10 +1324,18 @@ if __name__ == '__main__':
             krio.prepare_directory(between_sample_alignments_output_dir)
             file_list = krio.parse_directory(between_sample_clusters_output_dir, '_')
 
-            print('\nAligning loci between samples...\n')
+            msg = '\nAligning loci between samples...\n'
+            print(msg)
+            write_log(msg, lfp)
+
+            aln_program = config.get('Align Between Samples', 'program')
+            aln_program_exe = config.get('General', aln_program+'_executable')
+            aln_program_options = config.get('Align Between Samples', 'options')
 
             for f in file_list:
-                print(f['full'])
+                msg = krother.timestamp() + ' - ' + f['split'][0]
+                print(msg)
+                write_log(msg, lfp)
 
                 fasta_file_path = grouped_consensus_output_dir + f['split'][0] + '_consensus.fasta'
                 aln_clustal_phylip_file_path = between_sample_alignments_output_dir + f['split'][0] + '.phy'
@@ -1254,13 +1350,16 @@ if __name__ == '__main__':
                     aln_clustal_phylip_file_path=aln_clustal_phylip_file_path,
                     aln_output_file_path=aln_output_file_path,
                     counts_output_file_path=counts_output_file_path,
-                    program='mafft',
-                    options='--thread '+str(cpu)
+                    program=aln_program,
+                    options=aln_program_options,
+                    program_executable=aln_program_exe
                 )
 
             file_list = krio.parse_directory(between_sample_alignments_output_dir, '_')
 
-            print('\nCreating concatenated alignment...\n')
+            msg = '\nCreating concatenated alignment...\n'
+            print(msg)
+            write_log(msg, lfp)
 
             for f in file_list:
                 # print(f['full'])
@@ -1273,3 +1372,11 @@ if __name__ == '__main__':
                     concatenated_aln = kralign.concatenate(all_aln)
                     cat_aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '_concatenated.phy'
                     AlignIO.write(concatenated_aln, cat_aln_output_file_path, "phylip-relaxed")
+
+        msg = 'Started: ' + str(start_time).split('.')[0]
+        print(msg)
+        write_log(msg, lfp)
+
+        msg = 'Ended: ' + krother.timestamp()
+        print(msg)
+        write_log(msg, lfp)

@@ -78,7 +78,7 @@ def concatenate(alignments, padding_length=0):
     return result_alignment
 
 
-def align(records, program, options=''):
+def align(records, program, options='', program_executable=''):
 
     import subprocess
     from StringIO import StringIO
@@ -93,11 +93,14 @@ def align(records, program, options=''):
 
     options = shlex.split(options)
 
+    if program_executable == '':
+        program_executable = program
+
     if program == 'muscle':
-        args = ['muscle', '-quiet'] + options + ['-in', '-', '-out', '-']
+        args = [program_executable, '-quiet'] + options + ['-in', '-', '-out', '-']
 
     elif program == 'mafft':
-        args = ['mafft', '--quiet'] + options + ['-']
+        args = [program_executable, '--quiet'] + options + ['-']
 
     alignment = None
 
