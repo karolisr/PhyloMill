@@ -722,7 +722,10 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                 # if X: ####
                 #     print('---') ####
                 aln = kralign.align(
-                    records, program=program, options=options, program_executable=program_executable)
+                    records,
+                    program=program,
+                    options=options,
+                    program_executable=program_executable)
                     # options='--retree 1 --thread '+str(threads))
                 # aln = kralign.align(records, 'muscle', options='')
                 # if X: ####
@@ -738,7 +741,7 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                     if len(set(ids)) == len(ids):
                         alignments.append(aln)
                     else:
-                        print('Warning: multiple sequences from the same sample.')
+                        print('Warning: Multiple sequences from the same sample:', str(key)) ###
                 if handle_aln or handle_counts:
                     for l in range(0, aln.get_alignment_length()):
                         column = aln[:, l]

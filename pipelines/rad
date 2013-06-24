@@ -207,6 +207,9 @@ if __name__ == '__main__':
         else:
             write_log('--- Logging started - ' + msg + ' ------------------------------------', lfp, append=False)
 
+        print()
+        write_log('', lfp)
+
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
 
@@ -217,8 +220,6 @@ if __name__ == '__main__':
             #     print('threads is required.')
             #     sys.exit(1)
 
-            print()
-
             f_file = config.get('General', 'forward_reads_file')
             r_file = config.get('General', 'reverse_reads_file')
 
@@ -226,8 +227,13 @@ if __name__ == '__main__':
                 pieces=cpu,
                 output_dir=split_raw_fastq_output_dir,
                 forward_reads_file_path=f_file,
-                reverse_reads_file_path=r_file
+                reverse_reads_file_path=r_file,
+                log_func=write_log,
+                log_file_path=lfp
             )
+
+            print()
+            write_log('', lfp)
 
         # Demultiplex split files ---------------------------------------------
         if commands and ('demultiplex' in commands):
@@ -251,9 +257,6 @@ if __name__ == '__main__':
                 if f['split'][0] == 'r':
                     reverse = True
                     break
-
-            print()
-            write_log('', lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -343,6 +346,9 @@ if __name__ == '__main__':
                     handle.write(str(l) + '\n')
                 handle.close()
 
+            print()
+            write_log('', lfp)
+
         # Mask low quality sites ----------------------------------------------
         if commands and ('mask' in commands):
             # if not args.quality_score_treshold:
@@ -361,7 +367,7 @@ if __name__ == '__main__':
             krio.prepare_directory(masked_output_dir)
             file_list = krio.parse_directory(dmltplx_output_dir_combined, ' ')
 
-            msg = '\nMasking low quality sites...'
+            msg = 'Masking low quality sites...'
             print(msg)
             write_log(msg, lfp)
 
@@ -417,6 +423,9 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+            print()
+            write_log('', lfp)
+
         # Bin results by quality and produce forward and reverse consensus
         # sequences
         if commands and ('bin' in commands):
@@ -439,7 +448,7 @@ if __name__ == '__main__':
             krio.prepare_directory(binned_output_dir)
             file_list = krio.parse_directory(masked_output_dir, '_')
 
-            msg = ('\nBinning results by quality and producing\n'
+            msg = ('Binning results by quality and producing\n'
                    'forward and reverse consensus sequences...\n')
             print(msg)
             write_log(msg, lfp)
@@ -662,6 +671,9 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+            print()
+            write_log('', lfp)
+
         # Cluster
         if commands and ('cluster_samples' in commands):
             # if not args.threads:
@@ -674,7 +686,7 @@ if __name__ == '__main__':
             krio.prepare_directory(clustered_output_dir)
             file_list = krio.parse_directory(binned_output_dir, '_')
 
-            msg = '\nSorting before clustering...\n'
+            msg = 'Sorting before clustering...\n'
             print(msg)
             write_log(msg, lfp)
 
@@ -810,6 +822,9 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+            print()
+            write_log('', lfp)
+
         # Produce sample alignments and nucleotide counts per site
         if commands and ('align_samples' in commands):
             # if not args.min_seq_cluster:
@@ -825,7 +840,7 @@ if __name__ == '__main__':
             krio.prepare_directory(sample_alignments_output_dir)
             file_list = krio.parse_directory(clustered_output_dir, '_')
 
-            msg = ('\nProducing sample alignments and\n'
+            msg = ('Producing sample alignments and\n'
                    'read counts per site...\n')
             print(msg)
             write_log(msg, lfp)
@@ -908,6 +923,9 @@ if __name__ == '__main__':
             for p in processes:
                 p.terminate()
 
+            print()
+            write_log('', lfp)
+
 #             # processes = list()
 #             # queue = JoinableQueue()
 
@@ -982,8 +1000,7 @@ if __name__ == '__main__':
 
             file_list = krio.parse_directory(sample_alignments_output_dir, '_')
 
-            msg = ('\nEstimating error rate and within-sample\n'
-                   'nucleotide diversity...\n')
+            msg = ('Estimating error rate and within-sample heterozygosity...\n')
             print(msg)
             write_log(msg, lfp)
 
@@ -1121,13 +1138,16 @@ if __name__ == '__main__':
                 })
                 writer.writerows(results_new)
 
+            print()
+            write_log('', lfp)
+
         # Call consensus bases
         if commands and ('consensus' in commands):
 
             krio.prepare_directory(consensus_output_dir)
             file_list = krio.parse_directory(sample_alignments_output_dir, '_')
 
-            msg = '\nCalling consensus bases...\n'
+            msg = 'Calling consensus bases...\n'
             print(msg)
             write_log(msg, lfp)
 
@@ -1279,13 +1299,16 @@ if __name__ == '__main__':
                 consensus_handle.close()
                 consensus_handle_masked.close()
 
+            print()
+            write_log('', lfp)
+
         # Cluster sequences between samples
         if commands and ('cluster_between' in commands):
 
             krio.prepare_directory(between_sample_clusters_output_dir)
             file_list = krio.parse_directory(grouped_consensus_output_dir, '_')
 
-            msg = '\nClustering loci between samples...\n'
+            msg = 'Clustering loci between samples...\n'
             print(msg)
             write_log(msg, lfp)
 
@@ -1318,13 +1341,16 @@ if __name__ == '__main__':
                     target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
                 )
 
+            print()
+            write_log('', lfp)
+
         # Align loci between samples
         if commands and ('align_between' in commands):
 
             krio.prepare_directory(between_sample_alignments_output_dir)
             file_list = krio.parse_directory(between_sample_clusters_output_dir, '_')
 
-            msg = '\nAligning loci between samples...\n'
+            msg = 'Aligning loci between samples...\n'
             print(msg)
             write_log(msg, lfp)
 

@@ -70,16 +70,23 @@ def write_alignment_file(alignment, file_path, file_format):
 
 
 def split_fastq_file(pieces, output_dir, forward_reads_file_path,
-                     reverse_reads_file_path=None):
+                     reverse_reads_file_path=None, log_func=None,
+                     log_file_path=None):
 
     import os
     import krio
 
-    print('Splitting FASTQ file into', pieces, 'pieces.')
+    msg = 'Splitting FASTQ file into ' + str(pieces) + ' pieces.'
+    print(msg)
+    if log_func and log_file_path:
+        log_func(msg, log_file_path)
 
     krio.prepare_directory(output_dir)
     num_lines = krio.num_lines_in_file(forward_reads_file_path)
-    print('There are ' + str(num_lines / 4) + ' records.')
+    msg = 'There are ' + str(num_lines / 4) + ' records.'
+    print(msg)
+    if log_func and log_file_path:
+        log_func(msg, log_file_path)
     records_per_file = num_lines / 4 / pieces
 
     forward_file_handles = list()
@@ -97,7 +104,10 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
     forward_file_handles.reverse()
     reverse_file_handles.reverse()
 
-    print('\nSplitting forward reads.\n')
+    msg = '\nSplitting forward reads.\n'
+    print(msg)
+    if log_func and log_file_path:
+        log_func(msg, log_file_path)
     with open(forward_reads_file_path) as f:
         write_handle = None
         lines_written = 0
@@ -105,18 +115,30 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
             if (len(forward_file_handles) and
                     ((float(i) / 4) % records_per_file == 0)):
                 if lines_written != 0:
-                    print('\tWritten', str(lines_written / 4), 'records.')
+                    msg = '\tWritten ' + str(lines_written / 4) + ' records.'
+                    print(msg)
+                    if log_func and log_file_path:
+                        log_func(msg, log_file_path)
                     lines_written = 0
-                print('\t' + str(len(forward_file_handles)) +
-                      ' files remaining.')
+                msg = ('\t' + str(len(forward_file_handles)) +
+                       ' files remaining.')
+                print(msg)
+                if log_func and log_file_path:
+                    log_func(msg, log_file_path)
                 write_handle = forward_file_handles.pop()
             write_handle.write(l)
             lines_written = lines_written + 1
             if num_lines == i + 1:
-                print('\tWritten', str(lines_written / 4), 'records.')
+                msg = '\tWritten ' + str(lines_written / 4) + ' records.'
+                print(msg)
+                if log_func and log_file_path:
+                    log_func(msg, log_file_path)
 
     if reverse_reads_file_path:
-        print('\nSplitting reverse reads...\n')
+        msg = '\nSplitting reverse reads.\n'
+        print(msg)
+        if log_func and log_file_path:
+            log_func(msg, log_file_path)
         with open(reverse_reads_file_path) as f:
             write_handle = None
             lines_written = 0
@@ -124,15 +146,24 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
                 if (len(reverse_file_handles) and
                         ((float(i) / 4) % records_per_file == 0)):
                     if lines_written != 0:
-                        print('\tWritten', str(lines_written / 4), 'records.')
+                        msg = '\tWritten ' + str(lines_written / 4) + ' records.'
+                        print(msg)
+                        if log_func and log_file_path:
+                            log_func(msg, log_file_path)
                         lines_written = 0
-                    print('\t' + str(len(reverse_file_handles)) +
-                          ' files remaining.')
+                    msg = ('\t' + str(len(reverse_file_handles)) +
+                           ' files remaining.')
+                    print(msg)
+                    if log_func and log_file_path:
+                        log_func(msg, log_file_path)
                     write_handle = reverse_file_handles.pop()
                 write_handle.write(l)
                 lines_written = lines_written + 1
                 if num_lines == i + 1:
-                    print('\tWritten', str(lines_written / 4), 'records.')
+                    msg = '\tWritten ' + str(lines_written / 4) + ' records.'
+                    print(msg)
+                    if log_func and log_file_path:
+                        log_func(msg, log_file_path)
 
 
 if __name__ == '__main__':
