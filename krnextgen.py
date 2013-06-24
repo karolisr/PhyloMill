@@ -286,7 +286,7 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
     #   [a:b] - is the alignment range on the first sequence
     #   [c:d] - is the alignment range on the second sequence
 
-    mmmr_cutoff_seq_oligo = 0.8
+    mmmr_cutoff_seq_oligo = 0.8 ###
 
     # Forward
     if r_oligo and f_seq_str:
@@ -520,7 +520,7 @@ def demultiplex(barcodes,
             # Barcode match found
             if ld <= max_barcode_mismatch_count:
                 barcode_match_found = True
-                f_title = f_title.replace(' ', '|') ### Hack?
+                f_title = f_title.replace(' ', '|')
                 f_title = '@' + f_title
                 if trim_barcode:
                     # f_record = krseq.trim_residues(f_record, l, False)
@@ -654,10 +654,12 @@ def nucleotides_at_site(site):
 
 
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
-                   fasta_file_path, aln_output_file_path,
-                   counts_output_file_path, program='mafft', options=''):
+                   fasta_file_path, aln_clustal_phylip_file_path=None,
+                   aln_output_file_path=None, counts_output_file_path=None,
+                   program='mafft', options=''):
 
     from Bio import SeqIO
+    from Bio import AlignIO
 
     import krusearch
     # import krbioio
@@ -669,12 +671,22 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
     # records_dict = krbioio.read_sequence_file(fasta_file_path, 'fasta',
     #                                           ret_type='dict')
 
+    # print(program)
+
     records_dict = SeqIO.index(fasta_file_path, 'fasta')
     cluster_dict = krusearch.parse_uc_file(uc_file_path)
-    handle_aln = open(aln_output_file_path, 'w')
-    handle_counts = open(counts_output_file_path, 'w')
+
+    handle_aln = None
+    if aln_output_file_path:
+        handle_aln = open(aln_output_file_path, 'w')
+
+    handle_counts = None
+    if counts_output_file_path:
+        handle_counts = open(counts_output_file_path, 'w')
 
     # f_id = uc_file_path.split('.')[0].split('/')[-1].split('_')[0]
+
+    alignments = list()
 
     keys = cluster_dict.keys()
     keys.sort(key=lambda x: x, reverse=False)
@@ -691,49 +703,83 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                                        max_seq_cluster == 0):
             # krcl.print_progress(i, cluster_count, 50, '')
             # print(f_id, i, '/', cluster_count)
-            handle_aln.write('>CLUSTER_' + str(key) + '\n')
-            handle_counts.write('>CLUSTER_' + str(key) + '\n')
+            if handle_aln:
+                handle_aln.write('>CLUSTER_' + str(key) + '\n')
+            if handle_counts:
+                handle_counts.write('>CLUSTER_' + str(key) + '\n')
+            # X = False ####
             if rpc > 1:
                 for m in members:
+                    # if m[1] == "HWI-ST1155:95:D0KL1ACXX:4:1101:2261:6701|C0NS:0": ####
+                    #     X = True ####
+                    # if X: ####
+                    #     print(m) ####
                     if m[0] == '+':
                         records.append(records_dict[m[1]])
                     else:
                         records.append(
                             krseq.reverse_complement(records_dict[m[1]]))
+                # if X: ####
+                #     print('---') ####
                 aln = kralign.align(
                     records, program=program, options=options)
                     # options='--retree 1 --thread '+str(threads))
                 # aln = kralign.align(records, 'muscle', options='')
-                for l in range(0, aln.get_alignment_length()):
-                    column = aln[:, l]
-                    column = column.upper()
-                    handle_aln.write(column + '\n')
-                    counts = nucleotides_at_site(column)
-                    counts_str = (
-                        str(counts[0]) + '\t' +
-                        str(counts[1]) + '\t' +
-                        str(counts[2]) + '\t' +
-                        str(counts[3]) + '\n'
-                    )
-                    handle_counts.write(counts_str)
+                # if X: ####
+                #     AlignIO.write(aln, '/home/karolis/Dropbox/Code/aln.fasta', "phylip-relaxed") ####
+                if aln_clustal_phylip_file_path:
+                    # import krother
+                    # print(krother.attr(aln))
+                    ids = list()
+                    for seq in aln:
+                        # print(seq.id)
+                        seq.id = seq.id.split('_')[0] ###
+                        ids.append(seq.id)
+                    if len(set(ids)) == len(ids):
+                        alignments.append(aln)
+                    else:
+                        print('Warning: multiple sequences from the same sample.')
+                if handle_aln or handle_counts:
+                    for l in range(0, aln.get_alignment_length()):
+                        column = aln[:, l]
+                        column = column.upper()
+                        if handle_aln:
+                            handle_aln.write(column + '\n')
+                        counts = nucleotides_at_site(column)
+                        counts_str = (
+                            str(counts[0]) + '\t' +
+                            str(counts[1]) + '\t' +
+                            str(counts[2]) + '\t' +
+                            str(counts[3]) + '\n'
+                        )
+                        if handle_counts:
+                            handle_counts.write(counts_str)
             else:
-                record = records_dict[members[0][1]]
-                record = str(record.seq)
-                for l in range(0, len(record)):
-                    column = record[l]
-                    column = column.upper()
-                    handle_aln.write(column + '\n')
-                    counts = nucleotides_at_site(column)
-                    counts_str = (
-                        str(counts[0]) + '\t' +
-                        str(counts[1]) + '\t' +
-                        str(counts[2]) + '\t' +
-                        str(counts[3]) + '\n'
-                    )
-                    handle_counts.write(counts_str)
+                if handle_aln or handle_counts:
+                    record = records_dict[members[0][1]]
+                    record = str(record.seq)
+                    for l in range(0, len(record)):
+                        column = record[l]
+                        column = column.upper()
+                        if handle_aln:
+                            handle_aln.write(column + '\n')
+                        counts = nucleotides_at_site(column)
+                        counts_str = (
+                            str(counts[0]) + '\t' +
+                            str(counts[1]) + '\t' +
+                            str(counts[2]) + '\t' +
+                            str(counts[3]) + '\n'
+                        )
+                        if handle_counts:
+                            handle_counts.write(counts_str)
     # krcl.show_cursor()
-    handle_aln.close()
-    handle_counts.close()
+    if handle_aln:
+        handle_aln.close()
+    if handle_counts:
+        handle_counts.close()
+
+    if aln_clustal_phylip_file_path:
+        AlignIO.write(alignments, aln_clustal_phylip_file_path, "phylip-relaxed")
 
     return(cluster_depths)
 

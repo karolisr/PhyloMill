@@ -40,6 +40,7 @@ def parse_directory(path, file_name_sep, sort='forward'):
         file_dict['ext'] = file_ext
         file_dict['full'] = f
         file_dict['path'] = path + f
+        file_dict['basepath'] = path
         file_dict['split'] = file_name_split
         file_dict['isdir'] = isdir
         return_list.append(file_dict)

@@ -13,6 +13,7 @@ if __name__ == '__main__':
     import argparse
     import csv
     import subprocess
+    import string
     # import re
 
     from multiprocessing import Process
@@ -23,15 +24,20 @@ if __name__ == '__main__':
 
     # from scipy.stats import binom
 
-    # import datrie  # ##
+    import datrie
 
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
+    from Bio import AlignIO
 
     import krio
     import krbioio
     import krnextgen
     import krusearch
     import kriupac
+    import kralign
+
+    # Alignment concatenation function is recursive.
+    sys.setrecursionlimit(500000)
 
     ps = os.path.sep
 
@@ -168,6 +174,7 @@ if __name__ == '__main__':
         consensus_output_dir = output_dir + '08-consensus' + ps
         grouped_consensus_output_dir = output_dir + '09-consensus-grouped' + ps
         between_sample_clusters_output_dir = output_dir + '10-between-sample-clusters' + ps
+        between_sample_alignments_output_dir = output_dir + '11-between-sample-alignments' + ps
         analyzed_samples_output_dir = output_dir + '99-analyzed-samples' + ps
         krio.prepare_directory(analyzed_samples_output_dir)
 
@@ -645,13 +652,18 @@ if __name__ == '__main__':
                     f = q.get()
                     # ifp_split = os.path.splitext(f['path'])
                     # input_file_path = ifp_split[0] + '_sorted' + ifp_split[1]
-                    output_file = clustered_output_dir + f['name'] + '.uc'
-                    print(f['full'])
+
+                    print(f['name'])
+
+                    first_uc = clustered_output_dir + f['name'] + '_1_1_uc'
+                    first_cons_path = clustered_output_dir + f['name'] + '_1_2_cons'
+
                     krusearch.cluster_file(
                         input_file_path=f['path'],
-                        output_file_path=output_file,
+                        output_file_path=first_uc,
                         identity_threshold=
                         config.getfloat('Cluster Within Samples', 'identity_threshold'),
+                        consensus_file_path=first_cons_path,
                         sorted_input=True,
                         algorithm='smallmem',
                         strand='both',
@@ -660,8 +672,70 @@ if __name__ == '__main__':
                         program=config.get('General', 'usearch6_executable'),
                         heuristics=False,
                         query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
-                        target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage')
+                        target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage'),
+                        sizeout=True,
+                        sizein=False,
+                        usersort=False
                     )
+
+                    subprocess.call(
+                        (config.get('General', 'usearch6_executable') + ' -quiet' +
+                            ' -sortbysize ' + first_cons_path +
+                            ' -output ' + first_cons_path + '_sorted'), shell=True)
+
+                    second_uc = clustered_output_dir + f['name'] + '_2_1_uc'
+
+                    krusearch.cluster_file(
+                        input_file_path=first_cons_path + '_sorted',
+                        output_file_path=second_uc,
+                        identity_threshold=
+                        config.getfloat('Cluster Within Samples', 'identity_threshold'),
+                        consensus_file_path=False,
+                        sorted_input=True,
+                        algorithm='smallmem',
+                        strand='both',
+                        threads=1,
+                        quiet=True,
+                        program=config.get('General', 'usearch6_executable'),
+                        heuristics=False,
+                        query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
+                        target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage'),
+                        sizeout=True,
+                        sizein=True,
+                        usersort=True
+                    )
+
+                    # Produce a final cluster file
+
+                    final_uc = clustered_output_dir + f['split'][0] + '.uc'
+                    first_dict = krusearch.parse_uc_file(first_uc, 'centroid')
+                    second_dict = krusearch.parse_uc_file(second_uc, 'centroid')
+                    new_dict = datrie.Trie(string.printable)
+
+                    for k2 in second_dict.keys():
+                        cluster2 = second_dict[k2]
+                        centroid = unicode(cluster2[0][1].split('=')[1].split(';')[0])
+                        if len(cluster2) > 1:
+                            for i2, r2 in enumerate(cluster2):
+                                if i2 == 0:
+                                    new_dict[centroid] = first_dict[centroid]
+                                    # print(i2, centroid)
+                                else:
+                                    minor_centroid = unicode(r2[1].split('=')[1].split(';')[0])
+                                    if r2[0] == '-':
+                                        for mr in first_dict[minor_centroid]:
+                                            if mr[0] == '-':
+                                                mr[0] = '+'
+                                            else:
+                                                mr[0] = '-'
+                                    new_dict[centroid] = new_dict[centroid] + first_dict[minor_centroid]
+                                    # print(i2, minor_centroid)
+                            # print('--- --- ---')
+                        else:
+                            new_dict[centroid] = first_dict[centroid]
+
+                    krusearch.write_uc_file(new_dict, final_uc)
+
                     q.task_done()
 
             for f in file_list:
@@ -698,50 +772,71 @@ if __name__ == '__main__':
             print('\nProducing sample alignments and\n'
                   'nucleotide counts per site...\n')
 
-            def t(f):
-                fasta_file_path = binned_output_dir + f['name'] + '.fasta'
-                aln_output_file_path = (
-                    sample_alignments_output_dir +
-                    f['name'] + '.alignment')
-                counts_output_file_path = (
-                    sample_alignments_output_dir +
-                    f['name'] + '.counts')
-                print(f['full'])
-                cluster_depths = krnextgen.align_clusters(
-                    min_seq_cluster=config.getint('General',
-                                                  'min_seq_cluster'),
-                    max_seq_cluster=config.getint('General',
-                                                  'max_seq_cluster'),
-                    uc_file_path=f['path'],
-                    fasta_file_path=fasta_file_path,
-                    aln_output_file_path=aln_output_file_path,
-                    counts_output_file_path=counts_output_file_path,
-                    program='mafft',
-                    options='--retree 1 --thread '+str(cpu))
+            processes = list()
+            queue = JoinableQueue()
 
-                handle = open((analyzed_samples_output_dir +
-                               f['split'][0] +
-                               #  '_' + f['split'][1] +
-                               '.clusters'), 'wb')
-                for c in cluster_depths:
-                    handle.write(str(c) + '\n')
-                handle.close()
+            # def t(f):
+            def t(q):
+                while True:
+                    f = q.get()
+                    fasta_file_path = binned_output_dir + f['name'] + '_all_hq.fasta'
+                    aln_output_file_path = (
+                        sample_alignments_output_dir +
+                        f['name'] + '.alignment')
+                    counts_output_file_path = (
+                        sample_alignments_output_dir +
+                        f['name'] + '.counts')
+                    print(f['full'])
+                    cluster_depths = krnextgen.align_clusters(
+                        min_seq_cluster=config.getint('General',
+                                                      'min_seq_cluster'),
+                        max_seq_cluster=config.getint('General',
+                                                      'max_seq_cluster'),
+                        uc_file_path=f['path'],
+                        fasta_file_path=fasta_file_path,
+                        aln_output_file_path=aln_output_file_path,
+                        counts_output_file_path=counts_output_file_path,
+                        program='muscle'
+                        # options='--retree 1 --thread '+str(cpu)
+                    )
 
-                ns = krnextgen.nt_site_counts(counts_output_file_path, 1, 0)
-                coverage_list = [sum(x) for x in ns]
-                handle = open((analyzed_samples_output_dir +
-                               f['split'][0] +
-                               #  '_' + f['split'][1] +
-                               '.coverage'), 'wb')
-                for c in coverage_list:
-                    handle.write(str(c) + '\n')
-                handle.close()
+                    handle = open((analyzed_samples_output_dir +
+                                   f['split'][0] +
+                                   #  '_' + f['split'][1] +
+                                   '.clusters'), 'wb')
+                    for c in cluster_depths:
+                        handle.write(str(c) + '\n')
+                    handle.close()
+
+                    ns = krnextgen.nt_site_counts(counts_output_file_path, 1, 0)
+                    coverage_list = [sum(x) for x in ns]
+                    handle = open((analyzed_samples_output_dir +
+                                   f['split'][0] +
+                                   #  '_' + f['split'][1] +
+                                   '.coverage'), 'wb')
+                    for c in coverage_list:
+                        handle.write(str(c) + '\n')
+                    handle.close()
+
+                    q.task_done()
 
             for f in file_list:
-                if (f['split'][-1] == 'sorted' and
-                    f['split'][-2] == 'hq' and
-                        f['split'][-3] == 'all'):
-                    t(f)
+                # if (f['split'][-1] == 'sorted' and
+                #     f['split'][-2] == 'hq' and
+                #         f['split'][-3] == 'all'):
+                if f['ext'] == 'uc':
+                    # t(f)
+                    queue.put(f)
+
+            for i in range(cpu*2): ###
+                worker = Process(target=t, args=(queue,))
+                worker.start()
+                processes.append(worker)
+
+            queue.join()
+
+            for p in processes:
+                p.terminate()
 
 #             # processes = list()
 #             # queue = JoinableQueue()
@@ -1134,3 +1229,47 @@ if __name__ == '__main__':
                     query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
                     target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
                 )
+
+        # Align loci between samples
+        if commands and ('align_between' in commands):
+
+            krio.prepare_directory(between_sample_alignments_output_dir)
+            file_list = krio.parse_directory(between_sample_clusters_output_dir, '_')
+
+            print('\nAligning loci between samples...\n')
+
+            for f in file_list:
+                print(f['full'])
+
+                fasta_file_path = grouped_consensus_output_dir + f['split'][0] + '_consensus.fasta'
+                aln_clustal_phylip_file_path = between_sample_alignments_output_dir + f['split'][0] + '.phy'
+                aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '.alignment'
+                counts_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '.counts'
+
+                cluster_depths = krnextgen.align_clusters(
+                    min_seq_cluster=config.getint('Align Between Samples', 'min_seq_locus'),
+                    max_seq_cluster=0,
+                    uc_file_path=f['path'],
+                    fasta_file_path=fasta_file_path,
+                    aln_clustal_phylip_file_path=aln_clustal_phylip_file_path,
+                    aln_output_file_path=aln_output_file_path,
+                    counts_output_file_path=counts_output_file_path,
+                    program='mafft',
+                    options='--thread '+str(cpu)
+                )
+
+            file_list = krio.parse_directory(between_sample_alignments_output_dir, '_')
+
+            print('\nCreating concatenated alignment...\n')
+
+            for f in file_list:
+                # print(f['full'])
+                if f['ext'] == 'phy':
+                    all_aln_generator = AlignIO.parse(f['path'], "phylip-relaxed")
+                    all_aln = list()
+                    for aln in all_aln_generator:
+                        all_aln.append(aln)
+
+                    concatenated_aln = kralign.concatenate(all_aln)
+                    cat_aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '_concatenated.phy'
+                    AlignIO.write(concatenated_aln, cat_aln_output_file_path, "phylip-relaxed")

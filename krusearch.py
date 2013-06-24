@@ -9,8 +9,11 @@ from __future__ import print_function
 
 def cluster_file(
     input_file_path,
-    output_file_path,
     identity_threshold,
+    output_file_path,
+
+    consensus_file_path=False,
+
     sorted_input=False,
     algorithm='fast',  # fast smallmem
     strand='plus',  # plus both
@@ -19,7 +22,11 @@ def cluster_file(
     program='usearch',
     heuristics=True,
     query_coverage=0.5,
-    target_coverage=0.5
+    target_coverage=0.5,
+
+    sizein=False,
+    sizeout=False,
+    usersort=False
 ):
 
     # import os
@@ -51,15 +58,36 @@ def cluster_file(
     else:
         heuristics = ' -fulldp'
 
+    if sizein:
+        sizein = ' -sizein'
+    else:
+        sizein = ''
+
+    if sizeout:
+        sizeout = ' -sizeout'
+    else:
+        sizeout = ''
+
+    if usersort:
+        usersort = ' -usersort'
+    else:
+        usersort = ''
+
+    if consensus_file_path:
+        consensus = ' -consout ' + consensus_file_path
+    else:
+        consensus = ''
+
     command = (
-        program + quiet + heuristics +
+        program + quiet + heuristics + sizein + sizeout + usersort +
         ' -query_cov ' + str(query_coverage) +
         ' -target_cov ' + str(target_coverage) +
         ' -cluster_' + algorithm + ' ' + input_file_path +
         ' -strand ' + strand +
         ' -id ' + str(identity_threshold) +
         threads +
-        ' -uc ' + output_file_path
+        ' -uc ' + output_file_path +
+        consensus
     )
 
     # print(command)
@@ -72,7 +100,7 @@ def cluster_file(
     return output_file_path
 
 
-def parse_uc_file(uc_file_path):
+def parse_uc_file(uc_file_path, key='clust_number'):
 
     '''
         UC file
@@ -146,29 +174,61 @@ def parse_uc_file(uc_file_path):
     '''
 
     import csv
+    import string
+    import datrie
+
     uc = csv.reader(open(uc_file_path, 'rb'), delimiter=b'\t')
 
-    cluster_dict = {}
+    # cluster_dict = {}
+    cluster_dict = datrie.Trie(string.printable)
 
     for row in uc:
 
         rec_type = row[0]
-        clust_number = int(row[1])
-        #perc_id = row[3]
+        # clust_number = int(row[1])
+        clust_number = unicode(row[1])
+        frac_id = row[3]
+        if frac_id != '*':
+            frac_id = float(frac_id)
         strand = row[4]
         if strand == '*':
             strand = '+'
         #comp_aln = row[7]
-        query = row[8]
-        #target = row[9]
+        query = unicode(row[8])
+        target = unicode(row[9])
 
         if rec_type == 'S':
-            cluster_dict[clust_number] = [[strand, query]]
+            if key == 'clust_number':
+                cluster_dict[clust_number] = [[strand, str(query), 100.0]]
+            elif key == 'centroid':
+                cluster_dict[query] = [[strand, str(query), 100.0]]
 
         elif rec_type == 'H':
-            cluster_dict[clust_number].append([strand, query])
+            if key == 'clust_number':
+                cluster_dict[clust_number].append([strand, str(query), frac_id])
+            elif key == 'centroid':
+                cluster_dict[target].append([strand, str(query), frac_id])
 
     return cluster_dict
+
+
+def write_uc_file(cluster_dict, uc_file_path):
+
+    # Writes a semi-compatible uc file
+
+    handle = open(uc_file_path, 'wb')
+    for c, k in enumerate(cluster_dict.keys()):
+        seed_name = None
+        for l, seq in enumerate(cluster_dict[k]):
+            if l == 0:
+                seed_name = str(seq[1])
+            record = "\t*\t" + str(seq[2]) + "\t" + str(seq[0]) + "\t*\t*\t*\t" + str(seq[1]) + "\t"
+            if l == 0:
+                record = 'S\t' + str(k) + record + "*"
+            else:
+                record = 'H\t' + str(k) + record + seed_name
+            handle.write(record + '\n')
+    handle.close()
 
 
 def cluster_records(records, similarity, temp_dir):

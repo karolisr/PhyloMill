@@ -102,6 +102,7 @@ def align(records, program, options=''):
     alignment = None
 
     if args:
+        # print(args)
         pipe = subprocess.Popen(
             args=args,
             bufsize=0,
