@@ -82,7 +82,8 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
         log_func(msg, log_file_path)
 
     krio.prepare_directory(output_dir)
-    num_lines = krio.num_lines_in_file(forward_reads_file_path)
+    print('Counting reads, this may take some time...')
+    num_lines = krio.num_lines_in_file(forward_reads_file_path, print_every=400000)
     msg = 'There are ' + str(num_lines / 4) + ' records.'
     print(msg)
     if log_func and log_file_path:

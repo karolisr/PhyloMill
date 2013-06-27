@@ -64,10 +64,13 @@ def prepare_directory(path):
 #   python-recipe-read-csvtsv-textfiles-and-ignore-comment-lines
 
 
-def num_lines_in_file(file_path):
+def num_lines_in_file(file_path, print_every=None):
     with open(file_path) as f:
         for i, l in enumerate(f):
             pass
+            # if print_every:
+                # if i % print_every == 0:
+                    # print(i)
         # ah... wonderful Python scope rules!
     return(i + 1)
 

@@ -267,7 +267,7 @@ if __name__ == '__main__':
                 while True:
                     f = q.get()
                     # lock.acquire()
-                    msg = krother.timestamp() + ' - Demultiplexing file ' + f['split'][1]
+                    msg = krother.timestamp() + ' - Demultiplexing File ' + f['split'][1]
                     print(msg)
                     write_log(msg, lfp)
                     # lock.release()
@@ -325,6 +325,7 @@ if __name__ == '__main__':
             msg = '\nProducing read lengths files...\n'
             print(msg)
             write_log(msg, lfp)
+            mismatch = False
             for f in combined_file_list:
                 handle = open(f['path'], "rU")
                 records = FastqGeneralIterator(handle)
@@ -335,7 +336,12 @@ if __name__ == '__main__':
                 handle.close()
                 sample = 'Sample '
                 if f['split'][0] == 'Mismatch':
-                    sample = ''
+                    if not mismatch:
+                        mismatch = True
+                        sample = '\n'
+                    else:
+                        sample = ''
+
                 msg = sample + f['split'][0] + ' ' + f['split'][-1].upper() + ', ' + str(len(lengths)) + ' reads.'
                 print(msg)
                 write_log(msg, lfp)
@@ -367,7 +373,7 @@ if __name__ == '__main__':
             krio.prepare_directory(masked_output_dir)
             file_list = krio.parse_directory(dmltplx_output_dir_combined, ' ')
 
-            msg = 'Masking low quality sites...'
+            msg = 'Masking low quality sites...\n'
             print(msg)
             write_log(msg, lfp)
 
@@ -378,6 +384,12 @@ if __name__ == '__main__':
                 while True:
                     f = q.get()
                     handle_r = open(f['path'], "rU")
+
+                    f_name = f['split'][0].split('_')
+
+                    msg = krother.timestamp() + ' - Sample ' + f_name[0] + ' ' + f_name[2].upper() + ' starting...'
+                    print(msg)
+                    write_log(msg, lfp)
 
                     # records = FastqPhredIterator(handle_r)
                     records = FastqGeneralIterator(handle_r)
@@ -407,6 +419,11 @@ if __name__ == '__main__':
 
                     handle_r.close()
                     handle_w.close()
+
+                    msg = krother.timestamp() + ' - Sample ' + f_name[0] + ' ' + f_name[2].upper() + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
+
                     q.task_done()
 
             for f in file_list:
@@ -466,7 +483,7 @@ if __name__ == '__main__':
                     base_file_path = (masked_output_dir + base_file_name +
                                       f['split'][1] + '_')
 
-                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
                     print(msg)
                     write_log(msg, lfp)
 
@@ -655,6 +672,11 @@ if __name__ == '__main__':
                         handle_r_lq.close()
 
                     handle_all_hq.close()
+
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
+
                     q.task_done()
 
             for f in file_list:
@@ -708,7 +730,12 @@ if __name__ == '__main__':
             # directory
             file_list = krio.parse_directory(binned_output_dir, '_')
 
-            print('\nClustering reads within samples...\n')
+            print()
+            write_log('', lfp)
+
+            msg = 'Clustering reads within samples...\n'
+            print(msg)
+            write_log(msg, lfp)
 
             processes = list()
             queue = JoinableQueue()
@@ -719,7 +746,7 @@ if __name__ == '__main__':
                     # ifp_split = os.path.splitext(f['path'])
                     # input_file_path = ifp_split[0] + '_sorted' + ifp_split[1]
 
-                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
                     print(msg)
                     write_log(msg, lfp)
 
@@ -783,6 +810,7 @@ if __name__ == '__main__':
                     for k2 in second_dict.keys():
                         cluster2 = second_dict[k2]
                         centroid = unicode(cluster2[0][1].split('=')[1].split(';')[0])
+                        # print(centroid)
                         if len(cluster2) > 1:
                             for i2, r2 in enumerate(cluster2):
                                 if i2 == 0:
@@ -803,6 +831,10 @@ if __name__ == '__main__':
                             new_dict[centroid] = first_dict[centroid]
 
                     krusearch.write_uc_file(new_dict, final_uc)
+
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
 
                     q.task_done()
 
@@ -863,9 +895,11 @@ if __name__ == '__main__':
                     counts_output_file_path = (
                         sample_alignments_output_dir +
                         f['name'] + '.counts')
-                    msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
                     print(msg)
                     write_log(msg, lfp)
+
                     cluster_depths = krnextgen.align_clusters(
                         min_seq_cluster=config.getint('General',
                                                       'min_seq_cluster'),
@@ -899,6 +933,10 @@ if __name__ == '__main__':
                         handle.write(str(c) + '\n')
                     handle.close()
 
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    print(msg)
+                    write_log(msg, lfp)
+
                     q.task_done()
 
             for f in file_list:
@@ -910,8 +948,8 @@ if __name__ == '__main__':
                     queue.put(f)
 
             threads_local = cpu
-            if aln_program == 'muscle':
-                threads_local = cpu * 2
+            # if aln_program == 'muscle':
+            #     threads_local = cpu * 2
 
             for i in range(threads_local):
                 worker = Process(target=t, args=(queue,))
@@ -1387,15 +1425,45 @@ if __name__ == '__main__':
             print(msg)
             write_log(msg, lfp)
 
+            iupac_double_dna_set = set(kriupac.IUPAC_DOUBLE_DNA_DICT.values())
+            max_hetero_per_column = config.getint('Align Between Samples', 'max_het_per_column')
+            max_alignment_length = config.getint('Align Between Samples', 'max_alignment_length')
+
             for f in file_list:
                 # print(f['full'])
                 if f['ext'] == 'phy':
-                    all_aln_generator = AlignIO.parse(f['path'], "phylip-relaxed")
-                    all_aln = list()
-                    for aln in all_aln_generator:
-                        all_aln.append(aln)
+                    all_aln = list(AlignIO.parse(f['path'], "phylip-relaxed"))
+                    # all_aln = list()
+                    # for aln in all_aln_generator:
+                    #     all_aln.append(aln)
 
-                    concatenated_aln = kralign.concatenate(all_aln)
+                    # Filter loci that have too many heterozygosities per column
+                    # or are too long
+                    all_aln_filtered = list()
+                    for aln in all_aln:
+                        accept = True
+                        column_count = aln.get_alignment_length()
+                        if column_count > max_alignment_length:
+                            accept = False
+                            # print('Reject: ' + str(column_count) + ' > ' + str(max_alignment_length))
+                            continue
+                        for column in range(0, column_count):
+                            column_set = set(aln[:, column])
+                            intersection = iupac_double_dna_set.intersection(column_set)
+                            if len(intersection) > max_hetero_per_column:
+                                accept = False
+                                c = list(column_set)
+                                c.sort()
+                                i = list(intersection)
+                                i.sort()
+                                # print('Reject: ' + ', '.join(c) + ' -> ' + ', '.join(i))
+                                break
+                        if accept:
+                            all_aln_filtered.append(aln)
+
+                    ############################################################
+
+                    concatenated_aln = kralign.concatenate(all_aln_filtered)
                     cat_aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '_concatenated.phy'
                     AlignIO.write(concatenated_aln, cat_aln_output_file_path, "phylip-relaxed")
 

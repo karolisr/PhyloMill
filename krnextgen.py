@@ -521,6 +521,7 @@ def demultiplex(barcodes,
             if ld <= max_barcode_mismatch_count:
                 barcode_match_found = True
                 f_title = f_title.replace(' ', '|')
+                f_title = f_title.replace('=', '_')
                 f_title = '@' + f_title
                 if trim_barcode:
                     # f_record = krseq.trim_residues(f_record, l, False)
@@ -555,6 +556,7 @@ def demultiplex(barcodes,
                     r_qual = r_qual[::-1]
 
                     r_title = r_title.replace(' ', '|')
+                    r_title = r_title.replace('=', '_')
                     r_title = '@' + r_title
 
                     if trim_barcode and trim_extra > 0:
@@ -740,8 +742,10 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                         ids.append(seq.id)
                     if len(set(ids)) == len(ids):
                         alignments.append(aln)
+                        # print('Accept alignment: ' + str(len(ids))) ###
                     else:
-                        print('Warning: Multiple sequences from the same sample:', str(key)) ###
+                        pass
+                        # print('Warning: Multiple sequences from the same sample:', str(key)) ###
                 if handle_aln or handle_counts:
                     for l in range(0, aln.get_alignment_length()):
                         column = aln[:, l]
