@@ -246,7 +246,7 @@ def cluster_records(records, similarity, temp_dir):
     clustered_path = temp_dir + ps + 'clustered_temp.uc'
 
     krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
-    cluster_file(to_cluster_path, clustered_path, similarity)
+    cluster_file(to_cluster_path, similarity, clustered_path)
     cluster_dict = parse_uc_file(clustered_path)
 
     os.remove(to_cluster_path)

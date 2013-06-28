@@ -23,7 +23,7 @@ if __name__ == '__main__':
                         help='Input directory path.')
     parser.add_argument('-o', '--output_dir', type=unicode,
                         help='Output directory path.')
-    parser.add_argument('--steps', type=unicode,
+    parser.add_argument('-s', '--steps', type=unicode,
                         help='Which steps to perform 1, 2, 3, 4, 5')
 
     args = parser.parse_args()
@@ -46,10 +46,13 @@ if __name__ == '__main__':
         file_name_sep = '$'
 
         query_file = input_dir + 'search-queries'
-        sequence_samples_file = input_dir + 'sequence-samples'
-        synonymy_file = input_dir + 'synonymy'
-        ncbi_names_file = input_dir + 'ncbi-names'
-        authority_file = input_dir + 'authority'
+
+        ### KR ###
+        # sequence_samples_file = input_dir + 'sequence-samples'
+
+        synonymy_file = input_dir + 'synonymy.csv'
+        ncbi_names_file = input_dir + 'ncbi_tax_names'
+        authority_file = input_dir + 'authority_alternates.dat'
         cutlist_records_file = input_dir + 'cutlist_records'
         keeplist_records_file = input_dir + 'keeplist_records'
         cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
@@ -78,6 +81,7 @@ if __name__ == '__main__':
                 config_dict[l['name']] = l['value']
 
         hacks = config_dict['hacks'].split(',')
+        hacks_data_location = config_dict['hacks_data_location']
 
         # Parse queries file
         queries = krio.read_table_file(query_file, has_headers=True,
@@ -121,22 +125,28 @@ if __name__ == '__main__':
                 rettype='dict')
             synonymy_table = krio.read_table_file(
                 synonymy_file, has_headers=True, headers=None, delimiter=',')
-            sequence_samples = krbioio.read_sequence_file(
-                sequence_samples_file, 'fasta', ret_type='dict')
+
+            ### KR ###
+            # sequence_samples = krbioio.read_sequence_file(
+            #     sequence_samples_file, 'fasta', ret_type='dict')
 
             # Extract loci
             krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
                 output_dir=extract_loci_dir,
                 queries=queries,
-                sequence_samples=sequence_samples,
+
+                ### KR ###
+                # sequence_samples=sequence_samples,
+
                 ncbi_names_table=ncbi_names,
                 min_similarity=float(config_dict['asim']),
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 synonymy_table=synonymy_table,
                 auth_file=authority_file,
-                hacks=hacks)
+                hacks=hacks,
+                hacks_data_location=hacks_data_location)
 
         if not steps or 4 in steps:
 

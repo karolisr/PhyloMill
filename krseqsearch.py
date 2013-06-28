@@ -322,9 +322,14 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         krcl.show_cursor()
 
 
-def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
+def extract_loci(search_results_dir, output_dir, queries,
+
+                 ### KR ###
+                 # sequence_samples,
+
                  ncbi_names_table, min_similarity, temp_dir, file_name_sep,
-                 synonymy_table=None, auth_file=None, hacks=None):
+                 synonymy_table=None, auth_file=None, hacks=None,
+                 hacks_data_location=None):
 
     '''
     Extract relevant loci from the search results, do some filtering by length
@@ -341,7 +346,8 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
     import krncbi
     import krcl
     import krbionames
-    import krusearch
+    ### KR ###
+    # import krusearch
 
     ps = os.path.sep
 
@@ -355,7 +361,8 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
 
     if hacks and 'solanum' in hacks:
         hack_sol_species_set = krio.read_table_file(
-            path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
+            # path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
+            path=hacks_data_location,
             has_headers=False,
             headers=None,
             delimiter=',',
@@ -687,13 +694,15 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
             # Produce a biopython sequence record object
             sequence_record = SeqRecord.SeqRecord(
                 seq=seq, id=sequence_record_id, name='', description='')
-            # We will try to cluster this sequence with a sample at the
-            # relatively low similarity treshold, to weed out sequences
-            # that have nothing to do with what we are looking for.
-            to_cluster = [sequence_record, sequence_samples[name1]]
-            cluster_dict = krusearch.cluster_records(
-                to_cluster,
-                min_similarity, temp_dir)
+
+            ### KR ###
+            # # We will try to cluster this sequence with a sample at the
+            # # relatively low similarity treshold, to weed out sequences
+            # # that have nothing to do with what we are looking for.
+            # to_cluster = [sequence_record, sequence_samples[name1]]
+            # cluster_dict = krusearch.cluster_records(
+            #     to_cluster,
+            #     min_similarity, temp_dir)
 
             if acc_name['status'] == '':
                 log_handle.write(
@@ -711,16 +720,19 @@ def extract_loci(search_results_dir, output_dir, queries, sequence_samples,
                     tax_id + '\t' +
                     'Sequence is too short.\n')
                 #loci_excluded.append(sequence_record)
-            # If the sequences are similar enough, there will be only one
-            # cluster
-            elif len(cluster_dict.keys()) != 1:
-                log_handle.write(
-                    name1 + '_' + name2 + '\t' +
-                    record.id + '\t' +
-                    organism.replace('_', ' ') + '\t' +
-                    tax_id + '\t' +
-                    'Sequence is too dissimilar from a sample sequence.\n')
-                #loci_excluded.append(sequence_record)
+
+            ### KR ###
+            # # If the sequences are similar enough, there will be only one
+            # # cluster
+            # elif len(cluster_dict.keys()) != 1:
+            #     log_handle.write(
+            #         name1 + '_' + name2 + '\t' +
+            #         record.id + '\t' +
+            #         organism.replace('_', ' ') + '\t' +
+            #         tax_id + '\t' +
+            #         'Sequence is too dissimilar from a sample sequence.\n')
+            #     #loci_excluded.append(sequence_record)
+
             else:
                 if loose_mode:
                     log_handle.write(
@@ -926,6 +938,7 @@ def one_locus_per_organism(
 
                 krcl.print_progress(i + 1, records_count, 50, '\t\t')
 
+                ### KR ### ???
                 ### Make sure to remove id field from the log file or put
                 ### multiple ids as each species can have multiple ids now
 
@@ -942,6 +955,8 @@ def one_locus_per_organism(
                         # a consensus
                         aln = kralign.align(tax_records_name2, aln_program)
                         summary_aln = AlignInfo.SummaryInfo(aln)
+
+                        ### KR ### Consensus!
                         consensus = summary_aln.dumb_consensus(
                             threshold=0.001, ambiguous='N')
 
@@ -969,6 +984,7 @@ def one_locus_per_organism(
 
                         all_taxid_for_name2_dict[taxid] = sequence_record
                     else:
+                        ### KR ### Pick the largest cluster!
                         # What to do if there is more than one cluster?
                         pass
                 else:
