@@ -194,6 +194,19 @@ if __name__ == '__main__':
         analyzed_samples_output_dir = output_dir + '99-analyzed-samples' + ps
         krio.prepare_directory(analyzed_samples_output_dir)
 
+        # Group samples
+        sample_groups_dict = dict()
+        sample_groups = config.items('Sample Groups')
+        for group in sample_groups:
+            if group[0] != 'outgroups':
+                samples = group[1].split(',')
+                sample_groups_dict[group[0]] = samples
+        outgroups = config.get('Sample Groups', 'outgroups').split(',')
+
+        # print(outgroups)
+        # for k in sample_groups_dict.keys():
+        #     print(k, sample_groups_dict[k])
+
         lfp = output_dir + 'log.txt'
 
         start_time = datetime.datetime.now()
@@ -209,6 +222,10 @@ if __name__ == '__main__':
 
         print()
         write_log('', lfp)
+
+        msg = 'Using ' + str(cpu) + ' CPU cores.\n'
+        print(msg)
+        write_log(msg, lfp)
 
         # Split FASTQ files ---------------------------------------------------
         if commands and ('split' in commands):
@@ -1192,13 +1209,69 @@ if __name__ == '__main__':
             processes = list()
             queue = JoinableQueue()
 
+            # Values are tuples: (e, pi)
+            group_stats = dict()
+            sample_stats = dict()
+
+            for group in sample_groups_dict.keys():
+                group_samples = sample_groups_dict[group]
+                e_list = list()
+                h_list = list()
+                for sample in group_samples:
+                    stats_path = analyzed_samples_output_dir + str(sample) + '.stats'
+                    samples_stats_handle = open(stats_path, 'rb')
+                    lines = samples_stats_handle.readlines()
+                    e = float("inf")
+                    pi = 0.0
+                    for l in lines:
+                        if l.startswith('e'):
+                            e = float(l.split('\t')[1])
+                            e_list.append(e)
+                        if l.startswith('pi'):
+                            pi = float(l.split('\t')[1])
+                            h_list.append(pi)
+                    sample_stats[sample] = (e, pi)
+                mean_error = sum(e_list) / float(len(e_list))
+                mean_heter = sum(h_list) / float(len(h_list))
+                group_stats[group] = (mean_error, mean_heter)
+                # print(group)
+                # print('e', mean_error)
+                # print('pi', mean_heter)
+
+            use_mean_e_and_pi = config.getboolean('Consensus', 'use_mean_e_and_pi')
+
+            # Print log messages
+            if use_mean_e_and_pi:
+                msg = 'Using mean group error rate and within-sample heterozygosity:\n\n'
+                for group in sample_groups_dict.keys():
+                    error = group_stats[group][0]
+                    heter = group_stats[group][1]
+                    msg = msg + group + ' e=' + str(error) + ' pi=' + str(heter) + '\n'
+                print(msg)
+                write_log(msg, lfp)
+            else:
+                msg = 'Using per-sample error rate and within-sample heterozygosity:\n\n'
+                for group in sample_groups_dict.keys():
+                    for sample in sample_groups_dict[group]:
+                        error = sample_stats[sample][0]
+                        heter = sample_stats[sample][1]
+                        msg = msg + sample + ' e=' + str(error) + ' pi=' + str(heter) + '\n'
+                print(msg)
+                write_log(msg, lfp)
+            # End print log messages
+
             def t(q):
                 while True:
                     q_input = q.get()
-                    f = q_input
+                    f = q_input[0]
+                    group_stats = q_input[1]
+                    sample_stats = q_input[2]
+                    use_mean_e_and_pi = q_input[3]
+
                     msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
                     print(msg)
                     write_log(msg, lfp)
+
                     ns = krnextgen.nt_site_counts(
                         f['path'],
                         1,
@@ -1211,19 +1284,19 @@ if __name__ == '__main__':
                                    'consensus' +
                                    '.fasta'), 'wb')
 
-                    samples_stats_file_path = (
-                        analyzed_samples_output_dir + f['split'][0] + '.stats')
-                    samples_stats_handle = open(samples_stats_file_path, 'rb')
-                    lines = samples_stats_handle.readlines()
-
+                    current_sample = f['split'][0]
                     error = float("inf")
-                    heter = 0
-
-                    for l in lines:
-                        if l.startswith('e'):
-                            error = float(l.split('\t')[1])
-                        if l.startswith('pi'):
-                            heter = float(l.split('\t')[1])
+                    heter = 0.0
+                    if use_mean_e_and_pi:
+                        for group in sample_groups_dict.keys():
+                            group_samples = sample_groups_dict[group]
+                            if current_sample in group_samples:
+                                error = group_stats[group][0]
+                                heter = group_stats[group][1]
+                                break
+                    else:
+                        error = sample_stats[current_sample][0]
+                        heter = sample_stats[current_sample][1]
 
                     # print('e', error)
                     # print('pi', heter)
@@ -1260,7 +1333,7 @@ if __name__ == '__main__':
 
             for f in file_list:
                 if f['ext'] == 'counts':
-                    queue.put(f)
+                    queue.put((f, group_stats, sample_stats, use_mean_e_and_pi))
 
             for i in range(cpu):
                 worker = Process(target=t, args=(queue,))
@@ -1286,17 +1359,15 @@ if __name__ == '__main__':
             max_prop_low_quality_sites = config.getfloat(
                 'Consensus', 'max_prop_low_quality_sites')
 
-            sample_groups = config.items('Sample Groups')
+            for group in sample_groups_dict.keys():
 
-            for group in sample_groups:
+                group_samples = sample_groups_dict[group]
 
-                group_samples = group[1].split(',')
-
-                consensus_handle = open((grouped_consensus_output_dir + group[0]
+                consensus_handle = open((grouped_consensus_output_dir + group
                                         + '_consensus' + '.fasta'), 'wb')
 
                 consensus_handle_masked = open((grouped_consensus_output_dir
-                                               + group[0] + '_consensus_masked'
+                                               + group + '_consensus_masked'
                                                + '.fasta'), 'wb')
 
                 # for f in file_list:
@@ -1362,9 +1433,42 @@ if __name__ == '__main__':
                 f_path_sorted = ifp_split[0] + '_sorted' + ifp_split[1]
                 subprocess.call((config.get('General', 'usearch6_executable') + ' -quiet' + ' -sortbylength ' + f_path + ' -output ' + f_path_sorted), shell=True)
 
+                # Put outgroups at the end of file
+                f_path_outgroup_sorted = ifp_split[0] + '_sorted_outgroup' + ifp_split[1]
+                f_path_sorted_handle = open(f_path_sorted, "rU")
+                f_outgroup_sorted_handle = open(f_path_outgroup_sorted, "w")
+
+                outgroup_lines = list()
+                next_line_out = False
+                next_line_in = False
+                for l in f_path_sorted_handle:
+                    if next_line_out and not l.startswith('>'):
+                        outgroup_lines.append(l)
+                        continue
+                    elif next_line_in and not l.startswith('>'):
+                        f_outgroup_sorted_handle.write(l)
+                        continue
+                    else:
+                        next_line_out = False
+                        next_line_in = False
+                    for o in outgroups:
+                        if l.startswith('>'+o):
+                            outgroup_lines.append(l)
+                            next_line_out = True
+                            break
+                    if not next_line_out:
+                        f_outgroup_sorted_handle.write(l)
+                        next_line_in = True
+
+                f_outgroup_sorted_handle.writelines(outgroup_lines)
+
+                f_outgroup_sorted_handle.close()
+                f_path_sorted_handle.close()
+
+                # Cluster
                 output_file = between_sample_clusters_output_dir + f['split'][0] + '_clustered' + '.uc'
                 krusearch.cluster_file(
-                    input_file_path=f_path_sorted,
+                    input_file_path=f_path_outgroup_sorted,
                     output_file_path=output_file,
                     identity_threshold=
                     config.getfloat('Cluster Between Samples', 'identity_threshold'),
@@ -1376,7 +1480,10 @@ if __name__ == '__main__':
                     program=config.get('General', 'usearch6_executable'),
                     heuristics=config.getboolean('Cluster Between Samples', 'heuristics'),
                     query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
-                    target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage')
+                    target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage'),
+                    sizein=False,
+                    sizeout=False,
+                    usersort=True
                 )
 
             print()
