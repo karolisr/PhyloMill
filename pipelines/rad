@@ -198,10 +198,10 @@ if __name__ == '__main__':
         sample_groups_dict = dict()
         sample_groups = config.items('Sample Groups')
         for group in sample_groups:
-            if group[0] != 'outgroups':
+            if group[0] != 'outgroup_samples':
                 samples = group[1].split(',')
                 sample_groups_dict[group[0]] = samples
-        outgroups = config.get('Sample Groups', 'outgroups').split(',')
+        outgroups = config.get('Sample Groups', 'outgroup_samples').split(',')
 
         # print(outgroups)
         # for k in sample_groups_dict.keys():
