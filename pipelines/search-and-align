@@ -108,9 +108,11 @@ if __name__ == '__main__':
                 search_results_dir=search_results_dir,
                 output_dir=filtered_results_dir,
                 cutlist_records_file=cutlist_records_file,
-                keeplist_records_file=keeplist_records_file,
-                cutlist_taxonomy_file=cutlist_taxonomy_file,
-                keeplist_taxonomy_file=keeplist_taxonomy_file
+                ### KR ###
+                # keeplist_records_file=keeplist_records_file,
+                cutlist_taxonomy_file=cutlist_taxonomy_file
+                ### KR ###
+                # keeplist_taxonomy_file=keeplist_taxonomy_file
             )
 
         if not steps or 3 in steps:
@@ -140,7 +142,10 @@ if __name__ == '__main__':
                 # sequence_samples=sequence_samples,
 
                 ncbi_names_table=ncbi_names,
-                min_similarity=float(config_dict['asim']),
+
+                ### KR ###
+                # min_similarity=float(config_dict['asim']),
+
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 synonymy_table=synonymy_table,
@@ -156,6 +161,8 @@ if __name__ == '__main__':
                 output_dir=one_locus_per_organism_dir,
                 queries=queries,
                 min_similarity=float(config_dict['wsim']),
+                cutlist_records_file=cutlist_records_file,
+                keeplist_records_file=keeplist_records_file,
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 aln_program=config_dict['alnprg'],

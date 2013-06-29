@@ -94,8 +94,8 @@ def cluster_file(
 
     subprocess.call(command, shell=True)
 
-    # if algorithm == 'smallmem' and not sorted_input:
-    #     os.remove(input_file_path)
+    if algorithm == 'smallmem' and not sorted_input:
+        os.remove(input_file_path)
 
     return output_file_path
 
@@ -231,7 +231,23 @@ def write_uc_file(cluster_dict, uc_file_path):
     handle.close()
 
 
-def cluster_records(records, similarity, temp_dir):
+def cluster_records(
+    records,
+    identity_threshold,
+    temp_dir,
+    sorted_input=False,
+    algorithm='fast',  # fast smallmem
+    strand='plus',  # plus both
+    threads=1,
+    quiet=True,
+    program='usearch',
+    heuristics=True,
+    query_coverage=0.5,
+    target_coverage=0.5,
+    sizein=False,
+    sizeout=False,
+    usersort=False
+):
 
     '''
     Cluster records based on similarity treshold.
@@ -246,7 +262,25 @@ def cluster_records(records, similarity, temp_dir):
     clustered_path = temp_dir + ps + 'clustered_temp.uc'
 
     krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
-    cluster_file(to_cluster_path, similarity, clustered_path)
+
+    cluster_file(
+        input_file_path=to_cluster_path,
+        identity_threshold=identity_threshold,
+        output_file_path=clustered_path,
+        sorted_input=sorted_input,
+        algorithm=algorithm,  # fast smallmem
+        strand=strand,  # plus both
+        threads=threads,
+        quiet=quiet,
+        program=program,
+        heuristics=heuristics,
+        query_coverage=query_coverage,
+        target_coverage=target_coverage,
+        sizein=sizein,
+        sizeout=sizeout,
+        usersort=usersort
+    )
+
     cluster_dict = parse_uc_file(clustered_path)
 
     os.remove(to_cluster_path)

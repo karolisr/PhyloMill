@@ -188,8 +188,12 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
 
 def filter_records(search_results_dir, output_dir, cutlist_records_file,
-                   keeplist_records_file, cutlist_taxonomy_file,
-                   keeplist_taxonomy_file):
+                   ### KR ###
+                   # keeplist_records_file,
+                   cutlist_taxonomy_file
+                   ### KR ###
+                   # keeplist_taxonomy_file
+                   ):
 
     import os
     import krio
@@ -206,9 +210,11 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
     krio.prepare_directory(output_dir)
 
     cutlist_records = None
-    keeplist_records = None
+    ### KR ###
+    # keeplist_records = None
     cutlist_taxonomy = None
-    keeplist_taxonomy = None
+    ### KR ###
+    # keeplist_taxonomy = None
 
     if cutlist_records_file:
 
@@ -220,15 +226,16 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
             quotechar='"',
             rettype='set')
 
-    if keeplist_records_file:
+    ### KR ###
+    # if keeplist_records_file:
 
-        keeplist_records = krio.read_table_file(
-            path=keeplist_records_file,
-            has_headers=False,
-            headers=None,
-            delimiter=',',
-            quotechar='"',
-            rettype='set')
+    #     keeplist_records = krio.read_table_file(
+    #         path=keeplist_records_file,
+    #         has_headers=False,
+    #         headers=None,
+    #         delimiter=',',
+    #         quotechar='"',
+    #         rettype='set')
 
     if cutlist_taxonomy_file:
 
@@ -240,15 +247,16 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
             quotechar='"',
             rettype='set')
 
-    if keeplist_taxonomy_file:
+    ### KR ###
+    # if keeplist_taxonomy_file:
 
-        keeplist_taxonomy = krio.read_table_file(
-            path=keeplist_taxonomy_file,
-            has_headers=False,
-            headers=None,
-            delimiter=',',
-            quotechar='"',
-            rettype='set')
+    #     keeplist_taxonomy = krio.read_table_file(
+    #         path=keeplist_taxonomy_file,
+    #         has_headers=False,
+    #         headers=None,
+    #         delimiter=',',
+    #         quotechar='"',
+    #         rettype='set')
 
     file_list = krio.parse_directory(search_results_dir, ' ')
 
@@ -271,17 +279,20 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         krcl.hide_cursor()
 
         print('\n\t\tFiltering records for ids.')
-        if keeplist_records or cutlist_records:
+        ### KR ###
+        # if keeplist_records or cutlist_records:
+        if cutlist_records:
             records_count = len(records)
             for i, record in enumerate(records):
                 krcl.print_progress(i + 1, records_count, 50, '\t')
 
-                if keeplist_records:
-                    if ((record.id in keeplist_records) or
-                        (krseq.get_annotation(record, 'gi') in
-                            keeplist_records)):
-                        records_filtered_id.append(record)
-                elif cutlist_records:
+                ### KR ###
+                # if keeplist_records:
+                #     if ((record.id in keeplist_records) or
+                #         (krseq.get_annotation(record, 'gi') in
+                #             keeplist_records)):
+                #         records_filtered_id.append(record)
+                if cutlist_records:
                     if ((record.id not in cutlist_records) and
                         (krseq.get_annotation(record, 'gi') not in
                             cutlist_records)):
@@ -291,18 +302,21 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         print('\t\tAccepted', len(records_filtered_id), 'records.')
 
         print('\n\t\tFiltering records for taxonomy.')
-        if keeplist_taxonomy or cutlist_taxonomy:
+        ### KR ###
+        # if keeplist_taxonomy or cutlist_taxonomy:
+        if cutlist_taxonomy:
             records_count = len(records_filtered_id)
             for i, record in enumerate(records_filtered_id):
                 krcl.print_progress(i + 1, records_count, 50, '\t')
 
-                if keeplist_taxonomy:
-                    if ((krncbi.get_ncbi_tax_id(record) in
-                        keeplist_taxonomy) or
-                        krseq.get_annotation(record, 'organism') in
-                            keeplist_taxonomy):
-                        records_filtered_tax.append(record)
-                elif cutlist_taxonomy:
+                ### KR ###
+                # if keeplist_taxonomy:
+                #     if ((krncbi.get_ncbi_tax_id(record) in
+                #         keeplist_taxonomy) or
+                #         krseq.get_annotation(record, 'organism') in
+                #             keeplist_taxonomy):
+                #         records_filtered_tax.append(record)
+                if cutlist_taxonomy:
                     if ((krncbi.get_ncbi_tax_id(record) not in
                         cutlist_taxonomy) and
                         krseq.get_annotation(record, 'organism') not in
@@ -313,7 +327,9 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         print('\t\tAccepted', len(records_filtered_tax), 'records.')
 
         # Write results
-        if keeplist_taxonomy or cutlist_taxonomy:
+        ### KR ###
+        # if keeplist_taxonomy or cutlist_taxonomy:
+        if cutlist_taxonomy:
             krbioio.write_sequence_file(records_filtered_tax, output_file,
                                         'gb')
         else:
@@ -327,7 +343,10 @@ def extract_loci(search_results_dir, output_dir, queries,
                  ### KR ###
                  # sequence_samples,
 
-                 ncbi_names_table, min_similarity, temp_dir, file_name_sep,
+                 ncbi_names_table,
+                 ### KR ###
+                 # min_similarity,
+                 temp_dir, file_name_sep,
                  synonymy_table=None, auth_file=None, hacks=None,
                  hacks_data_location=None):
 
@@ -803,10 +822,13 @@ def one_locus_per_organism(
     output_dir,
     queries,
     min_similarity,
+    cutlist_records_file,
+    keeplist_records_file,
     temp_dir,
     file_name_sep,
     aln_program,
-        threads):
+    threads
+):
 
     '''
     Produce single sequence per locus, per organism.
@@ -834,6 +856,30 @@ def one_locus_per_organism(
     name_dict = dict()
 
     file_list = krio.parse_directory(extracted_results_dir, file_name_sep)
+
+    ### KR ###
+    cutlist_records = None
+    if cutlist_records_file:
+
+        cutlist_records = krio.read_table_file(
+            path=cutlist_records_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
+
+    keeplist_records = None
+    if keeplist_records_file:
+
+        keeplist_records = krio.read_table_file(
+            path=keeplist_records_file,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar='"',
+            rettype='set')
+    ### KR ###
 
     #
     # Iterate over each file that corresponds to a single query line
@@ -912,17 +958,73 @@ def one_locus_per_organism(
             if lrp.lower() != 'x':
                 lrp = int(lrp)
 
+            ### KR ###
+            # Cluster top X percent of records within a locus within NAME2
+            # Get a representative consensus sequence
+            records.sort(key=lambda x: len(x), reverse=True)
+            records_count = len(records)
+            fraction_to_cluster = 0.01
+            number_to_cluster = int(records_count * fraction_to_cluster)
+            number_to_cluster = max(10, number_to_cluster)
+            records_to_cluster = list()
+            for i, record in enumerate(records):
+                if i == number_to_cluster:
+                    break
+                records_to_cluster.append(record)
+            cluster_dict = krusearch.cluster_records(
+                records=records_to_cluster,
+                identity_threshold=0.75,  ### KR ###
+                temp_dir=temp_dir,
+                sorted_input=False,
+                algorithm='smallmem',  # fast smallmem
+                strand='both',  # plus both
+                threads=1,
+                quiet=True,
+                program='usearch6.1.544_i86linux32',
+                heuristics=False,
+                query_coverage=0.1,
+                target_coverage=0.1,
+                sizein=False,
+                sizeout=False,
+                usersort=False
+            )
+            clusters = list()
+            for k in cluster_dict.keys():
+                clusters.append(cluster_dict[k])
+            clusters.sort(key=lambda x: len(x), reverse=True)
+            largest_cluster = clusters[0]
+            largest_cluster_names = list()
+            for n in largest_cluster:
+                largest_cluster_names.append(n[1])
+            # print(largest_cluster_names)
+            records_to_align = list()
+            for record in records:
+                # print(record.id)
+                if record.id in largest_cluster_names:
+                    records_to_align.append(record)
+            ### KR ###
+            aln = kralign.align(records_to_align, 'mafft')
+            # from Bio import AlignIO
+            # AlignIO.write(aln, '/home/karolis/Dropbox/Code/test/sol-out-NEW/temp/xxx.fasta', "fasta")
+            summary_aln = AlignInfo.SummaryInfo(aln)
+            consensus = summary_aln.dumb_consensus(
+                threshold=0.001, ambiguous='N')
+            rep_cons_record = SeqRecord.SeqRecord(
+                seq=consensus, id='representative', name='',
+                description='')
+            # print(consensus)
+
             print('\n\t\tProcessing', name1, name2)
 
             # Keys will be taxid and value will be the list of all sequences
             # for name2 with that taxid
-
             ### ### ### ### ### ### ### ###
             ### CANNOT USE TAXID BECAUSE OF SOLANUM HACK !!!
             ### ### ### ### ### ### ### ###
             tax_records_dict_name2 = dict()
 
             for record in records:
+                # print(record.id.split('|')[0], len(record))
                 # taxid is acc_name_flat
                 taxid = record.description.split('|')[3]
                 if not taxid in tax_records_dict_name2:
@@ -942,15 +1044,50 @@ def one_locus_per_organism(
                 ### Make sure to remove id field from the log file or put
                 ### multiple ids as each species can have multiple ids now
 
-                tax_records_name2 = tax_records_dict_name2[taxid]
+                tax_records_name2_prefiltered = tax_records_dict_name2[taxid]
+                tax_records_name2 = list()
+                ### KR ###
+                for tr in tax_records_name2_prefiltered:
+                    if tr.id.split('|')[0] not in cutlist_records:
+                        tax_records_name2.append(tr)
+                ### KR ###
 
                 if len(tax_records_name2) > 1:
                     # ...we cluster these sequences and hope for only one
                     # cluster
-                    cluster_dict = krusearch.cluster_records(
-                        tax_records_name2, min_similarity, temp_dir)
+
+                    tax_records_name2_to_cluster = list()
+                    ### KR ###
+                    for tr in tax_records_name2:
+                        if tr.id.split('|')[0] not in keeplist_records:
+                            tax_records_name2_to_cluster.append(tr)
+                    ### KR ###
+                    tax_records_name2_to_cluster.append(rep_cons_record)
+
+                    cluster_dict = None
+                    if len(tax_records_name2_to_cluster) > 1:
+                        cluster_dict = krusearch.cluster_records(
+                            records=tax_records_name2_to_cluster,
+                            # identity_threshold=min_similarity,
+                            identity_threshold=0.75,
+                            temp_dir=temp_dir,
+                            sorted_input=False,
+                            algorithm='smallmem',  # fast smallmem
+                            strand='both',  # plus both
+                            threads=1,
+                            quiet=True,
+                            program='usearch6.1.544_i86linux32',
+                            heuristics=False,
+                            query_coverage=0.1,
+                            target_coverage=0.1,
+                            sizein=False,
+                            sizeout=False,
+                            usersort=False
+                        )
+
                     # ...if there is only one cluster
-                    if len(cluster_dict.keys()) == 1:
+                    if not cluster_dict or len(cluster_dict.keys()) == 1:
+
                         # We align the sequences in a cluster and produce
                         # a consensus
                         aln = kralign.align(tax_records_name2, aln_program)
@@ -963,8 +1100,8 @@ def one_locus_per_organism(
                         # We want the consensus record description to reflect
                         # all the sequence ids that were combined to form it
                         cons_ids = list()
-                        for i in tax_records_name2:
-                            cons_ids.append(i.id.split('|')[0])
+                        for n in tax_records_name2:
+                            cons_ids.append(n.id.split('|')[0])
                         new_cons_id = '_'.join(cons_ids)
 
                         old_record_id_split = (
@@ -984,9 +1121,52 @@ def one_locus_per_organism(
 
                         all_taxid_for_name2_dict[taxid] = sequence_record
                     else:
-                        ### KR ### Pick the largest cluster!
+                        ### KR ###
                         # What to do if there is more than one cluster?
-                        pass
+
+                        review_dir = output_dir + '-review' + ps + name1 + ps
+                        krio.prepare_directory(review_dir)
+
+                        review_name = tax_records_name2_to_cluster[0].id.split('|')[0]
+
+                        review_ids_handle = open(review_dir+review_name+'.tsv', 'w')
+
+                        for r in tax_records_name2_to_cluster:
+                            label = r.id.split('|')[0]
+                            if label is not 'representative':
+                                review_ids_handle.write(label+'\n')
+
+                        review_ids_handle.close()
+
+                        from Bio import AlignIO
+                        aln = kralign.align(tax_records_name2_to_cluster, 'mafft')
+                        AlignIO.write(aln, review_dir + review_name + '.phy', "phylip-relaxed")
+
+                        ### KR ###
+                        # clusters = list()
+                        # for k in cluster_dict.keys():
+                        #     cluster = cluster_dict[k]
+                        #     count = len(cluster)
+                        #     clusters.append((count, cluster))
+
+                        # clusters = cluster_dict.values()
+                        # clusters.sort(key=lambda x: len(x), reverse=True)
+
+                        # # # if len(clusters) > 1:
+                        # for x, c in enumerate(clusters):
+                        #     print(x, c[0][1])
+                        #     for s in c:
+                        #         print(s[1])
+
+                        # print('----------------------------------------------')
+
+                        # if len(clusters) > 1:
+                        #     for c in clusters:
+                        #         print(c)
+
+                        #     print('==============================================')
+                        ### KR ###
+
                 else:
                     all_taxid_for_name2_dict[taxid] = tax_records_name2[0]
 
