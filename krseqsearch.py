@@ -381,7 +381,7 @@ def extract_loci(search_results_dir, output_dir, queries,
     if hacks and 'tgrc' in hacks:
         hack_sol_species_set = krio.read_table_file(
             # path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
-            path=hacks_data_location,
+            path=hacks_data_location['tgrc'],
             has_headers=False,
             headers=None,
             delimiter=',',
@@ -821,12 +821,15 @@ def one_locus_per_organism(
     extracted_results_dir,
     output_dir,
     queries,
-    min_similarity,
+    among_species_similarity,
+    within_species_similarity,
     cutlist_records_file,
     keeplist_records_file,
     temp_dir,
     file_name_sep,
+    aln_program_exe,
     aln_program,
+    aln_options,
     threads
 ):
 
@@ -973,7 +976,7 @@ def one_locus_per_organism(
                 records_to_cluster.append(record)
             cluster_dict = krusearch.cluster_records(
                 records=records_to_cluster,
-                identity_threshold=0.75,  ### KR ###
+                identity_threshold=among_species_similarity,
                 temp_dir=temp_dir,
                 sorted_input=False,
                 algorithm='smallmem',  # fast smallmem
@@ -1003,7 +1006,11 @@ def one_locus_per_organism(
                 if record.id in largest_cluster_names:
                     records_to_align.append(record)
             ### KR ###
-            aln = kralign.align(records_to_align, 'mafft')
+            aln = kralign.align(
+                records=records_to_align,
+                program=aln_program,
+                options=aln_options,
+                program_executable=aln_program_exe)
             # from Bio import AlignIO
             # AlignIO.write(aln, '/home/karolis/Dropbox/Code/test/sol-out-NEW/temp/xxx.fasta', "fasta")
             summary_aln = AlignInfo.SummaryInfo(aln)
@@ -1069,7 +1076,7 @@ def one_locus_per_organism(
                         cluster_dict = krusearch.cluster_records(
                             records=tax_records_name2_to_cluster,
                             # identity_threshold=min_similarity,
-                            identity_threshold=0.75,
+                            identity_threshold=within_species_similarity,
                             temp_dir=temp_dir,
                             sorted_input=False,
                             algorithm='smallmem',  # fast smallmem
@@ -1338,8 +1345,16 @@ def one_locus_per_organism(
     os.removedirs(temp_dir)
 
 
-def align_loci(processed_results_dir, output_dir, program, options,
-               spacing, temp_dir, order):
+def align_loci(
+    processed_results_dir,
+    output_dir,
+    aln_program_exe,
+    aln_program,
+    aln_options,
+    spacing,
+    temp_dir,
+    order
+):
 
     '''
     Align individual loci, then concatenate alignments.
@@ -1366,8 +1381,8 @@ def align_loci(processed_results_dir, output_dir, program, options,
 
     file_list = krio.parse_directory(processed_results_dir, ' ')
 
-    order_list = [x.strip() for x in order.split(',')]
-    alignments = [x.strip() for x in order.split(',')]
+    order_list = [x.strip() for x in order]
+    alignments = [x.strip() for x in order]
 
     for f in file_list:
 
@@ -1380,7 +1395,11 @@ def align_loci(processed_results_dir, output_dir, program, options,
 
         # Align each locus individually first.
         print('\n\tAligning', file_name)
-        aln = kralign.align(records, program, options=options)
+        aln = kralign.align(
+            records=records,
+            program=aln_program,
+            options=aln_options,
+            program_executable=aln_program_exe)
         if aln:
             krbioio.write_alignment_file(aln, output_file, 'fasta')
             #alignments.append(aln)
