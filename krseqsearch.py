@@ -6,7 +6,7 @@ from __future__ import print_function
 
 # Hacks!
 
-def sol_species_from_voucher(voucher):
+def hack_tgrc(voucher):
 
     '''
         Some Lycopersicon / Solanum members have voucher numbers which resolve
@@ -378,7 +378,7 @@ def extract_loci(search_results_dir, output_dir, queries,
     found_previously = dict()
     do_not_repeat = list()
 
-    if hacks and 'solanum' in hacks:
+    if hacks and 'tgrc' in hacks:
         hack_sol_species_set = krio.read_table_file(
             # path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
             path=hacks_data_location,
@@ -534,7 +534,7 @@ def extract_loci(search_results_dir, output_dir, queries,
 
             # HACKS ###########################################################
             hack_species_found = False
-            if hacks and 'solanum' in hacks:
+            if hacks and 'tgrc' in hacks:
 
                 hack_org = krbionames.parse_organism_name(
                     organism,
@@ -557,7 +557,7 @@ def extract_loci(search_results_dir, output_dir, queries,
                             if voucher in found_previously.keys():
                                 hack_species_found = found_previously[voucher]
                             else:
-                                hack_species_found = sol_species_from_voucher(
+                                hack_species_found = hack_tgrc(
                                     voucher)
                             if hack_species_found:
                                 # print('FOUND')
@@ -1019,7 +1019,7 @@ def one_locus_per_organism(
             # Keys will be taxid and value will be the list of all sequences
             # for name2 with that taxid
             ### ### ### ### ### ### ### ###
-            ### CANNOT USE TAXID BECAUSE OF SOLANUM HACK !!!
+            ### CANNOT USE TAXID BECAUSE OF TGRC HACK !!!
             ### ### ### ### ### ### ### ###
             tax_records_dict_name2 = dict()
 
@@ -1515,10 +1515,10 @@ def align_loci(processed_results_dir, output_dir, program, options,
 #         v1 = 'LA1964'
 #         v2 = 'LA2744'
 
-#         s1 = sol_species_from_voucher(v1)
+#         s1 = hack_tgrc(v1)
 #         print(s1)
 
-#         s2 = sol_species_from_voucher(v2)
+#         s2 = hack_tgrc(v2)
 #         print(s2)
 
 #         sys.exit(0)
