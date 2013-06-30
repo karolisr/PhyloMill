@@ -129,7 +129,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
         query = query_dict['query']
 
         '''
-        File name is genrated based on the search query (periods will be
+        File name is generated based on the search query (periods will be
         replaced with file_name_sep):
 
             name1.name2.locus.minlen.feature_type.qualifier_label
