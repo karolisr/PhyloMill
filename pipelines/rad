@@ -51,6 +51,7 @@ if __name__ == '__main__':
     import kriupac
     import kralign
     import krother
+    # import krcl
 
     # Alignment concatenation function is recursive.
     sys.setrecursionlimit(500000)
@@ -1143,7 +1144,7 @@ if __name__ == '__main__':
 
                     results.append(results_dict)
 
-                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+                    msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done: e=' + str(results_dict['e']) + ', pi=' + str(results_dict['pi'])
                     print(msg)
                     write_log(msg, lfp)
 
@@ -1246,7 +1247,7 @@ if __name__ == '__main__':
                 for group in sample_groups_dict.keys():
                     error = group_stats[group][0]
                     heter = group_stats[group][1]
-                    msg = msg + group + ' e=' + str(error) + ' pi=' + str(heter) + '\n'
+                    msg = msg + group + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
                 print(msg)
                 write_log(msg, lfp)
             else:
@@ -1255,7 +1256,7 @@ if __name__ == '__main__':
                     for sample in sample_groups_dict[group]:
                         error = sample_stats[sample][0]
                         heter = sample_stats[sample][1]
-                        msg = msg + sample + ' e=' + str(error) + ' pi=' + str(heter) + '\n'
+                        msg = msg + sample + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
                 print(msg)
                 write_log(msg, lfp)
             # End print log messages
@@ -1492,6 +1493,10 @@ if __name__ == '__main__':
         # Align loci between samples
         if commands and ('align_between' in commands):
 
+            min_seq_locus = config.getint('Align Between Samples', 'min_seq_locus')
+            max_hetero_per_column = config.getint('Align Between Samples', 'max_het_per_column')
+            between_sample_alignments_output_dir = between_sample_alignments_output_dir.rstrip(ps) + '-min_seq_locus_' + str(min_seq_locus) + '-max_hetero_per_column_' + str(max_hetero_per_column) + ps
+
             krio.prepare_directory(between_sample_alignments_output_dir)
             file_list = krio.parse_directory(between_sample_clusters_output_dir, '_')
 
@@ -1514,7 +1519,7 @@ if __name__ == '__main__':
                 counts_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '.counts'
 
                 cluster_depths = krnextgen.align_clusters(
-                    min_seq_cluster=config.getint('Align Between Samples', 'min_seq_locus'),
+                    min_seq_cluster=min_seq_locus,
                     max_seq_cluster=0,
                     uc_file_path=f['path'],
                     fasta_file_path=fasta_file_path,
@@ -1533,12 +1538,14 @@ if __name__ == '__main__':
             write_log(msg, lfp)
 
             iupac_double_dna_set = set(kriupac.IUPAC_DOUBLE_DNA_DICT.values())
-            max_hetero_per_column = config.getint('Align Between Samples', 'max_het_per_column')
             max_alignment_length = config.getint('Align Between Samples', 'max_alignment_length')
 
             for f in file_list:
                 # print(f['full'])
-                if f['ext'] == 'phy':
+                if f['ext'] == 'phy' and len(f['split']) == 1:
+                    msg = f['split'][0] + '\n'
+                    print(msg)
+                    write_log(msg, lfp)
                     all_aln = list(AlignIO.parse(f['path'], "phylip-relaxed"))
                     # all_aln = list()
                     # for aln in all_aln_generator:
@@ -1546,8 +1553,11 @@ if __name__ == '__main__':
 
                     # Filter loci that have too many heterozygosities per column
                     # or are too long
+                    number_accepted = 0
                     all_aln_filtered = list()
+                    number_of_aln = len(all_aln)
                     for aln in all_aln:
+                        # krcl.print_progress(current=cur, total=number_of_aln, length=50, prefix='\t')
                         accept = True
                         column_count = aln.get_alignment_length()
                         if column_count > max_alignment_length:
@@ -1555,19 +1565,22 @@ if __name__ == '__main__':
                             # print('Reject: ' + str(column_count) + ' > ' + str(max_alignment_length))
                             continue
                         for column in range(0, column_count):
-                            column_set = set(aln[:, column])
-                            intersection = iupac_double_dna_set.intersection(column_set)
-                            if len(intersection) > max_hetero_per_column:
+                            counts = dict()
+                            for c in aln[:, column]:
+                                c = c.upper()
+                                if c in iupac_double_dna_set:
+                                    counts[c] = counts.get(c, 0) + 1
+                            if sum(counts.values()) > max_hetero_per_column:
                                 accept = False
-                                c = list(column_set)
-                                c.sort()
-                                i = list(intersection)
-                                i.sort()
-                                # print('Reject: ' + ', '.join(c) + ' -> ' + ', '.join(i))
+                                # print('Reject:', counts)
                                 break
                         if accept:
                             all_aln_filtered.append(aln)
+                            number_accepted = number_accepted + 1
 
+                    msg = 'Accepted ' + str(number_accepted) + ' out of ' + str(number_of_aln) + ' loci.\n'
+                    print(msg)
+                    write_log(msg, lfp)
                     ############################################################
 
                     concatenated_aln = kralign.concatenate(all_aln_filtered)

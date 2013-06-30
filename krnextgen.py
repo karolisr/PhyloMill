@@ -742,10 +742,10 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                         ids.append(seq.id)
                     if len(set(ids)) == len(ids):
                         alignments.append(aln)
-                        print('Accept alignment: ' + str(len(ids))) ###
+                        # print('Accept alignment: ' + str(len(ids))) ###
                     else:
                         pass
-                        print('Warning: Multiple sequences from the same sample:', str(key)) ###
+                        # print('Warning: Multiple sequences from the same sample:', str(key)) ###
                 if handle_aln or handle_counts:
                     for l in range(0, aln.get_alignment_length()):
                         column = aln[:, l]

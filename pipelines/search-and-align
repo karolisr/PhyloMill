@@ -15,7 +15,7 @@ if __name__ == '__main__':
     import argparse
     import krseqsearch
     import krio
-    import krbioio
+    # import krbioio
 
     parser = argparse.ArgumentParser()
 
