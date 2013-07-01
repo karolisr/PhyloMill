@@ -1,7 +1,36 @@
-email	test@test.com				Contact email, so NCBI can inform the user if there are any problems
-asim	0.5							Among-species similarity
-wsim	0.8							Within-species similarity
-alnprg	mafft						Alignment program
-threads	2							CPU cores to use
-alngaps	100							Number of gaps to add between individual alignments in the concatenated alignment
-algnorder	rbcL,trnT-trnL,GBSSI	Order of loci in the output alignment
+# -----------------------------------------------------------------------------
+# --commands search,filter,extract,flatten,align
+# -----------------------------------------------------------------------------
+
+[General]
+
+# Contact email, so NCBI can inform the user if there are any problems
+email = test@test.com
+
+max_cpu_cores_available = 2
+
+usearch6_executable = usearch
+mafft_executable = mafft
+muscle_executable = muscle
+
+[Hacks]
+
+tgrc = Yes
+tgrc_data =
+
+[Flatten]
+
+among_species_similarity = 0.75
+within_species_similarity = 0.75
+
+align_program = mafft
+align_program_options = --auto
+
+[Align]
+
+align_program = mafft
+align_program_options = --auto
+
+order_of_loci = GBSSI, matK-trnK, rbcL, ITS1-5.8-ITS2
+
+number_of_gaps_between_loci = 0
