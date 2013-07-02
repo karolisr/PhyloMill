@@ -73,3 +73,13 @@ def reverse_complement(bio_seq_record):
                                                letter_annotations=True,
                                                dbxrefs=True)
     return result
+
+
+def resolve_ambiguities(sequence):
+    import numpy
+    import kriupac
+    for k in kriupac.IUPAC_AMBIGUOUS_DNA_DICT.keys():
+        for i in range(0, sequence.count(kriupac.IUPAC_AMBIGUOUS_DNA_DICT[k])):
+            rand = numpy.random.randint(0, len(k))
+            sequence = sequence.replace(kriupac.IUPAC_AMBIGUOUS_DNA_DICT[k], k[rand], 1)
+    return(sequence)

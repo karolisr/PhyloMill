@@ -94,8 +94,8 @@ def cluster_file(
 
     subprocess.call(command, shell=True)
 
-    if algorithm == 'smallmem' and not sorted_input:
-        os.remove(input_file_path)
+    # if algorithm == 'smallmem' and not sorted_input:
+    #     os.remove(input_file_path)
 
     return output_file_path
 

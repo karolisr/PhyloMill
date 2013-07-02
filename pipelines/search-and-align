@@ -13,6 +13,10 @@ if __name__ == '__main__':
     import os
     import sys
 
+    # from multiprocessing import Process
+    # from multiprocessing import JoinableQueue
+    # from multiprocessing import Manager
+
     import ConfigParser
 
     import argparse
@@ -51,16 +55,12 @@ if __name__ == '__main__':
 
         query_file = input_dir + 'search-queries'
 
-        ### KR ###
-        # sequence_samples_file = input_dir + 'sequence-samples'
-
         synonymy_file = input_dir + 'synonymy.csv'
         ncbi_names_file = input_dir + 'ncbi_tax_names'
         authority_file = input_dir + 'authority_alternates.dat'
         cutlist_records_file = input_dir + 'cutlist_records'
         keeplist_records_file = input_dir + 'keeplist_records'
         cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
-        # keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
 
         temp_dir = output_dir + 'temp'
 
@@ -69,6 +69,7 @@ if __name__ == '__main__':
         extract_loci_dir = output_dir + '03-extracted-loci'
         one_locus_per_organism_dir = output_dir + '04-one-locus-per-organism'
         aligned_dir = output_dir + '05-aligned'
+        concatenated_dir = output_dir + '06-concatenated'
 
         # Create output directory
         krio.prepare_directory(output_dir)
@@ -78,38 +79,18 @@ if __name__ == '__main__':
         config = ConfigParser.SafeConfigParser()
         config.read(config_file_path)
 
-        # Get configuration information
-        # config = None
-        # config_dict = dict()
-        # config_file_path = input_dir + 'config'
-        # if os.path.exists(config_file_path):
-        #     config = krio.read_table_file(
-        #         config_file_path, has_headers=False, headers=['name', 'value'],
-        #         delimiter='\t', quotechar='"')
-        #     for l in config:
-        #         config_dict[l['name']] = l['value']
-
-        # hacks = config_dict['hacks'].split(',')
-        # hacks_data_location = config_dict['hacks_data_location']
-
-        # sample_groups_dict = dict()
         hacks_items = config.items('Hacks')
         hacks = list()
         for hack in hacks_items:
             h = hack[0].split('_')
             if h[-1] != 'data':
-                hacks.append('_'.join(h))
+                if config.getboolean('Hacks', '_'.join(h)):
+                    hacks.append('_'.join(h))
 
         hacks_data_location = dict()
 
         for hack in hacks:
             hacks_data_location[hack] = config.get('Hacks', hack + '_data')
-
-        # for group in sample_groups:
-        #     if group[0] != 'outgroup_samples':
-        #         samples = group[1].split(',')
-        #         sample_groups_dict[group[0]] = samples
-        # outgroups = config.get('Sample Groups', 'outgroup_samples').split(',')
 
         # Parse queries file
         queries = krio.read_table_file(query_file, has_headers=True,
@@ -135,11 +116,7 @@ if __name__ == '__main__':
                 search_results_dir=search_results_dir,
                 output_dir=filtered_results_dir,
                 cutlist_records_file=cutlist_records_file,
-                ### KR ###
-                # keeplist_records_file=keeplist_records_file,
                 cutlist_taxonomy_file=cutlist_taxonomy_file
-                ### KR ###
-                # keeplist_taxonomy_file=keeplist_taxonomy_file
             )
 
         if not commands or 'extract' in commands:
@@ -155,24 +132,12 @@ if __name__ == '__main__':
             synonymy_table = krio.read_table_file(
                 synonymy_file, has_headers=True, headers=None, delimiter=',')
 
-            ### KR ###
-            # sequence_samples = krbioio.read_sequence_file(
-            #     sequence_samples_file, 'fasta', ret_type='dict')
-
             # Extract loci
             krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
                 output_dir=extract_loci_dir,
                 queries=queries,
-
-                ### KR ###
-                # sequence_samples=sequence_samples,
-
                 ncbi_names_table=ncbi_names,
-
-                ### KR ###
-                # min_similarity=float(config_dict['asim']),
-
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 synonymy_table=synonymy_table,
@@ -190,30 +155,41 @@ if __name__ == '__main__':
                 extracted_results_dir=extract_loci_dir,
                 output_dir=one_locus_per_organism_dir,
                 queries=queries,
-                among_species_similarity=config.getfloat('Flatten', 'among_species_similarity'),
-                within_species_similarity=config.getfloat('Flatten', 'within_species_similarity'),
+                identity_threshold=config.getfloat('Flatten', 'identity_threshold'),
                 cutlist_records_file=cutlist_records_file,
                 keeplist_records_file=keeplist_records_file,
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
+                usearch_exe=config.get('General', 'usearch_executable'),
                 aln_program_exe=aln_program_exe,
                 aln_program=aln_program,
                 aln_options=config.get('Flatten', 'align_program_options'),
-                threads=config.getint('General', 'max_cpu_cores_available'))
+                # threads=config.getint('General', 'max_cpu_cores_available'),
+                proceed_without_review=config.getboolean('Flatten', 'proceed_without_review'))
 
         if not commands or 'align' in commands:
 
             aln_program = config.get('Align', 'align_program')
             aln_program_exe = config.get('General', aln_program+'_executable')
-            order = config.get('Align', 'order_of_loci').split(',')
+            aln_options = config.get('Align', 'align_program_options')
 
-            # Align loci and produce a concatenated alignment
+            # Align loci
             krseqsearch.align_loci(
                 processed_results_dir=one_locus_per_organism_dir,
                 output_dir=aligned_dir,
                 aln_program_exe=aln_program_exe,
                 aln_program=aln_program,
-                aln_options=config.get('Align', 'align_program_options'),
-                spacing=config.getint('Align', 'number_of_gaps_between_loci'),
-                temp_dir=temp_dir,
-                order=order)
+                aln_options=aln_options,
+                temp_dir=temp_dir)
+
+        if not commands or 'concatenate' in commands:
+
+            order_of_loci = config.get('Concatenate', 'order_of_loci').split(',')
+            number_of_gaps_between_loci = config.getint('Concatenate', 'number_of_gaps_between_loci')
+
+            # Produce a concatenated alignment
+            krseqsearch.concatenate(
+                aligned_loci_dir=aligned_dir,
+                output_dir=concatenated_dir,
+                order_of_loci=order_of_loci,
+                number_of_gaps_between_loci=number_of_gaps_between_loci)

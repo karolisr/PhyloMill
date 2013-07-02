@@ -126,3 +126,82 @@ def align(records, program, options='', program_executable=''):
         alignment = AlignIO.read(StringIO(data[0]), 'fasta')
 
     return alignment
+
+
+def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
+    from Bio import Seq
+    import kriupac
+    import krseq
+    consensus = ''
+    column_count = alignment.get_alignment_length()
+    for column in range(0, column_count):
+        # Count individual characters in the column
+        counts = dict()
+        for c in alignment[:, column]:
+            c = c.upper()
+            c.replace('U', 'T')
+            if c in kriupac.IUPAC_DNA_CHARACTERS:
+                counts[c] = counts.get(c, 0) + 1
+        counts_expanded = dict()
+        for k in counts.keys():
+            if k in kriupac.IUPAC_DNA_DICT_REVERSE:
+                for char in kriupac.IUPAC_DNA_DICT_REVERSE[k]:
+                    counts_expanded[char] = counts_expanded.get(char, 0) + counts[k]
+            else:
+                counts_expanded[k] = counts_expanded.get(k, 0) + counts[k]
+        # Get the total characters in the column
+        # TODO: should N, and gaps be excluded?
+        total = 0
+        for k in counts_expanded.keys():
+            if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
+                total = total + counts_expanded[k]
+        proportions = dict()
+        for k in counts_expanded.keys():
+            if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
+                proportions[k] = float(counts_expanded[k]) / float(total)
+
+        site_set = set()
+        if len(proportions) > 0 and threshold == 0:
+            max_prop = max(proportions.values())
+            for k in proportions.keys():
+                if proportions[k] == max_prop:
+                    site_set.add(k)
+        else:
+            for k in proportions.keys():
+                if proportions[k] >= threshold:
+                    site_set.add(k)
+
+        if len(site_set) == 0:
+            site_set.add(unknown)
+        site_list = list(site_set)
+        site_list.sort()
+        site_str = ''.join(site_list)
+        site = unknown
+        if site_str == unknown:
+            site = unknown
+        elif site_str == kriupac.IUPAC_DNA_STRING:
+            site = unknown
+        else:
+            site = kriupac.IUPAC_DNA_DICT[site_str]
+        consensus = consensus + site
+
+    if resolve_ambiguities:
+        consensus = krseq.resolve_ambiguities(consensus)
+
+    consensus = Seq.Seq(consensus)
+
+    return(consensus)
+
+
+if __name__ == '__main__':
+
+    # Tests
+
+    import os
+
+    PS = os.path.sep
+
+    import krbioio
+    aln = krbioio.read_alignment_file('/home/karolis/Dropbox/Code/krpy/testdata/alignment_for_consensus.fasta', 'fasta')
+    print(aln)
+    print(consensus(aln, threshold=0.2, unknown='N', resolve_ambiguities=False))

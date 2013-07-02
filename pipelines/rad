@@ -28,16 +28,12 @@ if __name__ == '__main__':
     import subprocess
     import string
     import datetime
-    # import re
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
     from multiprocessing import Manager
-    # from multiprocessing import Lock
 
     import numpy
-
-    # from scipy.stats import binom
 
     import datrie
 
@@ -51,7 +47,6 @@ if __name__ == '__main__':
     import kriupac
     import kralign
     import krother
-    # import krcl
 
     # Alignment concatenation function is recursive.
     sys.setrecursionlimit(500000)
@@ -739,7 +734,7 @@ if __name__ == '__main__':
                     write_log(msg, lfp)
                     ifp_split = os.path.splitext(f['path'])
                     subprocess.call(
-                        (config.get('General', 'usearch6_executable') + ' -quiet' +
+                        (config.get('General', 'usearch_executable') + ' -quiet' +
                             ' -sortbylength ' + f['path'] +
                             ' -output ' + ifp_split[0] + '_sorted' +
                             ifp_split[1]), shell=True)
@@ -782,7 +777,7 @@ if __name__ == '__main__':
                         strand='both',
                         threads=1,
                         quiet=True,
-                        program=config.get('General', 'usearch6_executable'),
+                        program=config.get('General', 'usearch_executable'),
                         heuristics=config.getboolean('Cluster Within Samples', 'heuristics'),
                         query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
                         target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage'),
@@ -792,7 +787,7 @@ if __name__ == '__main__':
                     )
 
                     subprocess.call(
-                        (config.get('General', 'usearch6_executable') + ' -quiet' +
+                        (config.get('General', 'usearch_executable') + ' -quiet' +
                             ' -sortbysize ' + first_cons_path +
                             ' -output ' + first_cons_path + '_sorted'), shell=True)
 
@@ -809,7 +804,7 @@ if __name__ == '__main__':
                         strand='both',
                         threads=1,
                         quiet=True,
-                        program=config.get('General', 'usearch6_executable'),
+                        program=config.get('General', 'usearch_executable'),
                         heuristics=False,
                         query_coverage=config.getfloat('Cluster Within Samples', 'query_coverage'),
                         target_coverage=config.getfloat('Cluster Within Samples', 'target_coverage'),
@@ -1432,7 +1427,7 @@ if __name__ == '__main__':
                 f_path = f['path']
                 ifp_split = os.path.splitext(f_path)
                 f_path_sorted = ifp_split[0] + '_sorted' + ifp_split[1]
-                subprocess.call((config.get('General', 'usearch6_executable') + ' -quiet' + ' -sortbylength ' + f_path + ' -output ' + f_path_sorted), shell=True)
+                subprocess.call((config.get('General', 'usearch_executable') + ' -quiet' + ' -sortbylength ' + f_path + ' -output ' + f_path_sorted), shell=True)
 
                 # Put outgroups at the end of file
                 f_path_outgroup_sorted = ifp_split[0] + '_sorted_outgroup' + ifp_split[1]
@@ -1478,7 +1473,7 @@ if __name__ == '__main__':
                     strand='both',
                     threads=1,
                     quiet=True,
-                    program=config.get('General', 'usearch6_executable'),
+                    program=config.get('General', 'usearch_executable'),
                     heuristics=config.getboolean('Cluster Between Samples', 'heuristics'),
                     query_coverage=config.getfloat('Cluster Between Samples', 'query_coverage'),
                     target_coverage=config.getfloat('Cluster Between Samples', 'target_coverage'),
