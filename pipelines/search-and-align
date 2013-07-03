@@ -61,6 +61,7 @@ if __name__ == '__main__':
         cutlist_records_file = input_dir + 'cutlist_records'
         keeplist_records_file = input_dir + 'keeplist_records'
         cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
+        unresolvable_taxonomy_file = input_dir + 'unresolvable.csv'
 
         temp_dir = output_dir + 'temp'
 
@@ -129,8 +130,18 @@ if __name__ == '__main__':
                 quotechar=None,
                 stripchar='"',
                 rettype='dict')
+
             synonymy_table = krio.read_table_file(
                 synonymy_file, has_headers=True, headers=None, delimiter=',')
+
+            unresolvable_taxonomy_list = krio.read_table_file(
+                path=unresolvable_taxonomy_file,
+                has_headers=True,
+                headers=None,
+                delimiter=',',
+                quotechar=None,
+                stripchar='"',
+                rettype='dict')
 
             # Extract loci
             krseqsearch.extract_loci(
@@ -143,7 +154,8 @@ if __name__ == '__main__':
                 synonymy_table=synonymy_table,
                 auth_file=authority_file,
                 hacks=hacks,
-                hacks_data_location=hacks_data_location)
+                hacks_data_location=hacks_data_location,
+                unresolvable_taxonomy_list=unresolvable_taxonomy_list)
 
         if not commands or 'flatten' in commands:
 

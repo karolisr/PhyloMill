@@ -23,12 +23,13 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     other_string = 'sp.'
 
     name_list = name.split(sep)
+    name_list_lower = name.lower().split(sep)
 
-    var_bool = bool(name_list.count(var_string))
-    form_bool = bool(name_list.count(form_string))
-    sub_bool = bool(name_list.count(sub_string))
-    cross_bool = bool(name_list.count(cross_string))
-    other_bool = bool(name_list.count(other_string))
+    var_bool = bool(name_list_lower.count(var_string))
+    form_bool = bool(name_list_lower.count(form_string))
+    sub_bool = bool(name_list_lower.count(sub_string))
+    cross_bool = bool(name_list_lower.count(cross_string))
+    other_bool = bool(name_list_lower.count(other_string))
 
     var = None
     form = None
@@ -37,15 +38,15 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     other = None
 
     if var_bool:
-        var = name_list.index(var_string)
+        var = name_list_lower.index(var_string)
     if form_bool:
-        form = name_list.index(form_string)
+        form = name_list_lower.index(form_string)
     if sub_bool:
-        sub = name_list.index(sub_string)
+        sub = name_list_lower.index(sub_string)
     if cross_bool:
-        cross = name_list.index(cross_string)
+        cross = name_list_lower.index(cross_string)
     if other_bool:
-        other = name_list.index(other_string)
+        other = name_list_lower.index(other_string)
 
     var_dict = {'name': 'variety', 'index': var}
     form_dict = {'name': 'form', 'index': form}
@@ -72,6 +73,11 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     organism_dict['genus'] = name_list[0]
     organism_dict['species'] = ''
     organism_dict['authority'] = ''
+
+    # This is to prevent misidentifying hybrids. However, if a hybrid contains
+    # authority information, this will not work well.
+    if cross_bool:
+        ncbi_authority = False
 
     if ncbi_authority:
         if ((len(name_list) > 2) and
@@ -189,7 +195,7 @@ def flatten_organism_name(parsed_name, sep=' '):
 
 
 def accepted_name(name, synonymy_table, auth_file, sep=' ',
-                  allow_loose_matching=True, ncbi_authority=False, level=1):
+                  allow_loose_matching=True, ncbi_authority=False, resolve_hybrids=False, level=1):
     import copy
     # Emma Goldberg's module to standardize authority
     from krtp.eg import stdauth
@@ -216,6 +222,9 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     accepted['variety'] = ''
     accepted['status'] = ''
     accepted['id'] = ''
+
+    if 'cross' in o and o['cross'] != '' and not resolve_hybrids:
+        return(accepted)
 
     matching_entries_strict = list()
     matching_entries_loose = list()
@@ -270,12 +279,15 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
         accepted['id'] = s['AccID']
         # If the matching entry is a synonym, recurse into synonymy table
         # until an entry with a non-synonym status is reached.
-        if (s['Status'].lower() == 'syn' or
-                s['Status'].lower() == 'syn-alt'):
+        if (
+            s['Status'].lower().startswith('syn')
+            # or
+            # s['Status'].lower() == 'syn-alt'
+        ):
             if s in synonymy_table:
                 synonymy_table.remove(s)
             return(accepted_name(accepted, synonymy_table, auth_file,
-                                 sep=sep, level=level + 1))
+                                 sep=sep, resolve_hybrids=resolve_hybrids, level=level + 1))
         else:
             #print(level * '-', 'a', str(level),
             #    flatten_organism_name(accepted))

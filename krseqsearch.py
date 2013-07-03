@@ -273,7 +273,7 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
 
 def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                  temp_dir, file_name_sep, synonymy_table=None, auth_file=None,
-                 hacks=None, hacks_data_location=None):
+                 hacks=None, hacks_data_location=None, unresolvable_taxonomy_list=None):
 
     '''
     Extract relevant loci from the search results, do some filtering by length
@@ -337,6 +337,101 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
     krio.prepare_directory(temp_dir)
 
     file_list = krio.parse_directory(search_results_dir, file_name_sep)
+
+    unresolvable_taxonomy_dict = dict()
+    for ud in unresolvable_taxonomy_list:
+        unresolvable_taxonomy_dict[ud['Name']] = ud['Danger']
+
+    def tax_log(accession, taxid, input_name_dict, output_name_dict, handle):
+        i = input_name_dict
+        o = output_name_dict
+
+        org_name = i['genus'] + ' ' + i['species']
+        danger = 0
+        if org_name in unresolvable_taxonomy_dict.keys():
+            danger = unresolvable_taxonomy_dict[org_name]
+
+        handle.write(
+            str(accession) + ',' +
+            str(taxid) + ',' +
+            str(danger) + ',' +
+            i['genus'] + ',' +
+            i['species'] + ',' +
+            i['authority'] + ',' +
+            i['subspecies'] + ',' +
+            i['variety'] + ',' +
+            i['cross'] + ',' +
+            i['form'] + ',' +
+            o['genus'] + ',' +
+            o['species'] + ',' +
+            o['authority'] + ',' +
+            o['subspecies'] + ',' +
+            o['variety'] + ',' +
+            o['status'] + ',' +
+            o['id'] + ',' +
+            'http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + str(taxid) + ',' +
+            'http://www.ncbi.nlm.nih.gov/nuccore/' + str(accession) + '\n')
+
+    def tax_log_html(accession, taxid, input_name_dict, output_name_dict, handle):
+        i = input_name_dict
+        o = output_name_dict
+
+        org_name = i['genus'] + ' ' + i['species']
+        danger = 0
+        if org_name in unresolvable_taxonomy_dict.keys():
+            danger = int(unresolvable_taxonomy_dict[org_name])
+        danger_td = '<td>'
+
+        if danger == 1:
+            danger_td = '<td bgcolor="#FFFF66">'
+        elif danger == 2:
+            danger_td = '<td bgcolor="#FFCC33">'
+        elif danger == 3:
+            danger_td = '<td bgcolor="#FF6600">'
+
+        oid = '?'
+        if o['status'] == 'TGRC':
+            oid = o['id'].split('tgrc-')[1]
+            oid = '<a href="http://tgrc.ucdavis.edu/Data/Acc/AccDetail.aspx?AccessionNum=' + oid + '">' + oid + '</a>'
+        else:
+            oid = o['id']
+
+        tr = '<tr onMouseOver="this.bgColor=\'gold\';" onMouseOut="this.bgColor=\'#FFFFFF\';">'
+        if o['genus'] == '':
+            tr = '<tr bgcolor="#FFFF33">'
+
+        handle.write(
+            tr +
+            '<td>' + '<a href="http://www.ncbi.nlm.nih.gov/nuccore/' + str(accession) + '">' + str(accession) + '</a></td>' +
+            '<td>' + '<a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + str(taxid) + '">' + str(taxid) + '</a></td>' +
+            danger_td + str(danger) + '</td>' +
+            '<td>' + i['genus'] + '</td>' +
+            '<td>' + i['species'] + '</td>' +
+            '<td>' + i['authority'] + '</td>' +
+            '<td>' + i['subspecies'] + '</td>' +
+            '<td>' + i['variety'] + '</td>' +
+            '<td>' + i['cross'] + '</td>' +
+            '<td>' + i['form'] + '</td>' +
+            '<td>' + o['genus'] + '</td>' +
+            '<td>' + o['species'] + '</td>' +
+            '<td>' + o['authority'] + '</td>' +
+            '<td>' + o['subspecies'] + '</td>' +
+            '<td>' + o['variety'] + '</td>' +
+            '<td>' + o['status'] + '</td>' +
+            '<td>' + oid + '</td>' +
+            '</tr>\n')
+
+    tax_log_file = output_dir + ps + 'synonymy' + '.log'
+    tax_log_handle = open(tax_log_file, 'w')
+    tax_log_handle.write('ncbiaccession,ncbitaxid,danger,igenus,ispecies,iauthority,isubspecies,ivariety,icross,iform,ogenus,ospecies,oauthority,osubspecies,ovariety,ostatus,oid,ncbitaxlink,ncbiacclink\n')
+
+    tax_log_html_file = output_dir + ps + 'synonymy' + '.html'
+    tax_log_html_handle = open(tax_log_html_file, 'w')
+
+    tax_log_html_handle.write('<!DOCTYPE html>\n<html>\n<style type="text/css">body{font-family:monospace;} table { border-collapse:collapse; } table td, table tr { border:1px solid #666;padding:3px; } </style>\n<body>\n<table>\n')
+
+    tax_log_html_handle.write(
+        '<tr bgcolor="#99FF66"><td>ncbiaccession</td><td>ncbitaxid</td><td>danger</td><td>igenus</td><td>ispecies</td><td>iauthority</td><td>isubspecies</td><td>ivariety</td><td>icross</td><td>iform</td><td>ogenus</td><td>ospecies</td><td>oauthority</td><td>osubspecies</td><td>ovariety</td><td>ostatus</td><td>oid</td></tr>\n')
 
     # Iterate over search results
     for f in file_list:
@@ -480,6 +575,8 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                                 acc_name_flat = (
                                     krbionames.flatten_organism_name(
                                         acc_name, '_'))
+                                tax_log(record.id, tax_id, hack_org, acc_name, tax_log_handle)
+                                tax_log_html(record.id, tax_id, hack_org, acc_name, tax_log_html_handle)
                             else:
                                 do_not_repeat.append(voucher)
             ###################################################################
@@ -506,6 +603,8 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                         allow_loose_matching=False)
                     if acc_name and acc_name['status'].lower() == 'acc':
                         found_match = True
+                        tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                        tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                         break
 
                 # If no, then look for the next best thing "prov"
@@ -518,6 +617,8 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                             allow_loose_matching=False)
                         if acc_name and acc_name['status'].lower() == 'prov':
                             found_match = True
+                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                             break
 
                 # Otherwise, let's find something that isn't blank
@@ -534,6 +635,8 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                             acc_name['status'].lower() == 'unc' or
                                 acc_name['status'].lower() == 'unr')):
                             found_match = True
+                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                             break
 
                 # If we find nothing using STRICT mode we look for matches
@@ -546,9 +649,11 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                             synonymy_table=synonymy_table,
                             auth_file=auth_file,
                             allow_loose_matching=True)
-                        if acc_name and acc_name['status'].lower() == 'acc':
+                        if acc_name and acc_name['status'].lower().startswith('acc'):
                             loose_mode = True
                             found_match = True
+                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                             break
 
                 # If no, then look for the next best thing "prov"
@@ -559,9 +664,11 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                             synonymy_table=synonymy_table,
                             auth_file=auth_file,
                             allow_loose_matching=True)
-                        if acc_name and acc_name['status'].lower() == 'prov':
+                        if acc_name and acc_name['status'].lower().startswith('prov'):
                             loose_mode = True
                             found_match = True
+                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                             break
 
                 # Otherwise, let's find something that isn't blank
@@ -573,12 +680,14 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                             auth_file=auth_file,
                             allow_loose_matching=True)
                         if (acc_name and (
-                            acc_name['status'].lower() == 'as' or
-                            acc_name['status'].lower() == 'nn' or
-                            acc_name['status'].lower() == 'unc' or
-                                acc_name['status'].lower() == 'unr')):
+                            acc_name['status'].lower().startswith('as') or
+                            acc_name['status'].lower().startswith('nn') or
+                            acc_name['status'].lower().startswith('unc') or
+                                acc_name['status'].lower().startswith('unr'))):
                             loose_mode = True
                             found_match = True
+                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
+                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
                             break
 
                 if not found_match:
@@ -588,6 +697,22 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t'
                         'No taxonomic match.\n')
+                    for oa in organism_authority:
+                        tax_log(
+                            record.id,
+                            tax_id,
+                            oa,
+                            # {'form': '', 'variety': '', 'cross': '', 'authority': '', 'other': '', 'name_class': '', 'subspecies': '', 'genus': '', 'species': ''},
+                            {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''},
+                            tax_log_handle)
+
+                        tax_log_html(
+                            record.id,
+                            tax_id,
+                            oa,
+                            # {'form': '', 'variety': '', 'cross': '', 'authority': '', 'other': '', 'name_class': '', 'subspecies': '', 'genus': '', 'species': ''},
+                            {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''},
+                            tax_log_html_handle)
                     continue
 
                 acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
@@ -669,6 +794,10 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
         print('\n\tAccepted', len(loci), 'sequences.')
 
         krcl.show_cursor()
+
+    tax_log_handle.close()
+    tax_log_html_handle.write('</table>\n</body>\n</html>')
+    tax_log_html_handle.close()
 
     all_logs = set()
     file_list = krio.parse_directory(output_dir, file_name_sep)
@@ -1175,12 +1304,14 @@ def one_locus_per_organism(
 
                 # Check if the names are not the same
                 aln_name_set = set()
-                for a in aln:
+                for i, a in enumerate(aln):
+                    if a.id in aln_name_set:
+                        a.id = str(i) + '_' + a.id
                     aln_name_set.add(a.id)
-                if len(aln_name_set) == 1:
-                    krbioio.write_sequence_file(sequence_record, taxa_dir + old_record_id_split[3] + '.fasta', 'fasta')
-                else:
-                    AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '.phy', "phylip-relaxed")
+                # if len(aln_name_set) == 1:
+                #     krbioio.write_sequence_file(sequence_record, taxa_dir + old_record_id_split[3] + '.fasta', 'fasta')
+                # else:
+                AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '.phy', "phylip-relaxed")
                 results.append(sequence_record)
             else:
                 krbioio.write_sequence_file(consensus_list, taxa_dir + consensus_list[0].id.split('|')[3] + '.fasta', 'fasta')
@@ -1202,7 +1333,7 @@ def one_locus_per_organism(
             result.description = ''
         krbioio.write_sequence_file(results, output_file, 'fasta')
 
-        print('\n\tAccepted sequences from ', len(results), 'taxa.')
+        print('\n\tAccepted sequences from', len(results), 'taxa.')
 
         log_handle.close()
 
