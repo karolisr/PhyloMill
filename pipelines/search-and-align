@@ -62,6 +62,8 @@ if __name__ == '__main__':
         keeplist_records_file = input_dir + 'keeplist_records'
         cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
         unresolvable_taxonomy_file = input_dir + 'unresolvable.csv'
+        keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
+        force_reverse_complement_file = input_dir + 'force_reverse_complement_records'
 
         temp_dir = output_dir + 'temp'
 
@@ -143,6 +145,24 @@ if __name__ == '__main__':
                 stripchar='"',
                 rettype='dict')
 
+            keeplist_taxonomy_list = krio.read_table_file(
+                path=keeplist_taxonomy_file,
+                has_headers=False,
+                headers=None,
+                delimiter=',',
+                quotechar=None,
+                stripchar='"',
+                rettype='set')
+
+            force_reverse_complement_list = krio.read_table_file(
+                path=force_reverse_complement_file,
+                has_headers=False,
+                headers=None,
+                delimiter=',',
+                quotechar=None,
+                stripchar='"',
+                rettype='set')
+
             # Extract loci
             krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
@@ -155,7 +175,9 @@ if __name__ == '__main__':
                 auth_file=authority_file,
                 hacks=hacks,
                 hacks_data_location=hacks_data_location,
-                unresolvable_taxonomy_list=unresolvable_taxonomy_list)
+                unresolvable_taxonomy_list=unresolvable_taxonomy_list,
+                keeplist_taxonomy_list=keeplist_taxonomy_list,
+                force_reverse_complement_list=force_reverse_complement_list)
 
         if not commands or 'flatten' in commands:
 

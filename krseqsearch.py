@@ -111,6 +111,8 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
     krio.prepare_directory(output_dir)
 
+    all_uids = set()
+
     for query_dict in queries:
 
         name1 = query_dict['name1']
@@ -168,8 +170,16 @@ def search_and_download(queries, output_dir, file_name_sep, email):
 
             # Search NCBI.
             result_uids = krncbi.esearch(query, db, email)
+            all_uids |= set(result_uids)
             # Download records.
             krncbi.download_sequence_records(file_path, result_uids, db, email)
+
+    all_uids = list(all_uids)
+    log_file = output_dir.rstrip(ps) + ps + 'downloaded.csv'
+    handle = open(log_file, 'w')
+    for uid in all_uids:
+        handle.write(uid+'\n')
+    handle.close()
 
 
 def filter_records(search_results_dir, output_dir, cutlist_records_file,
@@ -271,9 +281,21 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         krcl.show_cursor()
 
 
-def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
-                 temp_dir, file_name_sep, synonymy_table=None, auth_file=None,
-                 hacks=None, hacks_data_location=None, unresolvable_taxonomy_list=None):
+def extract_loci(
+    search_results_dir,
+    output_dir,
+    queries,
+    ncbi_names_table,
+    temp_dir,
+    file_name_sep,
+    synonymy_table=None,
+    auth_file=None,
+    hacks=None,
+    hacks_data_location=None,
+    unresolvable_taxonomy_list=None,
+    keeplist_taxonomy_list=None,
+    force_reverse_complement_list=None
+):
 
     '''
     Extract relevant loci from the search results, do some filtering by length
@@ -341,6 +363,8 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
     unresolvable_taxonomy_dict = dict()
     for ud in unresolvable_taxonomy_list:
         unresolvable_taxonomy_dict[ud['Name']] = ud['Danger']
+
+    # Logging -----------------------------------------------------------------
 
     def tax_log(accession, taxid, input_name_dict, output_name_dict, handle):
         i = input_name_dict
@@ -421,17 +445,16 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
             '<td>' + oid + '</td>' +
             '</tr>\n')
 
-    tax_log_file = output_dir + ps + 'synonymy' + '.log'
+    tax_log_file = output_dir + ps + 'log_synonymy' + '.csv'
     tax_log_handle = open(tax_log_file, 'w')
     tax_log_handle.write('ncbiaccession,ncbitaxid,danger,igenus,ispecies,iauthority,isubspecies,ivariety,icross,iform,ogenus,ospecies,oauthority,osubspecies,ovariety,ostatus,oid,ncbitaxlink,ncbiacclink\n')
-
-    tax_log_html_file = output_dir + ps + 'synonymy' + '.html'
+    tax_log_html_file = output_dir + ps + 'log_synonymy' + '.html'
     tax_log_html_handle = open(tax_log_html_file, 'w')
-
     tax_log_html_handle.write('<!DOCTYPE html>\n<html>\n<style type="text/css">body{font-family:monospace;} table { border-collapse:collapse; } table td, table tr { border:1px solid #666;padding:3px; } </style>\n<body>\n<table>\n')
-
     tax_log_html_handle.write(
         '<tr bgcolor="#99FF66"><td>ncbiaccession</td><td>ncbitaxid</td><td>danger</td><td>igenus</td><td>ispecies</td><td>iauthority</td><td>isubspecies</td><td>ivariety</td><td>icross</td><td>iform</td><td>ogenus</td><td>ospecies</td><td>oauthority</td><td>osubspecies</td><td>ovariety</td><td>ostatus</td><td>oid</td></tr>\n')
+
+    # End Logging -------------------------------------------------------------
 
     # Iterate over search results
     for f in file_list:
@@ -440,7 +463,7 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
             continue
 
         # Stores all loci that have passed quality control
-        loci = list()
+        sequences = list()
 
         # Read search results
         records = krbioio.read_sequence_file(f['path'], 'genbank')
@@ -483,7 +506,7 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
         for i, record in enumerate(records):
             krcl.print_progress(i + 1, records_count, 50, '\t')
 
-            # genbank records contain "features" which conatin annotation
+            # genbank records contain "features" which contain annotation
             #   information. Here we look for the feature that contains our
             #   target locus and note its index
 
@@ -529,6 +552,10 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
             # If the feature is in reverse orientation, reverse-complement.
             if strand == -1 or force_rev_comp == 'yes':
                 seq = seq.reverse_complement()
+            # If the record is in the force_reverse_complement_list, we reverse
+            # complement it, no matter what happend to it before
+            if record.id in force_reverse_complement_list:
+                seq = seq.reverse_complement()
 
             # Deal with the organism name
             tax_id = krncbi.get_ncbi_tax_id(record)
@@ -538,7 +565,9 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
 
             acc_name = None
             acc_name_flat = None
-            organism_authority = None
+            taxid_name_list = None
+            # Name was matched using loose mode?
+            # loose_mode = False
 
             # HACKS ###########################################################
             hack_species_found = False
@@ -572,177 +601,51 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                                 acc_name['id'] = (
                                     'tgrc-' + hack_species_found[2])
                                 acc_name['status'] = 'TGRC'
-                                acc_name_flat = (
-                                    krbionames.flatten_organism_name(
-                                        acc_name, '_'))
                                 tax_log(record.id, tax_id, hack_org, acc_name, tax_log_handle)
                                 tax_log_html(record.id, tax_id, hack_org, acc_name, tax_log_html_handle)
                             else:
                                 do_not_repeat.append(voucher)
             ###################################################################
 
-            loose_mode = False
+            if (tax_id not in keeplist_taxonomy_list) and (not hack_species_found and synonymy_table and auth_file):
+                # Resolve name
+                resolved = krbionames.resolve_taxid(
+                    tax_id,
+                    ncbi_names_table,
+                    synonymy_table,
+                    auth_file,
+                    sorting='authority')
 
-            if not hack_species_found and synonymy_table and auth_file:
-                # A list of organism names based on NCBI taxid. This is a
-                #   sorted list with the most complete names at lower indexes.
-                organism_authority = krbionames.names_for_ncbi_taxid(
-                    tax_id, ncbi_names_table, sorting='authority')
+                acc_name = resolved[0]
+                tried_name = resolved[1]
 
-                # Iterate over the list of NCBI names and try to resolve
-                #   accepted name.
+                tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
 
-                # First we look for matches using STRICT mode
-                # First look if there is a best possible match "acc"
-                found_match = False
-                for oa in organism_authority:
-                    acc_name = krbionames.accepted_name(
-                        name=oa,
-                        synonymy_table=synonymy_table,
-                        auth_file=auth_file,
-                        allow_loose_matching=False)
-                    if acc_name and acc_name['status'].lower() == 'acc':
-                        found_match = True
-                        tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                        tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                        break
+            elif (tax_id in keeplist_taxonomy_list) or (not hack_species_found):
 
-                # If no, then look for the next best thing "prov"
-                if not found_match:
-                    for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(
-                            name=oa,
-                            synonymy_table=synonymy_table,
-                            auth_file=auth_file,
-                            allow_loose_matching=False)
-                        if acc_name and acc_name['status'].lower() == 'prov':
-                            found_match = True
-                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                            break
-
-                # Otherwise, let's find something that isn't blank
-                if not found_match:
-                    for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(
-                            name=oa,
-                            synonymy_table=synonymy_table,
-                            auth_file=auth_file,
-                            allow_loose_matching=False)
-                        if (acc_name and (
-                            acc_name['status'].lower() == 'as' or
-                            acc_name['status'].lower() == 'nn' or
-                            acc_name['status'].lower() == 'unc' or
-                                acc_name['status'].lower() == 'unr')):
-                            found_match = True
-                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                            break
-
-                # If we find nothing using STRICT mode we look for matches
-                # using LOOSE mode
-                # First look if there is a best possible match "acc"
-                if not found_match:
-                    for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(
-                            name=oa,
-                            synonymy_table=synonymy_table,
-                            auth_file=auth_file,
-                            allow_loose_matching=True)
-                        if acc_name and acc_name['status'].lower().startswith('acc'):
-                            loose_mode = True
-                            found_match = True
-                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                            break
-
-                # If no, then look for the next best thing "prov"
-                if not found_match:
-                    for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(
-                            name=oa,
-                            synonymy_table=synonymy_table,
-                            auth_file=auth_file,
-                            allow_loose_matching=True)
-                        if acc_name and acc_name['status'].lower().startswith('prov'):
-                            loose_mode = True
-                            found_match = True
-                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                            break
-
-                # Otherwise, let's find something that isn't blank
-                if not found_match:
-                    for oa in organism_authority:
-                        acc_name = krbionames.accepted_name(
-                            name=oa,
-                            synonymy_table=synonymy_table,
-                            auth_file=auth_file,
-                            allow_loose_matching=True)
-                        if (acc_name and (
-                            acc_name['status'].lower().startswith('as') or
-                            acc_name['status'].lower().startswith('nn') or
-                            acc_name['status'].lower().startswith('unc') or
-                                acc_name['status'].lower().startswith('unr'))):
-                            loose_mode = True
-                            found_match = True
-                            tax_log(record.id, tax_id, oa, acc_name, tax_log_handle)
-                            tax_log_html(record.id, tax_id, oa, acc_name, tax_log_html_handle)
-                            break
-
-                if not found_match:
-                    log_handle.write(
-                        name1 + '_' + name2 + '\t' +
-                        record.id + '\t' +
-                        organism.replace('_', ' ') + '\t' +
-                        tax_id + '\t'
-                        'No taxonomic match.\n')
-                    for oa in organism_authority:
-                        tax_log(
-                            record.id,
-                            tax_id,
-                            oa,
-                            # {'form': '', 'variety': '', 'cross': '', 'authority': '', 'other': '', 'name_class': '', 'subspecies': '', 'genus': '', 'species': ''},
-                            {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''},
-                            tax_log_handle)
-
-                        tax_log_html(
-                            record.id,
-                            tax_id,
-                            oa,
-                            # {'form': '', 'variety': '', 'cross': '', 'authority': '', 'other': '', 'name_class': '', 'subspecies': '', 'genus': '', 'species': ''},
-                            {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''},
-                            tax_log_html_handle)
-                    continue
-
-                acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
-                if loose_mode:
-                    pass
-
-            elif not hack_species_found:
-                acc_name = dict()
-                acc_name['id'] = tax_id
-                acc_name['status'] = 'NA'
-                organism_authority = krbionames.names_for_ncbi_taxid(
+                taxid_name_list = krbionames.names_for_ncbi_taxid(
                     tax_id, ncbi_names_table, sorting='class')
-                acc_name_flat = krbionames.flatten_organism_name(
-                    organism_authority[0], '_')
 
-            # Record id for the fasta output
-            sequence_record_id = (
-                # NCBI accession
-                record.id + '|' +
-                # Organism name as it appears in search results
-                organism + '|' +
-                # NCBI taxid
-                tax_id + '|' +
-                # Accepted name
-                acc_name_flat + '|' +
-                # Accepted name id from the synonymy table
-                acc_name['id'])
-            # Produce a biopython sequence record object
-            sequence_record = SeqRecord.SeqRecord(
-                seq=seq, id=sequence_record_id, name='', description='')
+                status = 'NA'
+                if tax_id in keeplist_taxonomy_list:
+                    status = 'keeplist'
+
+                acc_name = {
+                    'status': status,
+                    'variety': taxid_name_list[0]['variety'],
+                    'authority': taxid_name_list[0]['authority'],
+                    'id': 'ncbi-' + str(tax_id),
+                    'subspecies': taxid_name_list[0]['subspecies'],
+                    'genus': taxid_name_list[0]['genus'],
+                    'species': taxid_name_list[0]['species'],
+                    'form': taxid_name_list[0]['form'],
+                    'cross': taxid_name_list[0]['cross']}
+
+                tax_log(record.id, tax_id, acc_name, acc_name, tax_log_handle)
+                tax_log_html(record.id, tax_id, acc_name, acc_name, tax_log_html_handle)
+
+            acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
 
             if acc_name['status'] == '':
                 log_handle.write(
@@ -758,17 +661,16 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                     organism.replace('_', ' ') + '\t' +
                     tax_id + '\t' +
                     'Sequence is too short.\n')
-
             else:
-                if loose_mode:
-                    log_handle.write(
-                        name1 + '_' + name2 + '\t' +
-                        record.id + '\t' +
-                        organism.replace('_', ' ') + '\t' +
-                        tax_id + '\t' +
-                        'Taxonomic match using LOOSE mode.' + '\t' +
-                        acc_name_flat.replace('_', ' ') + '\n')
-                elif acc_name['status'] == 'TGRC':
+                # if loose_mode:
+                #     log_handle.write(
+                #         name1 + '_' + name2 + '\t' +
+                #         record.id + '\t' +
+                #         organism.replace('_', ' ') + '\t' +
+                #         tax_id + '\t' +
+                #         'Taxonomic match using loose mode.' + '\t' +
+                #         acc_name_flat.replace('_', ' ') + '\n')
+                if acc_name['status'] == 'TGRC':
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
                         record.id + '\t' +
@@ -782,16 +684,33 @@ def extract_loci(search_results_dir, output_dir, queries, ncbi_names_table,
                         record.id + '\t' +
                         organism.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
-                        'Match' + '\t' +
+                        'Taxonomic match' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\n')
-                loci.append(sequence_record)
+
+                # Record id for the fasta output
+                sequence_record_id = (
+                    # NCBI accession
+                    record.id + '|' +
+                    # Organism name as it appears in search results
+                    organism + '|' +
+                    # NCBI taxid
+                    tax_id + '|' +
+                    # Accepted name
+                    acc_name_flat + '|' +
+                    # Accepted name id from the synonymy table
+                    acc_name['id'])
+                # Produce a biopython sequence record object
+                sequence_record = SeqRecord.SeqRecord(
+                    seq=seq, id=sequence_record_id, name='', description='')
+
+                sequences.append(sequence_record)
 
         log_handle.close()
 
         # Write results
-        krbioio.write_sequence_file(loci, output_file, 'fasta')
+        krbioio.write_sequence_file(sequences, output_file, 'fasta')
 
-        print('\n\tAccepted', len(loci), 'sequences.')
+        print('\n\tAccepted', len(sequences), 'sequences.')
 
         krcl.show_cursor()
 
@@ -857,6 +776,15 @@ def one_locus_per_organism(
     krcl.hide_cursor()
 
     ps = os.path.sep
+
+    # Check if the output directory exists. If it does we will treat this as a
+    # second run.
+    first_run = not os.path.exists(output_dir)
+
+    if not first_run:
+        cont = raw_input("This is a second run, continue? Y/N: ")
+        if not cont.lower() == 'y':
+            exit(0)
 
     print('\n\tPreparing output directory "', output_dir, '"', sep='')
     krio.prepare_directory(output_dir)
@@ -947,6 +875,15 @@ def one_locus_per_organism(
     for name1 in all_loci_dict.keys():
         print('\n\tProcessing', name1)
 
+        taxa_dir = output_dir + '-taxa' + ps + name1 + ps
+        krio.prepare_directory(taxa_dir)
+
+        review_aln_1_dir = output_dir + '-review-aln-1' + ps + name1 + ps
+        krio.prepare_directory(review_aln_1_dir)
+
+        review_aln_1_good_dir = output_dir + '-review-aln-1-good' + ps + name1 + ps
+        krio.prepare_directory(review_aln_1_good_dir)
+
         results = list()
 
         log_file = output_dir + ps + name1 + '.log'
@@ -1024,7 +961,7 @@ def one_locus_per_organism(
             # summary_aln = AlignInfo.SummaryInfo(aln)
             # consensus = summary_aln.dumb_consensus(
             #     threshold=0.001, ambiguous='N')
-            consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
+            consensus = kralign.consensus(aln, threshold=0.5, unknown='N', resolve_ambiguities=True)
             rep_cons_record = SeqRecord.SeqRecord(
                 seq=consensus, id='representative', name='', description='')
 
@@ -1094,43 +1031,67 @@ def one_locus_per_organism(
 
                     # ...if there is only one cluster
                     if not cluster_dict or len(cluster_dict.keys()) == 1:
-                        # We align the sequences in a cluster and produce
-                        # a consensus
-                        aln = kralign.align(
-                            records=all_records_for_taxid,
-                            program=aln_program,
-                            options=aln_options,
-                            program_executable=aln_program_exe)
-                        # TODO: Better consensus. This consensus should include
-                        # correct ambiguities.
-                        # summary_aln = AlignInfo.SummaryInfo(aln)
-                        # consensus = summary_aln.dumb_consensus(
-                        #     threshold=0.001, ambiguous='N')
-                        consensus = kralign.consensus(aln, threshold=0.4, unknown='N')
-
-                        # We want the consensus record description to reflect
-                        # all the sequence ids that were combined to form it
-                        cons_ids = list()
-                        for n in all_records_for_taxid:
-                            cons_ids.append(n.id.split('|')[0])
-                        new_cons_id = '$'.join(cons_ids)
-
                         old_record_id_split = (
                             all_records_for_taxid[0].id.split('|'))
 
-                        sequence_record_id = (
-                            'consensus$' + new_cons_id + '|' +
-                            old_record_id_split[1] + '|' +
-                            old_record_id_split[2] + '|' +
-                            old_record_id_split[3] + '|' +
-                            old_record_id_split[4])
+                        if first_run:
+                            # We align the sequences in a cluster and produce
+                            # a consensus
+                            aln = kralign.align(
+                                records=all_records_for_taxid,
+                                program=aln_program,
+                                options=aln_options,
+                                program_executable=aln_program_exe)
 
-                        # Produce a biopython sequence record object
-                        sequence_record = SeqRecord.SeqRecord(
-                            seq=consensus, id=sequence_record_id, name='',
-                            description='')
+                            cons = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=False, return_bases_at_sites=True)
+                            bases_at_sites = cons[1]
+                            tot_bs = 0
+                            for bs in bases_at_sites:
+                                tot_bs = tot_bs + len(bs)
+                            if (float(len(bases_at_sites)) / float(tot_bs)) < 0.97:
+                                AlignIO.write(aln, review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
+                            else:
+                                AlignIO.write(aln, review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
+                        else:
+                            # if os.path.exists(review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed"):
+                            #     aln = AlignIO.read(review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
+                            # else:
+                            if os.path.exists(review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy'):
+                                aln = AlignIO.read(review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
+                            else:
+                                print('\n\nWARNING: Make sure to review all the alignments.')
+                                exit(0)
 
-                        flat_name2_dict[taxid] = sequence_record
+                            # TODO: Better consensus. This consensus should include
+                            # correct ambiguities.
+                            # summary_aln = AlignInfo.SummaryInfo(aln)
+                            # consensus = summary_aln.dumb_consensus(
+                            #     threshold=0.001, ambiguous='N')
+                            consensus = kralign.consensus(aln, threshold=0.5, unknown='N')
+
+                            # We want the consensus record description to reflect
+                            # all the sequence ids that were combined to form it
+                            cons_ids = list()
+                            for n in all_records_for_taxid:
+                                cons_ids.append(n.id.split('|')[0])
+                            new_cons_id = '$'.join(cons_ids)
+
+                            sequence_record_id = (
+                                'consensus$' + new_cons_id + '|' +
+                                old_record_id_split[1] + '|' +
+                                old_record_id_split[2] + '|' +
+                                old_record_id_split[3] + '|' +
+                                old_record_id_split[4])
+
+                            krbioio.write_sequence_file(all_records_for_taxid, taxa_dir + old_record_id_split[3] + '_originals_1.fasta', 'fasta')
+                            AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '_alignment_1.phy', "phylip-relaxed")
+
+                            # Produce a biopython sequence record object
+                            sequence_record = SeqRecord.SeqRecord(
+                                seq=consensus, id=sequence_record_id, name='',
+                                description='')
+
+                            flat_name2_dict[taxid] = sequence_record
                     else:
                         review_needed = True
                         # If there is more than one cluster we produce files
@@ -1142,6 +1103,7 @@ def one_locus_per_organism(
 
                         # Write all accessions we are unsure about to a file
                         review_ids_handle = open(review_dir+review_name+'_accessions.txt', 'w')
+                        review_ids_handle.write(taxid+'\n')
                         for r in all_records_for_taxid_to_cluster:
                             label = r.id.split('|')[0]
                             if label is not 'representative':
@@ -1155,16 +1117,17 @@ def one_locus_per_organism(
                             options=aln_options,
                             program_executable=aln_program_exe)
                         AlignIO.write(aln, review_dir + review_name + '.phy', "phylip-relaxed")
-                elif len(all_records_for_taxid) == 1:
+                elif not first_run and len(all_records_for_taxid) == 1:
                     # If there is only one record available, we hope for the
                     # best and keep it.
                     # TODO: Confirm this record is actually good.
                     flat_name2_dict[taxid] = all_records_for_taxid[0]
+                    krbioio.write_sequence_file(all_records_for_taxid, taxa_dir + all_records_for_taxid[0].id.split('|')[3] + '_originals_1.fasta', 'fasta')
             name1_results.append({'results': flat_name2_dict, 'lrp': lrp})
             print('\n')
         # END LOOP ALL NAME2 --------------------------------------------------
 
-        if not proceed_without_review and review_needed:
+        if first_run or (not proceed_without_review and review_needed):
             continue
 
         #
@@ -1266,9 +1229,6 @@ def one_locus_per_organism(
                     cons_ids.append(desc_split[0])
             cons_ids = list(set(cons_ids))
 
-            taxa_dir = output_dir + '-taxa' + ps + name1 + ps
-            krio.prepare_directory(taxa_dir)
-
             if len(consensus_list) > 1:
                 aln = kralign.align(
                     records=consensus_list,
@@ -1280,7 +1240,7 @@ def one_locus_per_organism(
                 # summary_aln = AlignInfo.SummaryInfo(aln)
                 # consensus = summary_aln.dumb_consensus(threshold=0.001,
                 #                                        ambiguous='N')
-                consensus = kralign.consensus(aln, threshold=0.4, unknown='N')
+                consensus = kralign.consensus(aln, threshold=0.5, unknown='N')
 
                 cons_id = '$'.join(cons_ids)
                 old_record_id_split = consensus_list[0].id.split('|')
@@ -1300,7 +1260,7 @@ def one_locus_per_organism(
                     r = all_records[cid]
                     cons_originals.append(r)
 
-                krbioio.write_sequence_file(cons_originals, taxa_dir + old_record_id_split[3] + '_originals.fasta', 'fasta')
+                krbioio.write_sequence_file(cons_originals, taxa_dir + old_record_id_split[3] + '_originals_2.fasta', 'fasta')
 
                 # Check if the names are not the same
                 aln_name_set = set()
@@ -1311,7 +1271,7 @@ def one_locus_per_organism(
                 # if len(aln_name_set) == 1:
                 #     krbioio.write_sequence_file(sequence_record, taxa_dir + old_record_id_split[3] + '.fasta', 'fasta')
                 # else:
-                AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '.phy', "phylip-relaxed")
+                AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '_alignment_2.phy', "phylip-relaxed")
                 results.append(sequence_record)
             else:
                 krbioio.write_sequence_file(consensus_list, taxa_dir + consensus_list[0].id.split('|')[3] + '.fasta', 'fasta')
@@ -1343,10 +1303,14 @@ def one_locus_per_organism(
 
     krcl.show_cursor()
 
+    if first_run:
+        print('\tWARNING! Finished first run. Please review alignments.')
+
     if review_needed:
         print('\tWARNING! Please review accessions in review directory.')
-        if not proceed_without_review:
-            exit(0)
+
+    if first_run or (review_needed and not proceed_without_review):
+        exit(0)
 
 
 def align_loci(

@@ -102,6 +102,9 @@ def align(records, program, options='', program_executable=''):
     elif program == 'mafft':
         args = [program_executable, '--quiet'] + options + ['-']
 
+    if program == 'clustalo':
+        args = [program_executable] + options + ['-i', '-']
+
     alignment = None
 
     if args:
@@ -128,11 +131,12 @@ def align(records, program, options='', program_executable=''):
     return alignment
 
 
-def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
+def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, return_bases_at_sites=False):
     from Bio import Seq
     import kriupac
     import krseq
     consensus = ''
+    bases_at_sites = list()
     column_count = alignment.get_alignment_length()
     for column in range(0, column_count):
         # Count individual characters in the column
@@ -184,13 +188,19 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
         else:
             site = kriupac.IUPAC_DNA_DICT[site_str]
         consensus = consensus + site
+        bases_at_sites.append(site_set)
 
     if resolve_ambiguities:
         consensus = krseq.resolve_ambiguities(consensus)
 
     consensus = Seq.Seq(consensus)
 
-    return(consensus)
+    if return_bases_at_sites:
+        ret_value = (consensus, bases_at_sites)
+    else:
+        ret_value = consensus
+
+    return(ret_value)
 
 
 if __name__ == '__main__':
