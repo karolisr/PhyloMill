@@ -575,16 +575,9 @@ def extract_loci(
                     loose=loose_matching)
                 feature_indexes = feature_indexes + fi
             feature_indexes = list(set(feature_indexes))
-            # TODO: this should never occur, and occured only once
-            # Same gene annotated more than once
-            if len(feature_indexes) > 1:
-                log_handle.write(
-                    name1 + '_' + name2 + '\t' +
-                    record.id + '\t' +
-                    '\t' +
-                    '\t' +
-                    'More than one locus annotation.\n')
-                continue
+
+            feature = None
+
             if len(feature_indexes) == 0:
                 log_handle.write(
                     name1 + '_' + name2 + '\t' +
@@ -593,8 +586,67 @@ def extract_loci(
                     '\t' +
                     'No locus annotation.\n')
                 continue
+
+            elif len(feature_indexes) > 1:
+                # log_handle.write(
+                #     name1 + '_' + name2 + '\t' +
+                #     record.id + '\t' +
+                #     '\t' +
+                #     '\t' +
+                #     'More than one locus annotation.\n')
+                # Let user pick which of the indexes to use
+                print("\n\n\tFound more than one annotation for "+str(locus)+" please pick the correct index:")
+                for fi in feature_indexes:
+                    print("\n\t\tIndex: "+str(fi))
+                    print("\t\t"+str(record.id))
+                    f = record.features[fi]
+                    print("\t\tStrand: "+str(f.strand))
+                    print("\t\t"+str(f.location))
+                    for fq in f.qualifiers.keys():
+                        print("\t\t\t"+fq + ': ' + str(f.qualifiers[fq]))
+                    print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+
+                # picked_fi = raw_input("\n\tPick index: ")
+                # if int(picked_fi) in feature_indexes:
+                #     feature = record.features[int(picked_fi)]
+                # else:
+                #     print("\n\t Bad choice.")
+
+                picked_index = False
+
+                class BadChoiceException(Exception):
+                    pass
+
+                while True:
+                    picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
+                    try:
+                        if str(picked_fi).lower().startswith('exclude'):
+                            picked_index = False
+                            print()
+                            break
+                        else:
+                            try:
+                                int(picked_fi)
+                            except ValueError:
+                                print("\n\tBad choice.")
+                                continue
+                            if int(picked_fi) in feature_indexes:
+                                feature = record.features[int(picked_fi)]
+                                picked_index = True
+                                print()
+                                break
+                            else:
+                                raise(BadChoiceException)
+                    except BadChoiceException:
+                        print("\n\tBad choice.")
+
+                if not picked_index:
+                    continue
+
+            else:
+                feature = record.features[feature_indexes[0]]
+
             # There should be only one matching index.
-            feature = record.features[feature_indexes[0]]
             start = int(feature.location.start)
             end = int(feature.location.end)
             strand = int(feature.location.strand)
@@ -802,7 +854,8 @@ def one_locus_per_organism(
     aln_program,
     aln_options,
     good_sequences_dir,
-    log_dir
+    log_dir,
+    additional_sequences
 ):
 
     '''
@@ -898,6 +951,12 @@ def one_locus_per_organism(
                 taxid=parsed_id['taxid'],
                 old_name=parsed_id['old_name'],
                 new_name=parsed_id['new_name'])
+
+        for r in additional_sequences:
+            parsed_id = parse_seq_id(r.id)
+            if parsed_id['locus'] == name1:
+                records.append(r)
+
         all_loci_dict[name1] = all_loci_dict[name1] + records
 
         for r in records:

@@ -19,6 +19,7 @@ if __name__ == '__main__':
 
     import krseqsearch
     import krio
+    import krbioio
 
     parser = argparse.ArgumentParser()
 
@@ -60,6 +61,7 @@ if __name__ == '__main__':
         keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
         force_reverse_complement_file = input_dir + 'force_reverse_complement_records'
         good_sequences_dir = input_dir + 'good_sequences'
+        additional_sequences_file = input_dir + 'additional_sequences.fasta'
 
         temp_dir = output_dir + 'temp'
         log_dir = output_dir + '99-logs'
@@ -210,6 +212,8 @@ if __name__ == '__main__':
             #     quotechar='"',
             #     rettype='set')
 
+            additional_sequences = krbioio.read_sequence_file(additional_sequences_file, 'fasta')
+
             # One locus per organism
             new_cutlist_records_auto = krseqsearch.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
@@ -225,7 +229,8 @@ if __name__ == '__main__':
                 aln_program=aln_program,
                 aln_options=config.get('Flatten', 'align_program_options'),
                 good_sequences_dir=good_sequences_dir,
-                log_dir=log_dir)
+                log_dir=log_dir,
+                additional_sequences=additional_sequences)
 
             f = open(cutlist_records_auto_file, 'wb')
             for clr in new_cutlist_records_auto:
