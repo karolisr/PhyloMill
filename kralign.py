@@ -50,7 +50,7 @@ def concatenate(alignments, padding_length=0):
     aln2_length = aln2.get_alignment_length()
     aln1_gaps = SeqRecord(Seq('-' * aln1_length, alphabet))
     aln2_gaps = SeqRecord(Seq('-' * aln2_length, alphabet))
-    padding = SeqRecord(Seq('-' * padding_length, alphabet))
+    padding = SeqRecord(Seq('N' * padding_length, alphabet))
     result_seq_list = list()
     for aln1_key in aln1_dict.keys():
         merged_Seq = None
@@ -131,21 +131,27 @@ def align(records, program, options='', program_executable=''):
     return alignment
 
 
-def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, return_bases_at_sites=False):
+def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     from Bio import Seq
     import kriupac
     import krseq
     consensus = ''
-    bases_at_sites = list()
+    accepted_bases_at_sites = list()
+    raw_counts_at_sites = list()
     column_count = alignment.get_alignment_length()
     for column in range(0, column_count):
         # Count individual characters in the column
         counts = dict()
+        raw_count = 0
         for c in alignment[:, column]:
             c = c.upper()
             c.replace('U', 'T')
             if c in kriupac.IUPAC_DNA_CHARACTERS:
                 counts[c] = counts.get(c, 0) + 1
+                if (c not in kriupac.IUPAC_DNA_GAPS) and (c not in kriupac.IUPAC_DNA_UNKNOWN):
+                    raw_count = raw_count + 1
+        raw_counts_at_sites.append(raw_count)
+        # print(counts)
         counts_expanded = dict()
         for k in counts.keys():
             if k in kriupac.IUPAC_DNA_DICT_REVERSE:
@@ -153,6 +159,7 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, 
                     counts_expanded[char] = counts_expanded.get(char, 0) + counts[k]
             else:
                 counts_expanded[k] = counts_expanded.get(k, 0) + counts[k]
+        # print(counts_expanded)
         # Get the total characters in the column
         # TODO: should N, and gaps be excluded?
         total = 0
@@ -163,6 +170,8 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, 
         for k in counts_expanded.keys():
             if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
                 proportions[k] = float(counts_expanded[k]) / float(total)
+        # print(proportions)
+        # print('*** *** *** *** ***')
 
         site_set = set()
         if len(proportions) > 0 and threshold == 0:
@@ -188,17 +197,16 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, 
         else:
             site = kriupac.IUPAC_DNA_DICT[site_str]
         consensus = consensus + site
-        bases_at_sites.append(site_set)
+        accepted_bases_at_sites.append(site_set)
 
     if resolve_ambiguities:
         consensus = krseq.resolve_ambiguities(consensus)
 
     consensus = Seq.Seq(consensus)
 
-    if return_bases_at_sites:
-        ret_value = (consensus, bases_at_sites)
-    else:
-        ret_value = consensus
+    count_per_site = float(sum(raw_counts_at_sites)) / float(len(raw_counts_at_sites))
+
+    ret_value = (consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site)
 
     return(ret_value)
 

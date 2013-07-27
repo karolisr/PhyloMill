@@ -225,8 +225,6 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     if 'cross' in o and o['cross'] != '' and not resolve_hybrids:
         return((accepted, 0))
 
-    ###########################################################################
-
     matching_entries = list()
     for s in synonymy_table:
         if o['genus'] == s['Genus'] and o['species'] == s['Species']:
@@ -260,10 +258,6 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
 
     matching_entries.sort(key=lambda x: x[1], reverse=True)
 
-    # for m in matching_entries:
-    #     print(m)
-    # print('===================================')
-
     for me in matching_entries:
         s = me[0]
         accepted['genus'] = s['AccGenus']
@@ -280,68 +274,6 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
                                  sep=sep, resolve_hybrids=resolve_hybrids, level=level + 1))
         else:
             return((accepted, me[1]))
-
-    # #########################################################################
-    # matching_entries_strict = list()
-    # matching_entries_loose = list()
-    # matching_entries = list()
-    # # Find the entries in synonymy table that match our organism name.
-    # for s in synonymy_table:
-    #     if (o['genus'] == s['Genus'] and
-    #         o['species'] == s['Species'] and
-    #         o['authority'] == s['Authority'] and
-    #         (o['variety'] != '' and o['variety'] == s['Variety'] or
-    #             o['subspecies'] != '' and o['subspecies'] == s['Subspecies'])):
-    #         matching_entries_strict.append(s)
-    #     elif (o['genus'] == s['Genus'] and
-    #           o['species'] == s['Species'] and
-    #           (o['variety'] != '' and o['variety'] == s['Variety'] or
-    #           o['subspecies'] != '' and o['subspecies'] == s['Subspecies'])):
-    #         matching_entries_strict.append(s)
-    # if allow_loose_matching:
-    #     for s in synonymy_table:
-    #         if (o['genus'] == s['Genus'] and
-    #             o['species'] == s['Species'] and
-    #             (o['variety'] == '' or s['Variety'] == '' or
-    #                 (o['variety'] == s['Variety'])) and
-    #             (o['subspecies'] == '' or s['Subspecies'] == '' or
-    #                 (o['subspecies'] == s['Subspecies'])) and
-    #             (o['authority'] == '' or s['Authority'] == '' or
-    #                 (o['authority'] == s['Authority']))):
-    #             matching_entries_loose.append(s)
-    # matching_entries_strict = sorted(matching_entries_strict, key=lambda x: (
-    #     x['Authority'],
-    #     x['Variety'],
-    #     x['Subspecies']))
-    # matching_entries_strict.reverse()
-    # matching_entries_strict = sorted(matching_entries_strict, key=lambda x: (
-    #     x['Status']))
-    # matching_entries_loose = sorted(matching_entries_loose, key=lambda x: (
-    #     x['Authority'],
-    #     x['Variety'],
-    #     x['Subspecies']))
-    # matching_entries_loose.reverse()
-    # matching_entries_loose = sorted(matching_entries_loose, key=lambda x: (
-    #     x['Status']))
-    # matching_entries = matching_entries_strict + matching_entries_loose
-    # for s in matching_entries:
-    #     accepted['genus'] = s['AccGenus']
-    #     accepted['species'] = s['AccSpecies']
-    #     accepted['authority'] = s['AccAuthority']
-    #     accepted['subspecies'] = s['AccSubspecies']
-    #     accepted['variety'] = s['AccVariety']
-    #     accepted['status'] = s['Status']
-    #     accepted['id'] = s['AccID']
-    #     # If the matching entry is a synonym, recurse into synonymy table
-    #     # until an entry with a non-synonym status is reached.
-    #     if (s['Status'].lower().startswith('syn')):
-    #         if s in synonymy_table:
-    #             synonymy_table.remove(s)
-    #         return(accepted_name(accepted, synonymy_table, auth_file,
-    #                              sep=sep, resolve_hybrids=resolve_hybrids, level=level + 1))
-    #     else:
-    #         return(accepted)
-    # #########################################################################
 
 
 def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
@@ -395,15 +327,9 @@ def resolve_name(taxid_name_list, synonymy_table, auth_file):
         accepted name.
     '''
 
-    # loose_mode = False
     found_match = False
     tried_name = None
     acc_name = None
-
-    # for m in taxid_name_list:
-    #     print(m)
-
-    # print('-----------------------------------')
 
     # First we look for matches using STRICT mode
     # First look if there is a best possible match "acc"
@@ -425,88 +351,6 @@ def resolve_name(taxid_name_list, synonymy_table, auth_file):
         acc_name = acc_names[0][1]
         tried_name = acc_names[0][2]
 
-            # print(name_to_try)
-            # print(acc_name)
-            # print('------------------')
-
-    # # If no, then look for the next best thing "prov"
-    # if not found_match:
-    #     for name_to_try in taxid_name_list:
-    #         acc_name = accepted_name(
-    #             name=name_to_try,
-    #             synonymy_table=synonymy_table,
-    #             auth_file=auth_file,
-    #             allow_loose_matching=False)
-    #         if acc_name and acc_name['status'].lower() == 'prov':
-    #             found_match = True
-    #             tried_name = name_to_try
-    #             break
-
-    # # Otherwise, let's find something that isn't blank
-    # if not found_match:
-    #     for name_to_try in taxid_name_list:
-    #         acc_name = accepted_name(
-    #             name=name_to_try,
-    #             synonymy_table=synonymy_table,
-    #             auth_file=auth_file,
-    #             allow_loose_matching=False)
-    #         if (acc_name and (
-    #             acc_name['status'].lower() == 'as' or
-    #             acc_name['status'].lower() == 'nn' or
-    #             acc_name['status'].lower() == 'unc' or
-    #                 acc_name['status'].lower() == 'unr')):
-    #             found_match = True
-    #             tried_name = name_to_try
-    #             break
-
-    # # If we find nothing using STRICT mode we look for matches
-    # # using LOOSE mode
-    # # First look if there is a best possible match "acc"
-    # if not found_match:
-    #     for name_to_try in taxid_name_list:
-    #         acc_name = accepted_name(
-    #             name=name_to_try,
-    #             synonymy_table=synonymy_table,
-    #             auth_file=auth_file,
-    #             allow_loose_matching=True)
-    #         if acc_name and acc_name['status'].lower().startswith('acc'):
-    #             loose_mode = True
-    #             found_match = True
-    #             tried_name = name_to_try
-    #             break
-
-    # # If no, then look for the next best thing "prov"
-    # if not found_match:
-    #     for name_to_try in taxid_name_list:
-    #         acc_name = accepted_name(
-    #             name=name_to_try,
-    #             synonymy_table=synonymy_table,
-    #             auth_file=auth_file,
-    #             allow_loose_matching=True)
-    #         if acc_name and acc_name['status'].lower().startswith('prov'):
-    #             loose_mode = True
-    #             found_match = True
-    #             tried_name = name_to_try
-    #             break
-
-    # # Otherwise, let's find something that isn't blank
-    # if not found_match:
-    #     for name_to_try in taxid_name_list:
-    #         acc_name = accepted_name(
-    #             name=name_to_try,
-    #             synonymy_table=synonymy_table,
-    #             auth_file=auth_file,
-    #             allow_loose_matching=True)
-    #         if (acc_name and (
-    #             acc_name['status'].lower().startswith('as') or
-    #             acc_name['status'].lower().startswith('nn') or
-    #             acc_name['status'].lower().startswith('unc') or
-    #                 acc_name['status'].lower().startswith('unr'))):
-    #             loose_mode = True
-    #             found_match = True
-    #             tried_name = name_to_try
-    #             break
-
     if not found_match:
         acc_name = {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''}
         tried_name = taxid_name_list[0]
@@ -521,10 +365,6 @@ def resolve_taxid(tax_id, ncbi_names_table, synonymy_table, auth_file, sorting='
     #   sorted list with the most complete names at lower indexes.
     taxid_name_list = names_for_ncbi_taxid(
         tax_id, ncbi_names_table, sorting='authority')
-
-    # for tl in taxid_name_list:
-    #     print(tl)
-    # print('==========')
 
     ret_value = resolve_name(taxid_name_list, synonymy_table, auth_file)
     return(ret_value)

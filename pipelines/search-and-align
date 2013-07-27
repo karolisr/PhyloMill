@@ -13,17 +13,12 @@ if __name__ == '__main__':
     import os
     import sys
 
-    # from multiprocessing import Process
-    # from multiprocessing import JoinableQueue
-    # from multiprocessing import Manager
-
     import ConfigParser
 
     import argparse
 
     import krseqsearch
     import krio
-    # import krbioio
 
     parser = argparse.ArgumentParser()
 
@@ -53,19 +48,21 @@ if __name__ == '__main__':
 
         file_name_sep = '$'
 
-        query_file = input_dir + 'search-queries'
-
+        query_file = input_dir + 'search_queries'
         synonymy_file = input_dir + 'synonymy.csv'
         ncbi_names_file = input_dir + 'ncbi_tax_names'
         authority_file = input_dir + 'authority_alternates.dat'
         cutlist_records_file = input_dir + 'cutlist_records'
-        keeplist_records_file = input_dir + 'keeplist_records'
+        cutlist_records_auto_file = input_dir + 'cutlist_records_auto'
+        # keeplist_records_file = input_dir + 'keeplist_records'
         cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
         unresolvable_taxonomy_file = input_dir + 'unresolvable.csv'
         keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
         force_reverse_complement_file = input_dir + 'force_reverse_complement_records'
+        good_sequences_dir = input_dir + 'good_sequences'
 
         temp_dir = output_dir + 'temp'
+        log_dir = output_dir + '99-logs'
 
         search_results_dir = output_dir + '01-search-results'
         filtered_results_dir = output_dir + '02-filtered-results'
@@ -76,6 +73,8 @@ if __name__ == '__main__':
 
         # Create output directory
         krio.prepare_directory(output_dir)
+        # Create log directory
+        krio.prepare_directory(log_dir)
 
         # Get configuration information
         config_file_path = input_dir + 'config'
@@ -97,7 +96,8 @@ if __name__ == '__main__':
 
         # Parse queries file
         queries = krio.read_table_file(query_file, has_headers=True,
-                                       headers=None, delimiter='\t')
+                                       headers=None, delimiter='\t',
+                                       quotechar="'")
 
         commands = None
         if args.commands:
@@ -110,7 +110,8 @@ if __name__ == '__main__':
                 queries=queries,
                 output_dir=search_results_dir,
                 file_name_sep=file_name_sep,
-                email=config.get('General', 'email'))
+                email=config.get('General', 'email'),
+                log_dir=log_dir)
 
         if not commands or 'filter' in commands:
 
@@ -177,29 +178,59 @@ if __name__ == '__main__':
                 hacks_data_location=hacks_data_location,
                 unresolvable_taxonomy_list=unresolvable_taxonomy_list,
                 keeplist_taxonomy_list=keeplist_taxonomy_list,
-                force_reverse_complement_list=force_reverse_complement_list)
+                force_reverse_complement_list=force_reverse_complement_list,
+                log_dir=log_dir)
 
         if not commands or 'flatten' in commands:
 
             aln_program = config.get('Flatten', 'align_program')
             aln_program_exe = config.get('General', aln_program+'_executable')
 
+            cutlist_records = krio.read_table_file(
+                path=cutlist_records_file,
+                has_headers=False,
+                headers=None,
+                delimiter=',',
+                quotechar='"',
+                rettype='set')
+
+            cutlist_records_auto = krio.read_table_file(
+                path=cutlist_records_auto_file,
+                has_headers=False,
+                headers=None,
+                delimiter=',',
+                quotechar='"',
+                rettype='set')
+
+            # keeplist_records = krio.read_table_file(
+            #     path=keeplist_records_file,
+            #     has_headers=False,
+            #     headers=None,
+            #     delimiter=',',
+            #     quotechar='"',
+            #     rettype='set')
+
             # One locus per organism
-            krseqsearch.one_locus_per_organism(
+            new_cutlist_records_auto = krseqsearch.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
                 output_dir=one_locus_per_organism_dir,
                 queries=queries,
-                identity_threshold=config.getfloat('Flatten', 'identity_threshold'),
-                cutlist_records_file=cutlist_records_file,
-                keeplist_records_file=keeplist_records_file,
+                cutlist_records=cutlist_records,
+                cutlist_records_auto=cutlist_records_auto,
+                # keeplist_records=keeplist_records,
                 temp_dir=temp_dir,
                 file_name_sep=file_name_sep,
                 usearch_exe=config.get('General', 'usearch_executable'),
                 aln_program_exe=aln_program_exe,
                 aln_program=aln_program,
                 aln_options=config.get('Flatten', 'align_program_options'),
-                # threads=config.getint('General', 'max_cpu_cores_available'),
-                proceed_without_review=config.getboolean('Flatten', 'proceed_without_review'))
+                good_sequences_dir=good_sequences_dir,
+                log_dir=log_dir)
+
+            f = open(cutlist_records_auto_file, 'wb')
+            for clr in new_cutlist_records_auto:
+                f.write(clr + '\n')
+            f.close()
 
         if not commands or 'align' in commands:
 
@@ -226,4 +257,5 @@ if __name__ == '__main__':
                 aligned_loci_dir=aligned_dir,
                 output_dir=concatenated_dir,
                 order_of_loci=order_of_loci,
-                number_of_gaps_between_loci=number_of_gaps_between_loci)
+                number_of_gaps_between_loci=number_of_gaps_between_loci,
+                log_dir=log_dir)

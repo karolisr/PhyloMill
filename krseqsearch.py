@@ -93,7 +93,7 @@ def hack_tgrc(voucher):
 
 # Pipeline functions ----------------------------------------------------------
 
-def search_and_download(queries, output_dir, file_name_sep, email):
+def search_and_download(queries, output_dir, file_name_sep, email, log_dir):
 
     '''
     This will search NCBI and download sequences.
@@ -175,7 +175,7 @@ def search_and_download(queries, output_dir, file_name_sep, email):
             krncbi.download_sequence_records(file_path, result_uids, db, email)
 
     all_uids = list(all_uids)
-    log_file = output_dir.rstrip(ps) + ps + 'downloaded.csv'
+    log_file = log_dir.rstrip(ps) + ps + '01-downloaded.csv'
     handle = open(log_file, 'w')
     for uid in all_uids:
         handle.write(uid+'\n')
@@ -281,6 +281,57 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         krcl.show_cursor()
 
 
+def produce_seq_id(locus, reference_id, taxid, old_name, new_name, separator_0='|'):
+    sequence_record_id = (
+        locus + separator_0 +
+        # NCBI accession
+        reference_id + separator_0 +
+        # Organism name as it appears in search results
+        taxid + separator_0 +
+        # NCBI taxid
+        old_name + separator_0 +
+        # Accepted name
+        new_name)
+    return(sequence_record_id)
+
+
+separator_lrps = '%'
+separator_lrp = '_'
+separator_unique = '@'
+separator_accession = '$'
+
+
+def parse_seq_id(seq_id, separator_0='|'):
+    parsed = dict()
+    seq_id_split_0 = seq_id.split(separator_0)
+    parsed['locus'] = seq_id_split_0[0]
+    parsed['reference_id'] = seq_id_split_0[1]
+    parsed['taxid'] = seq_id_split_0[2]
+    parsed['old_name'] = seq_id_split_0[3]
+    parsed['new_name'] = seq_id_split_0[4]
+    reference_id_split_lrps = parsed['reference_id'].split(separator_lrps)
+    reference_id_split_unique = parsed['reference_id'].split(separator_unique)
+    lrps = False
+    if len(reference_id_split_lrps) > 1:
+        lrps = reference_id_split_lrps[0].split(separator_lrp)
+    parsed['lrps'] = lrps
+    unique = False
+    if len(reference_id_split_unique) > 1:
+        unique = reference_id_split_unique[1]
+    parsed['unique'] = unique
+    accessions = False
+    if lrps and unique:
+        accessions = parsed['reference_id'].split(separator_lrps)[1].split(separator_unique)[0].split(separator_accession)
+    elif lrps:
+        accessions = parsed['reference_id'].split(separator_lrps)[1].split(separator_accession)
+    elif unique:
+        accessions = parsed['reference_id'].split(separator_unique)[0].split(separator_accession)
+    else:
+        accessions = parsed['reference_id'].split(separator_accession)
+    parsed['accessions'] = accessions
+    return(parsed)
+
+
 def extract_loci(
     search_results_dir,
     output_dir,
@@ -294,7 +345,8 @@ def extract_loci(
     hacks_data_location=None,
     unresolvable_taxonomy_list=None,
     keeplist_taxonomy_list=None,
-    force_reverse_complement_list=None
+    force_reverse_complement_list=None,
+    log_dir=None
 ):
 
     '''
@@ -328,7 +380,6 @@ def extract_loci(
 
     if hacks and 'tgrc' in hacks:
         hack_sol_species_set = krio.read_table_file(
-            # path='..' + ps + 'data' + ps + 'sol_sp_with_vouchers',
             path=hacks_data_location['tgrc'],
             has_headers=False,
             headers=None,
@@ -445,10 +496,10 @@ def extract_loci(
             '<td>' + oid + '</td>' +
             '</tr>\n')
 
-    tax_log_file = output_dir + ps + 'log_synonymy' + '.csv'
+    tax_log_file = log_dir + ps + '03-extracted-0-' + 'synonymy' + '.csv'
     tax_log_handle = open(tax_log_file, 'w')
     tax_log_handle.write('ncbiaccession,ncbitaxid,danger,igenus,ispecies,iauthority,isubspecies,ivariety,icross,iform,ogenus,ospecies,oauthority,osubspecies,ovariety,ostatus,oid,ncbitaxlink,ncbiacclink\n')
-    tax_log_html_file = output_dir + ps + 'log_synonymy' + '.html'
+    tax_log_html_file = log_dir + ps + '03-extracted-0-' + 'synonymy' + '.html'
     tax_log_html_handle = open(tax_log_html_file, 'w')
     tax_log_html_handle.write('<!DOCTYPE html>\n<html>\n<style type="text/css">body{font-family:monospace;} table { border-collapse:collapse; } table td, table tr { border:1px solid #666;padding:3px; } </style>\n<body>\n<table>\n')
     tax_log_html_handle.write(
@@ -489,7 +540,7 @@ def extract_loci(
                 match_stringency = query_dict['match_stringency']
                 break
 
-        log_file = output_dir + ps + file_name + '.log'
+        log_file = log_dir + ps + '03-extracted-' + file_name + '.tsv'
         log_handle = open(log_file, 'w')
 
         output_file = output_dir + ps + file_name + '.fasta'
@@ -566,29 +617,43 @@ def extract_loci(
             acc_name = None
             acc_name_flat = None
             taxid_name_list = None
-            # Name was matched using loose mode?
-            # loose_mode = False
+            tried_name = None
 
             # HACKS ###########################################################
             hack_species_found = False
             if hacks and 'tgrc' in hacks:
 
-                hack_org = krbionames.parse_organism_name(
+                tried_name = krbionames.parse_organism_name(
                     organism,
                     sep='_',
                     ncbi_authority=True)
 
-                if (hack_org['genus'] in hack_sol_genus and
-                        hack_org['species'] in hack_sol_species):
+                if (tried_name['genus'] in hack_sol_genus and
+                        tried_name['species'] in hack_sol_species):
 
-                    hack_fi = krseq.get_features_with_qualifier_label(
+                    hack_fi_specimen_voucher = krseq.get_features_with_qualifier_label(
                         record=record,
                         qualifier_label='specimen_voucher',
                         feature_type='source')
 
+                    hack_fi_cultivar = krseq.get_features_with_qualifier_label(
+                        record=record,
+                        qualifier_label='cultivar',
+                        feature_type='source')
+
+                    hack_fi = None
+                    if hack_fi_specimen_voucher:
+                        hack_fi = hack_fi_specimen_voucher
+                    elif hack_fi_cultivar:
+                        hack_fi = hack_fi_cultivar
+
                     if(hack_fi):
                         hack_f = record.features[hack_fi[0]]
-                        voucher = hack_f.qualifiers['specimen_voucher'][0]
+                        voucher = None
+                        if hack_fi_specimen_voucher:
+                            voucher = hack_f.qualifiers['specimen_voucher'][0]
+                        elif hack_fi_cultivar:
+                            voucher = hack_f.qualifiers['cultivar'][0]
                         if voucher not in do_not_repeat:
                             if voucher in found_previously.keys():
                                 hack_species_found = found_previously[voucher]
@@ -601,8 +666,8 @@ def extract_loci(
                                 acc_name['id'] = (
                                     'tgrc-' + hack_species_found[2])
                                 acc_name['status'] = 'TGRC'
-                                tax_log(record.id, tax_id, hack_org, acc_name, tax_log_handle)
-                                tax_log_html(record.id, tax_id, hack_org, acc_name, tax_log_html_handle)
+                                tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                                tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
                             else:
                                 do_not_repeat.append(voucher)
             ###################################################################
@@ -642,63 +707,51 @@ def extract_loci(
                     'form': taxid_name_list[0]['form'],
                     'cross': taxid_name_list[0]['cross']}
 
-                tax_log(record.id, tax_id, acc_name, acc_name, tax_log_handle)
-                tax_log_html(record.id, tax_id, acc_name, acc_name, tax_log_html_handle)
+                tried_name = acc_name
 
+                tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
+
+            tried_name_flat = krbionames.flatten_organism_name(tried_name, '_')
             acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
 
             if acc_name['status'] == '':
                 log_handle.write(
                     name1 + '_' + name2 + '\t' +
                     record.id + '\t' +
-                    organism.replace('_', ' ') + '\t' +
+                    tried_name_flat.replace('_', ' ') + '\t' +
                     tax_id + '\t' +
-                    'No taxonomic match.\n')
+                    'NO_MATCH\n')
             elif len(seq) <= minlen:
                 log_handle.write(
                     name1 + '_' + name2 + '\t' +
                     record.id + '\t' +
-                    organism.replace('_', ' ') + '\t' +
+                    tried_name_flat.replace('_', ' ') + '\t' +
                     tax_id + '\t' +
-                    'Sequence is too short.\n')
+                    'SHORT' + '\t' +
+                    acc_name_flat.replace('_', ' ') + '\n')
             else:
-                # if loose_mode:
-                #     log_handle.write(
-                #         name1 + '_' + name2 + '\t' +
-                #         record.id + '\t' +
-                #         organism.replace('_', ' ') + '\t' +
-                #         tax_id + '\t' +
-                #         'Taxonomic match using loose mode.' + '\t' +
-                #         acc_name_flat.replace('_', ' ') + '\n')
                 if acc_name['status'] == 'TGRC':
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
                         record.id + '\t' +
-                        organism.replace('_', ' ') + '\t' +
+                        tried_name_flat.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
-                        'Match TGRC' + '\t' +
+                        'TGRC' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\n')
                 else:
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
                         record.id + '\t' +
-                        organism.replace('_', ' ') + '\t' +
+                        tried_name_flat.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
-                        'Taxonomic match' + '\t' +
+                        'MATCH' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\n')
 
                 # Record id for the fasta output
-                sequence_record_id = (
-                    # NCBI accession
-                    record.id + '|' +
-                    # Organism name as it appears in search results
-                    organism + '|' +
-                    # NCBI taxid
-                    tax_id + '|' +
-                    # Accepted name
-                    acc_name_flat + '|' +
-                    # Accepted name id from the synonymy table
-                    acc_name['id'])
+                sequence_record_id = produce_seq_id(
+                    name1, record.id, tax_id, tried_name_flat, acc_name_flat)
+
                 # Produce a biopython sequence record object
                 sequence_record = SeqRecord.SeqRecord(
                     seq=seq, id=sequence_record_id, name='', description='')
@@ -719,16 +772,15 @@ def extract_loci(
     tax_log_html_handle.close()
 
     all_logs = set()
-    file_list = krio.parse_directory(output_dir, file_name_sep)
+    file_list = krio.parse_directory(log_dir, file_name_sep)
     for f in file_list:
-        if not f['ext'].startswith('log'):
-            continue
-        handle = open(f['path'])
-        for l in handle:
-            all_logs.add(l)
-        handle.close()
+        if f['ext'].startswith('tsv') and f['name'].startswith('03-extracted-'):
+            handle = open(f['path'])
+            for l in handle:
+                all_logs.add(l)
+            handle.close()
     all_logs = list(all_logs)
-    all_logs_file = output_dir + ps + 'all.log'
+    all_logs_file = log_dir + ps + '03-extracted-1-all.tsv'
     handle = open(all_logs_file, 'w')
     handle.writelines(all_logs)
     handle.close()
@@ -740,17 +792,17 @@ def one_locus_per_organism(
     extracted_results_dir,
     output_dir,
     queries,
-    identity_threshold,
-    cutlist_records_file,
-    keeplist_records_file,
+    cutlist_records,
+    cutlist_records_auto,
+    # keeplist_records,
     temp_dir,
     file_name_sep,
     usearch_exe,
     aln_program_exe,
     aln_program,
     aln_options,
-    threads=1,
-    proceed_without_review=False
+    good_sequences_dir,
+    log_dir
 ):
 
     '''
@@ -762,29 +814,47 @@ def one_locus_per_organism(
     import os
     import shutil
 
-    from Bio import Seq
+    import numpy
+
     from Bio import SeqRecord
     from Bio import AlignIO
+    from Bio import SeqIO
+    from Bio import Seq
+    from Bio.Align import MultipleSeqAlignment
 
     import krio
     import krbioio
-    import krusearch
-    import krcl
     import kralign
-    import krseq
-
-    krcl.hide_cursor()
 
     ps = os.path.sep
+    ls = '\t'
+    nl = '\n'
+
+    good_sequences_dir_base = good_sequences_dir.rstrip(ps) + ps
+
+    review_0_dir_base = output_dir + '-review-0' + ps
+    review_1_dir_base = output_dir + '-review-1' + ps
+    review_0_new_dir_base = output_dir + '-review-0-updated' + ps
+    review_1_new_dir_base = output_dir + '-review-1-updated' + ps
+    reviewed_dir_base = output_dir + '-reviewed' + ps
+
+    lengths_log_file = log_dir + ps + '04-flat-0-lengths.csv'
+    lengths_log_handle = open(lengths_log_file, 'w')
+    lengths_log_handle.write('locus,mean,median,stdev\n')
 
     # Check if the output directory exists. If it does we will treat this as a
     # second run.
-    first_run = not os.path.exists(output_dir)
-
+    first_run = not os.path.exists(reviewed_dir_base)
     if not first_run:
-        cont = raw_input("This is a second run, continue? Y/N: ")
+        cont = raw_input("\n\tThis is a second run, continue? Y/N: ")
         if not cont.lower() == 'y':
             exit(0)
+
+    krio.prepare_directory(review_0_dir_base)
+    krio.prepare_directory(review_1_dir_base)
+    krio.prepare_directory(review_0_new_dir_base)
+    krio.prepare_directory(review_1_new_dir_base)
+    krio.prepare_directory(reviewed_dir_base)
 
     print('\n\tPreparing output directory "', output_dir, '"', sep='')
     krio.prepare_directory(output_dir)
@@ -793,47 +863,6 @@ def one_locus_per_organism(
     krio.prepare_directory(temp_dir)
 
     file_list = krio.parse_directory(extracted_results_dir, file_name_sep)
-
-    # Read in accessions to filter
-    cutlist_records = None
-    if cutlist_records_file:
-
-        cutlist_records = krio.read_table_file(
-            path=cutlist_records_file,
-            has_headers=False,
-            headers=None,
-            delimiter=',',
-            quotechar='"',
-            rettype='set')
-
-    # Read in white-listed accessions
-    keeplist_records = None
-    if keeplist_records_file:
-
-        keeplist_records = krio.read_table_file(
-            path=keeplist_records_file,
-            has_headers=False,
-            headers=None,
-            delimiter=',',
-            quotechar='"',
-            rettype='set')
-
-    #
-    # Iterate over each file that corresponds to a single query line
-    # There are as many files as there are queries. Using these we will build
-    # a structure that looks like this:
-    #
-    #   Nomenclature:
-    #       name1: general query name
-    #       name2: specific query name
-    #
-    #   Structure:
-    #       all_loci_dict: dictionary with key name1, each value is a list of
-    #       dictionaries with keys:
-    #           name2:      specific name (string)
-    #           records:    list of BioSeqRecord objects (list)
-    #           lrp:        locus relative position (int or 'X')
-    #
 
     all_records = dict()
     all_loci_dict = dict()
@@ -846,7 +875,7 @@ def one_locus_per_organism(
         name1 = f['split'][0]
         name2 = f['split'][1]
 
-        locus_relative_position = 0
+        locus_relative_position = 'x'
         for query_dict in queries:
             if name1 == query_dict['name1'] and name2 == query_dict['name2']:
                 locus_relative_position = query_dict['locus_relative_position']
@@ -855,462 +884,358 @@ def one_locus_per_organism(
         if not name1 in all_loci_dict:
             all_loci_dict[name1] = list()
 
+        # separator_lrps = '%'
+        # separator_lrp = '_'
+        # separator_unique = '@'
+        # separator_accession = '$'
+
         records = krbioio.read_sequence_file(f['path'], 'fasta')
-        all_loci_dict[name1].append({
-            'name2': name2,
-            'records': records,
-            'lrp': locus_relative_position})
+        for r in records:
+            parsed_id = parse_seq_id(r.id)
+            r.id = produce_seq_id(
+                locus=name1,
+                reference_id=locus_relative_position+separator_lrps+parsed_id['reference_id'],
+                taxid=parsed_id['taxid'],
+                old_name=parsed_id['old_name'],
+                new_name=parsed_id['new_name'])
+        all_loci_dict[name1] = all_loci_dict[name1] + records
 
         for r in records:
-            all_records[r.id.split('|')[0]] = r
+            all_records[parse_seq_id(r.id)['accessions'][0]] = r
 
-    # Because for each locus, there could be several records from the same
-    # species, we need to pick the best representative sequence. Only one
-    # per locus, per organism. Each name1 will have one and only one file
-    # associated with it.
-
-    review_needed = False
+    all_record_ids = all_records.keys()
 
     # LOOP ALL NAME1 ----------------------------------------------------------
+
     for name1 in all_loci_dict.keys():
         print('\n\tProcessing', name1)
 
-        taxa_dir = output_dir + '-taxa' + ps + name1 + ps
-        krio.prepare_directory(taxa_dir)
+        review_0_dir = review_0_dir_base + name1 + '_'
+        review_1_dir = review_1_dir_base + name1 + '_'
+        review_0_new_dir = review_0_new_dir_base + name1 + '_'
+        review_1_new_dir = review_1_new_dir_base + name1 + '_'
+        reviewed_dir = reviewed_dir_base + name1 + '_'
+        good_sequences_dir = good_sequences_dir_base + name1 + '_'
 
-        review_aln_1_dir = output_dir + '-review-aln-1' + ps + name1 + ps
-        krio.prepare_directory(review_aln_1_dir)
-
-        review_aln_1_good_dir = output_dir + '-review-aln-1-good' + ps + name1 + ps
-        krio.prepare_directory(review_aln_1_good_dir)
-
-        results = list()
-
-        log_file = output_dir + ps + name1 + '.log'
+        log_file = log_dir + ps + '04-flat-' + name1 + '.tsv'
         log_handle = open(log_file, 'w')
-        output_file = output_dir + ps + name1 + '.fasta'
 
-        # Each row will contain a dictionary with a list of results and a
-        # relative locus position:
         name1_results = list()
+        name1_results_file = output_dir + ps + name1 + '.fasta'
 
-        # All name2 associated with name1
-        list_of_name2 = all_loci_dict[name1]
+        name1_records = all_loci_dict[name1]
 
-        # LOOP ALL NAME2 ------------------------------------------------------
-        for name2_dict in list_of_name2:
+        # Keys will be new_name and value will be the list of all sequences
+        # for name1 with that new_name. As new_name we will use synonymy-resolved
+        # organism name
+        name1_records_by_new_name = dict()
+        for record in name1_records:
+            parsed_id = parse_seq_id(record.id)
+            new_name = parsed_id['new_name']
+            if not new_name in name1_records_by_new_name:
+                name1_records_by_new_name[new_name] = list()
+            name1_records_by_new_name[new_name].append(record)
 
-            name2 = name2_dict['name2']
-            records = name2_dict['records']
-            lrp = name2_dict['lrp']
+        # LOOP ALL new_name ------------------------------------------------------
 
-            if lrp.lower() != 'x':
-                lrp = int(lrp)
+        for new_name in name1_records_by_new_name.keys():
+            # Get all the records for this new_name
+            name1_records_for_new_name = list()
+            for record in name1_records_by_new_name[new_name]:
+                accession = parse_seq_id(record.id)['accessions'][0]
+                # Filter records that appear in cutlists
+                if (accession in cutlist_records) or (accession in cutlist_records_auto):
+                    if accession in all_record_ids:
+                        all_record_ids.remove(accession)
+                else:
+                    record.name = ''
+                    record.description = ''
+                    name1_records_for_new_name.append(record)
+            name1_records_for_new_name.sort(reverse=True)
 
-            # Cluster top X percent of records within a locus within NAME2
-            # Get a representative consensus sequence
-            records.sort(key=lambda x: len(x), reverse=True)
-            records_count = len(records)
-            fraction_to_cluster = 0.01
-            number_to_cluster = int(records_count * fraction_to_cluster)
-            number_to_cluster = max(10, number_to_cluster)
-            # TODO: If there are not enough records for a meaningful cluster,
-            # they should be automatically sent for manual review.
-            if number_to_cluster >= records_count:
-                number_to_cluster = max(5, records_count/2)
+            # Deduplicate records, if there is more than one record with the
+            # same accession, we keep them only if the sequences differ
+            dedupe_records_dict = dict()
+            for i, r in enumerate(name1_records_for_new_name):
 
-            records_to_cluster = records[0:number_to_cluster]
+                id_match = False
+                lrp_match = False
+                seq_longer = False
 
-            cluster_dict = krusearch.cluster_records(
-                records=records_to_cluster,
-                identity_threshold=identity_threshold,
-                temp_dir=temp_dir,
-                sorted_input=False,
-                algorithm='smallmem',
-                strand='both',
-                threads=1,
-                quiet=True,
-                program=usearch_exe,
-                heuristics=False,
-                query_coverage=0.1,
-                target_coverage=0.1,
-                sizein=False,
-                sizeout=False,
-                usersort=False
-            )
+                r_accession = parse_seq_id(r.id)['accessions'][0]
+                r_lrp = parse_seq_id(r.id)['lrps'][0]
 
-            clusters = cluster_dict.values()
-            clusters.sort(key=lambda x: len(x), reverse=True)
-            largest_cluster = clusters[0]
-            largest_cluster_names = list()
-            for n in largest_cluster:
-                largest_cluster_names.append(n[1])
-            records_to_align = list()
-            for record in records:
-                if record.id in largest_cluster_names:
-                    records_to_align.append(record)
-            aln = kralign.align(
-                records=records_to_align,
-                program=aln_program,
-                options=aln_options,
-                program_executable=aln_program_exe)
-            # TODO: Better consensus; This consensus should not include
-            # ambiguous characters because uclust does not understand them.
-            # Randomly pick a representative character whenever an ambiguity
-            # occurs.
-            # summary_aln = AlignInfo.SummaryInfo(aln)
-            # consensus = summary_aln.dumb_consensus(
-            #     threshold=0.001, ambiguous='N')
-            consensus = kralign.consensus(aln, threshold=0.5, unknown='N', resolve_ambiguities=True)
-            rep_cons_record = SeqRecord.SeqRecord(
-                seq=consensus, id='representative', name='', description='')
+                for k in dedupe_records_dict.keys():
 
-            # Keys will be taxid and value will be the list of all sequences
-            # for name2 with that taxid. As taxid we will use synonymy-resolved
-            # organism name
-            raw_name2_dict = dict()
-            for record in records:
-                taxid = record.description.split('|')[3]
-                if not taxid in raw_name2_dict:
-                    raw_name2_dict[taxid] = list()
-                raw_name2_dict[taxid].append(record)
+                    dedupe_accession = parse_seq_id(k)['accessions'][0]
+                    dedupe_lrp = parse_seq_id(k)['lrps'][0]
 
-            # Will hold one sequence record per taxid, keys are taxid
-            flat_name2_dict = dict()
-            taxa_count = len(raw_name2_dict.keys())
+                    if r_accession == dedupe_accession:
+                        id_match = True
+                        if str(r.seq).lower() == str(dedupe_records_dict[k].seq).lower():
+                            if dedupe_lrp.lower() == 'x':
+                                if r_lrp.lower() != 'x':
+                                    dedupe_records_dict[k] = r
+                                    lrp_match = True
+                        if not lrp_match and r_lrp == dedupe_lrp:
+                            lrp_match = True
+                            if len(r.seq) > len(dedupe_records_dict[k].seq):
+                                seq_longer = True
 
-            print('\n\t\tProcessing', name1, name2 + '. There are ' +
-                  str(records_count) + ' records from ' + str(taxa_count) +
-                  ' taxa.')
+                if id_match:
+                    if lrp_match:
+                        if seq_longer:
+                            dedupe_records_dict[r.id] = r
+                    else:
+                        dedupe_records_dict[r.id] = r
+                else:
+                    dedupe_records_dict[r.id] = r
 
-            for i, taxid in enumerate(raw_name2_dict.keys()):
+            # Check if there are previous alignments or sequences for this
+            # new_name
+            new_records = False
 
-                krcl.print_progress(i + 1, taxa_count, 50, '\t\t')
+            good_sequences_seq = os.path.exists(good_sequences_dir + new_name + '.fasta')
+            good_sequences_aln = os.path.exists(good_sequences_dir + new_name + '.phy')
 
-                all_records_for_taxid_prefiltered = raw_name2_dict[taxid]
-                all_records_for_taxid = list()
+            if good_sequences_seq and good_sequences_aln:
+                print('\n\tWARNING: Both the alignment and sequence file exists for ' + name1 + ' ' + new_name + '.')
 
-                # Filter unwanted accessions
-                for tr in all_records_for_taxid_prefiltered:
-                    if tr.id.split('|')[0] not in cutlist_records:
-                        all_records_for_taxid.append(tr)
+            if first_run and (good_sequences_seq or good_sequences_aln):
+                all_previous_ids = set()
+                if good_sequences_seq:
+                    seq = SeqIO.read(good_sequences_dir + new_name + '.fasta', "fasta")
+                    all_previous_ids.add(parse_seq_id(seq.id)['accessions'][0])
+                elif good_sequences_aln:
+                    aln = AlignIO.read(good_sequences_dir + new_name + '.phy', "phylip-relaxed")
+                    for s in aln:
+                        all_previous_ids.add(parse_seq_id(s.id)['accessions'][0])
+                all_ids_in_dedupe = set()
+                for k in dedupe_records_dict.keys():
+                    all_ids_in_dedupe.add(parse_seq_id(k)['accessions'][0])
+                ids_union = all_previous_ids.union(all_ids_in_dedupe)
+                if len(ids_union) > len(all_previous_ids):
+                    new_records = True
 
-                if len(all_records_for_taxid) > 1:
-                    # If the records were not white-listed we need to check
-                    # if they look like our locus
-                    all_records_for_taxid_to_cluster = list()
-                    for tr in all_records_for_taxid:
-                        if tr.id.split('|')[0] not in keeplist_records:
-                            resolved_tr_seq = Seq.Seq(krseq.resolve_ambiguities(str(tr.seq)))
-                            resolved_tr_seq_record = SeqRecord.SeqRecord(
-                                seq=resolved_tr_seq, id=tr.id, name='',
-                                description='')
-                            all_records_for_taxid_to_cluster.append(resolved_tr_seq_record)
-                    all_records_for_taxid_to_cluster.append(rep_cons_record)
-                    # ...we cluster these sequences and hope for only one
-                    # cluster
-                    cluster_dict = None
-                    if len(all_records_for_taxid_to_cluster) > 1:
-                        cluster_dict = krusearch.cluster_records(
-                            records=all_records_for_taxid_to_cluster,
-                            identity_threshold=identity_threshold,
-                            temp_dir=temp_dir,
-                            sorted_input=False,
-                            algorithm='smallmem',
-                            strand='plus',
-                            threads=1,
-                            quiet=True,
-                            program=usearch_exe,
-                            heuristics=False,
-                            query_coverage=0.1,
-                            target_coverage=0.1,
-                            sizein=False,
-                            sizeout=False,
-                            usersort=False
-                        )
+            # Combine sequences by locus relative position if from the same accession
+            dedupe_records_lrp = dedupe_records_dict.values()
+            if len(dedupe_records_lrp) > 1:
+                dedupe_records_by_accession = dict()
+                dedupe_records_lrp = list()
+                for r in dedupe_records_dict.values():
+                    accession = parse_seq_id(r.id)['accessions'][0]
+                    if not accession in dedupe_records_by_accession:
+                        dedupe_records_by_accession[accession] = list()
+                    dedupe_records_by_accession[accession].append(r)
 
-                    # ...if there is only one cluster
-                    if not cluster_dict or len(cluster_dict.keys()) == 1:
-                        old_record_id_split = (
-                            all_records_for_taxid[0].id.split('|'))
+                for acc_list in dedupe_records_by_accession.values():
+                    if len(acc_list) > 1:
 
-                        if first_run:
-                            # We align the sequences in a cluster and produce
-                            # a consensus
-                            aln = kralign.align(
-                                records=all_records_for_taxid,
-                                program=aln_program,
-                                options=aln_options,
-                                program_executable=aln_program_exe)
+                        parsed_id = parse_seq_id(acc_list[0].id)
+                        accession = parsed_id['accessions'][0]
 
-                            cons = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=False, return_bases_at_sites=True)
-                            bases_at_sites = cons[1]
-                            tot_bs = 0
-                            for bs in bases_at_sites:
-                                tot_bs = tot_bs + len(bs)
-                            if (float(len(bases_at_sites)) / float(tot_bs)) < 0.97:
-                                AlignIO.write(aln, review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
-                            else:
-                                AlignIO.write(aln, review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
-                        else:
-                            # if os.path.exists(review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed"):
-                            #     aln = AlignIO.read(review_aln_1_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
-                            # else:
-                            if os.path.exists(review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy'):
-                                aln = AlignIO.read(review_aln_1_good_dir + old_record_id_split[3] + '_' + name2 + '_aln_1.phy', "phylip-relaxed")
-                            else:
-                                print('\n\nWARNING: Make sure to review all the alignments.')
-                                exit(0)
+                        acc_list.sort(key=lambda x: x.id, reverse=False)
 
-                            # TODO: Better consensus. This consensus should include
-                            # correct ambiguities.
-                            # summary_aln = AlignInfo.SummaryInfo(aln)
-                            # consensus = summary_aln.dumb_consensus(
-                            #     threshold=0.001, ambiguous='N')
-                            consensus = kralign.consensus(aln, threshold=0.5, unknown='N')
+                        cat_seq = ''
 
-                            # We want the consensus record description to reflect
-                            # all the sequence ids that were combined to form it
-                            cons_ids = list()
-                            for n in all_records_for_taxid:
-                                cons_ids.append(n.id.split('|')[0])
-                            new_cons_id = '$'.join(cons_ids)
+                        lrps = list()
 
-                            sequence_record_id = (
-                                'consensus$' + new_cons_id + '|' +
-                                old_record_id_split[1] + '|' +
-                                old_record_id_split[2] + '|' +
-                                old_record_id_split[3] + '|' +
-                                old_record_id_split[4])
+                        for r in acc_list:
+                            lrp = parse_seq_id(r.id)['lrps'][0]
+                            if lrp.lower().startswith('x'):
+                                dedupe_records_lrp.append(r)
+                                continue
+                            cat_seq = cat_seq + str(r.seq)
+                            lrps.append(lrp)
 
-                            krbioio.write_sequence_file(all_records_for_taxid, taxa_dir + old_record_id_split[3] + '_originals_1.fasta', 'fasta')
-                            AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '_alignment_1.phy', "phylip-relaxed")
+                        if len(lrps) > 0:
+                            cat_id = produce_seq_id(
+                                locus=name1,
+                                reference_id=separator_lrp.join(lrps) + separator_lrps + accession,
+                                taxid=parsed_id['taxid'],
+                                old_name=parsed_id['old_name'],
+                                new_name=parsed_id['new_name'])
 
-                            # Produce a biopython sequence record object
                             sequence_record = SeqRecord.SeqRecord(
-                                seq=consensus, id=sequence_record_id, name='',
+                                seq=Seq.Seq(cat_seq), id=cat_id, name='',
                                 description='')
-
-                            flat_name2_dict[taxid] = sequence_record
+                            dedupe_records_lrp.append(sequence_record)
                     else:
-                        review_needed = True
-                        # If there is more than one cluster we produce files
-                        # for manual review.
-                        review_dir = output_dir + '-review' + ps + name1 + ps
-                        krio.prepare_directory(review_dir)
-                        # Name the file by the id of the first record in the list
-                        review_name = all_records_for_taxid_to_cluster[0].id.split('|')[0]
+                        dedupe_records_lrp.append(acc_list[0])
 
-                        # Write all accessions we are unsure about to a file
-                        review_ids_handle = open(review_dir+review_name+'_accessions.txt', 'w')
-                        review_ids_handle.write(taxid+'\n')
-                        for r in all_records_for_taxid_to_cluster:
-                            label = r.id.split('|')[0]
-                            if label is not 'representative':
-                                review_ids_handle.write(label+'\n')
-                        review_ids_handle.close()
+            dir_0 = None
+            dir_1 = None
 
-                        # Align all accessions we are unsure about, and write to a file for review
-                        aln = kralign.align(
-                            records=all_records_for_taxid_to_cluster,
-                            program=aln_program,
-                            options=aln_options,
-                            program_executable=aln_program_exe)
-                        AlignIO.write(aln, review_dir + review_name + '.phy', "phylip-relaxed")
-                elif not first_run and len(all_records_for_taxid) == 1:
-                    # If there is only one record available, we hope for the
-                    # best and keep it.
-                    # TODO: Confirm this record is actually good.
-                    flat_name2_dict[taxid] = all_records_for_taxid[0]
-                    krbioio.write_sequence_file(all_records_for_taxid, taxa_dir + all_records_for_taxid[0].id.split('|')[3] + '_originals_1.fasta', 'fasta')
-            name1_results.append({'results': flat_name2_dict, 'lrp': lrp})
-            print('\n')
-        # END LOOP ALL NAME2 --------------------------------------------------
+            if first_run and new_records:
+                dir_0 = review_0_new_dir
+                dir_1 = review_1_new_dir
+            else:
+                dir_0 = review_0_dir
+                dir_1 = review_1_dir
 
-        if first_run or (not proceed_without_review and review_needed):
-            continue
-
-        #
-        # This is where the final locus construction happens. Pieces are
-        # arranged using lrps and a final locus consensus is produced.
-        #
-        # Keys will be taxid, values will be a list of dictionaries with keys:
-        #   record
-        #   lrp
-        #
-
-        final_dict = dict()
-        name1_results.sort(key=lambda x: x['lrp'], reverse=False)
-        for r_dict in name1_results:
-            r = r_dict['results']
-            lrp = r_dict['lrp']
-            for taxid in r.keys():
-                if taxid not in final_dict:
-                    final_dict[taxid] = list()
-                final_dict[taxid].append({'record': r[taxid], 'lrp': lrp})
-
-        for i, taxid in enumerate(final_dict.keys()):
-            # Produce a list of sequences that will represent a consensus of
-            # the locus. We concatenate numbered lrps in order and stick them
-            # at index 0 of the list. Further indexes will contain string named
-            # lrps ('x')
-            consensus_list = list()
-            for r in final_dict[taxid]:
-                lrp = r['lrp']
-                record = r['record']
-
-                # Based on previous ordering we assume that lrps in the list
-                # will occur in order: numbers first, then strings:
-                #   1,2,3...X,X,X
-
-                # We have to concatenate records based on their lrp order
-                if not isinstance(lrp, basestring):
-                    if not len(consensus_list):
-                        consensus_list.append(record)
+            if first_run and len(dedupe_records_lrp) > 1:
+                if new_records or not good_sequences_aln:
+                    aln = kralign.align(
+                        records=dedupe_records_lrp,
+                        program=aln_program,
+                        options=aln_options,
+                        program_executable=aln_program_exe)
+                    aln.sort()
+                    cons = kralign.consensus(
+                        aln, threshold=0.1, unknown='N',
+                        resolve_ambiguities=False)
+                    bases_at_sites = cons[1]
+                    tot_bs = 0
+                    for bs in bases_at_sites:
+                        tot_bs = tot_bs + len(bs)
+                    similarity = float(len(bases_at_sites)) / float(tot_bs)
+                    if similarity >= 0.95:
+                        AlignIO.write(aln, dir_1 + new_name + '.phy', "phylip-relaxed")
                     else:
-                        # for record in consensus list
-                        cons_ids_1 = list()
-                        desc_split = consensus_list[0].id.split('|')
-                        desc_0_split = desc_split[0].split('$')
-                        if desc_0_split[0] == 'consensus':
-                            desc_0_split.remove('consensus')
-                            for acc in desc_0_split:
-                                cons_ids_1.append(acc)
+                        #######################################################
+                        n_count = 10
+                        new_aln = None
+                        all_lrps = set()
+                        for s in aln:
+                            seq_id = s.id
+                            parsed_id = parse_seq_id(seq_id)
+                            lrps = parsed_id['lrps']
+                            all_lrps |= set(lrps)
+                        if len(all_lrps) == 1 and list(all_lrps)[0].lower() == 'x':
+                            new_aln = aln
                         else:
-                            cons_ids_1.append(desc_split[0])
+                            seq_records = list()
+                            last_lrp = None
+                            prev_seq_len = 0
+                            pos = 0
+                            for s in aln:
+                                seq = str(s.seq).replace('-', '')
+                                seq_len = len(seq)
+                                seq_id = s.id
+                                parsed_id = parse_seq_id(seq_id)
+                                lrps = parsed_id['lrps']
+                                if not last_lrp:
+                                    last_lrp = lrps[-1]
+                                else:
+                                    if lrps[-1].lower() == 'x':
+                                        pass
+                                    elif last_lrp < lrps[-1]:
+                                        last_lrp = lrps[-1]
+                                        pos = pos + prev_seq_len
+                                        seq = pos * '-' + n_count * 'N' + seq
+                                        pos = pos + n_count
+                                        prev_seq_len = seq_len + n_count
+                                    elif last_lrp == lrps[-1]:
+                                        seq = pos * '-' + seq
+                                prev_seq_len = max(prev_seq_len, seq_len)
+                                sequence_record = SeqRecord.SeqRecord(
+                                    seq=Seq.Seq(seq), id=seq_id, name='',
+                                    description='')
+                                seq_records.append(sequence_record)
+                            max_len = 0
+                            for s in seq_records:
+                                max_len = max(max_len, len(s.seq))
+                            for s in seq_records:
+                                len_diff = max_len - len(s.seq)
+                                seq = str(s.seq) + len_diff * '-'
+                                s.seq = Seq.Seq(seq)
+                            new_aln = MultipleSeqAlignment(seq_records)
+                        #######################################################
+                        AlignIO.write(new_aln, dir_0 + new_name + '.phy', "phylip-relaxed")
+                elif good_sequences_aln:
+                    aln = AlignIO.read(good_sequences_dir + new_name + '.phy', "phylip-relaxed")
+                    AlignIO.write(aln, reviewed_dir + new_name + '.phy', "phylip-relaxed")
+            elif first_run and len(dedupe_records_lrp) == 1:
+                if new_records or not good_sequences_seq:
+                    SeqIO.write(dedupe_records_lrp[0], dir_1 + new_name + '.fasta', "fasta")
+                elif good_sequences_seq:
+                    seq = SeqIO.read(good_sequences_dir + new_name + '.fasta', "fasta")
+                    SeqIO.write(seq, reviewed_dir + new_name + '.fasta', "fasta")
+            elif not first_run and os.path.exists(reviewed_dir + new_name + '.phy'):
+                aln = AlignIO.read(reviewed_dir + new_name + '.phy', "phylip-relaxed")
+                cons_ids = set()
+                for s in aln:
+                    parsed_id = parse_seq_id(s.id)
+                    accession = parsed_id['accessions'][0]
+                    if accession in all_record_ids:
+                        all_record_ids.remove(accession)
+                    cons_ids.add(accession)
 
-                        # for new record
-                        cons_ids_2 = list()
-                        desc_split = record.id.split('|')
-                        desc_0_split = desc_split[0].split('$')
-                        if desc_0_split[0] == 'consensus':
-                            desc_0_split.remove('consensus')
-                            for acc in desc_0_split:
-                                cons_ids_2.append(acc)
-                        else:
-                            cons_ids_2.append(desc_split[0])
+                ###############################################################
+                consensus = kralign.consensus(aln, threshold=0.4, unknown='N')
+                consensus_seq = consensus[0]
+                bases_per_site = consensus[3]
 
-                        cons_ids = list(set(cons_ids_1 + cons_ids_2))
-                        consensus_list[0] = consensus_list[0] + record
-
-                        cons_id = '$'.join(cons_ids)
-                        old_record_id_split = record.id.split('|')
-                        sequence_record_id = (
-                            'consensus$' + cons_id + '|' +
-                            old_record_id_split[1] + '|' +
-                            old_record_id_split[2] + '|' +
-                            old_record_id_split[3] + '|' +
-                            old_record_id_split[4])
-
-                        sequence_record = SeqRecord.SeqRecord(
-                            seq=consensus_list[0].seq,
-                            id=sequence_record_id, name='', description='')
-
-                        consensus_list[0] = sequence_record
-
-                # If lrp is 'x' or any string, it means the record contains
-                # sequence that covers entire locus that we are trying to
-                # reconstruct, so we just put it in the list from which the
-                # locus consensus will be determined
+                if len(aln) > 3 or bases_per_site < 1.7:
+                    pass
                 else:
-                    consensus_list.append(record)
-            # END Produce a list of sequences that will represent a consensus
-            # of the locus.
-
-            cons_ids = list()
-            for c in consensus_list:
-                desc_split = c.id.split('|')
-                desc_0_split = desc_split[0].split('$')
-                if desc_0_split[0] == 'consensus':
-                    desc_0_split.remove('consensus')
-                    for acc in desc_0_split:
-                        cons_ids.append(acc)
-                else:
-                    cons_ids.append(desc_split[0])
-            cons_ids = list(set(cons_ids))
-
-            if len(consensus_list) > 1:
-                aln = kralign.align(
-                    records=consensus_list,
-                    program=aln_program,
-                    options=aln_options,
-                    program_executable=aln_program_exe)
-                # TODO: Better consensus. This consensus should include
-                # correct ambiguities.
-                # summary_aln = AlignInfo.SummaryInfo(aln)
-                # consensus = summary_aln.dumb_consensus(threshold=0.001,
-                #                                        ambiguous='N')
-                consensus = kralign.consensus(aln, threshold=0.5, unknown='N')
-
-                cons_id = '$'.join(cons_ids)
-                old_record_id_split = consensus_list[0].id.split('|')
-                sequence_record_id = (
-                    'consensus$' + cons_id + '|' +
-                    old_record_id_split[1] + '|' +
-                    old_record_id_split[2] + '|' +
-                    old_record_id_split[3] + '|' +
-                    old_record_id_split[4])
+                    len_of_seq_in_aln = list()
+                    for a in aln:
+                        seq_str = str(a.seq).lower().replace('n', '').replace('-', '').replace('.', '')
+                        len_of_seq_in_aln.append(len(seq_str))
+                    max_len_index = len_of_seq_in_aln.index(max(len_of_seq_in_aln))
+                    consensus_seq = str(aln[max_len_index].seq).replace('-', '').replace('.', '')
+                    consensus_seq = Seq.Seq(consensus_seq)
 
                 sequence_record = SeqRecord.SeqRecord(
-                    seq=consensus, id=sequence_record_id, name='',
-                    description='')
+                    seq=consensus_seq, id=new_name, name='', description='')
+                ###############################################################
 
-                cons_originals = list()
-                for cid in cons_ids:
-                    r = all_records[cid]
-                    cons_originals.append(r)
+                name1_results.append(sequence_record)
+                log_message = new_name + ls + ls.join(cons_ids) + nl
+                log_handle.write(log_message)
+            elif not first_run and os.path.exists(reviewed_dir + new_name + '.fasta'):
+                seq = SeqIO.read(reviewed_dir + new_name + '.fasta', "fasta")
+                parsed_id = parse_seq_id(seq.id)
+                accession = parsed_id['accessions'][0]
+                if accession in all_record_ids:
+                    all_record_ids.remove(accession)
+                log_message = new_name + ls + accession + nl
+                log_handle.write(log_message)
+                seq.id = new_name
+                seq.name = ''
+                seq.description = ''
+                name1_results.append(seq)
+            elif not first_run and len(dedupe_records_lrp) > 0:
+                print('\n\tWARNING: Make sure to review all the alignments and sequences.')
+                cont = raw_input("\tWARNING: Could not find any sequences for "+name1+" "+new_name+". Continue? Y/N: ")
+                if not cont.lower().startswith('y'):
+                    shutil.rmtree(temp_dir)
+                    exit(0)
 
-                krbioio.write_sequence_file(cons_originals, taxa_dir + old_record_id_split[3] + '_originals_2.fasta', 'fasta')
+        # END LOOP ALL new_name --------------------------------------------------
 
-                # Check if the names are not the same
-                aln_name_set = set()
-                for i, a in enumerate(aln):
-                    if a.id in aln_name_set:
-                        a.id = str(i) + '_' + a.id
-                    aln_name_set.add(a.id)
-                # if len(aln_name_set) == 1:
-                #     krbioio.write_sequence_file(sequence_record, taxa_dir + old_record_id_split[3] + '.fasta', 'fasta')
-                # else:
-                AlignIO.write(aln, taxa_dir + old_record_id_split[3] + '_alignment_2.phy', "phylip-relaxed")
-                results.append(sequence_record)
-            else:
-                krbioio.write_sequence_file(consensus_list, taxa_dir + consensus_list[0].id.split('|')[3] + '.fasta', 'fasta')
-                results.append(consensus_list[0])
+        if not first_run:
 
-        for result in results:
-            desc = result.id.split('|')
+            # Produce sequence length stats
+            s_lengths = list()
+            for r in name1_results:
+                s_lengths.append(len(r.seq))
 
-            acc_in_result = desc[0].split('$')
-            if acc_in_result[0] == 'consensus':
-                acc_in_result.remove('consensus')
-            acc_in_result = ' '.join(acc_in_result)
-            log_handle.write(desc[-2] + '\t' +
-                             acc_in_result + '\n')
+            s_mean = str(numpy.mean(s_lengths))
+            s_median = str(numpy.median(s_lengths))
+            s_stdev = str(numpy.std(s_lengths))
 
-            desc = desc[-2]
-            result.id = desc
-            result.name = ''
-            result.description = ''
-        krbioio.write_sequence_file(results, output_file, 'fasta')
+            lengths_log_handle.write(name1 + ',' + s_mean + ',' + s_median + ',' + s_stdev + '\n')
 
-        print('\n\tAccepted sequences from', len(results), 'taxa.')
+            krbioio.write_sequence_file(name1_results, name1_results_file, 'fasta')
+            print('\tAccepted sequences from', len(name1_results), 'taxa.')
 
         log_handle.close()
 
     # END LOOP ALL NAME1 ------------------------------------------------------
 
+    lengths_log_handle.close()
+
+    if not first_run:
+        cutlist_records_auto |= set(all_record_ids)
+
     shutil.rmtree(temp_dir)
 
-    krcl.show_cursor()
-
     if first_run:
-        print('\tWARNING! Finished first run. Please review alignments.')
-
-    if review_needed:
-        print('\tWARNING! Please review accessions in review directory.')
-
-    if first_run or (review_needed and not proceed_without_review):
         exit(0)
+
+    return(cutlist_records_auto)
 
 
 def align_loci(
@@ -1370,7 +1295,8 @@ def concatenate(
     aligned_loci_dir,
     output_dir,
     order_of_loci,
-    number_of_gaps_between_loci
+    number_of_gaps_between_loci,
+    log_dir
 ):
 
     '''
@@ -1434,7 +1360,7 @@ def concatenate(
             for s in a[0]:
                 idx = order_list.index(a[1])
                 matrix[s.id][idx] = '1'
-        matrix_output_file = output_dir + ps + 'presence' + '.csv'
+        matrix_output_file = log_dir + ps + '06-locus-presence' + '.csv'
         f = open(matrix_output_file, 'wb')
         f.write('taxon' + ',' + 'count' + ',' + ','.join(order_list) + '\n')
         f.write('' + ',' + '' + ',' + ','.join(length_list) + '\n')
