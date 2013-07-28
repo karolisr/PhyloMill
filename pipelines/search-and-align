@@ -113,6 +113,7 @@ if __name__ == '__main__':
                 output_dir=search_results_dir,
                 file_name_sep=file_name_sep,
                 email=config.get('General', 'email'),
+                input_dir=input_dir,
                 log_dir=log_dir)
 
         if not commands or 'filter' in commands:

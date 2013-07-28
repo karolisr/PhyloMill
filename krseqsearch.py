@@ -93,7 +93,7 @@ def hack_tgrc(voucher):
 
 # Pipeline functions ----------------------------------------------------------
 
-def search_and_download(queries, output_dir, file_name_sep, email, log_dir):
+def search_and_download(queries, output_dir, file_name_sep, email, input_dir, log_dir):
 
     '''
     This will search NCBI and download sequences.
@@ -174,9 +174,38 @@ def search_and_download(queries, output_dir, file_name_sep, email, log_dir):
             # Download records.
             krncbi.download_sequence_records(file_path, result_uids, db, email)
 
+    downloaded_gis_file = input_dir.rstrip(ps) + ps + 'downloaded-gis.csv'
+
+    # First find previously downloaded GIs and see how many of them are the same
+    previous_uids = krio.read_table_file(
+        path=downloaded_gis_file,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar=None,
+        stripchar='"',
+        rettype='set')
+
+    novel_gis_file = log_dir.rstrip(ps) + ps + '01-novel-gis.csv'
+    missing_gis_file = log_dir.rstrip(ps) + ps + '01-missing-gis.csv'
+
+    novel_uids = all_uids - previous_uids
+    missing_uids = previous_uids - all_uids
+
+    novel_uids = list(novel_uids)
+    handle = open(novel_gis_file, 'w')
+    for uid in novel_uids:
+        handle.write(uid+'\n')
+    handle.close()
+
+    missing_uids = list(missing_uids)
+    handle = open(missing_gis_file, 'w')
+    for uid in missing_uids:
+        handle.write(uid+'\n')
+    handle.close()
+
     all_uids = list(all_uids)
-    log_file = log_dir.rstrip(ps) + ps + '01-downloaded.csv'
-    handle = open(log_file, 'w')
+    handle = open(downloaded_gis_file, 'w')
     for uid in all_uids:
         handle.write(uid+'\n')
     handle.close()
