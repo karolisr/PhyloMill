@@ -174,7 +174,7 @@ def search_and_download(queries, output_dir, file_name_sep, email, input_dir, lo
             # Download records.
             krncbi.download_sequence_records(file_path, result_uids, db, email)
 
-    downloaded_gis_file = input_dir.rstrip(ps) + ps + 'downloaded-gis.csv'
+    downloaded_gis_file = input_dir.rstrip(ps) + ps + 'downloaded_gis.csv'
 
     # First find previously downloaded GIs and see how many of them are the same
     previous_uids = krio.read_table_file(
@@ -375,6 +375,7 @@ def extract_loci(
     unresolvable_taxonomy_list=None,
     keeplist_taxonomy_list=None,
     force_reverse_complement_list=None,
+    accession_taxa_mappings_list=None,
     log_dir=None
 ):
 
@@ -443,6 +444,10 @@ def extract_loci(
     unresolvable_taxonomy_dict = dict()
     for ud in unresolvable_taxonomy_list:
         unresolvable_taxonomy_dict[ud['Name']] = ud['Danger']
+
+    accession_taxa_mappings_dict = dict()
+    for atm in accession_taxa_mappings_list:
+        accession_taxa_mappings_dict[atm['accession']] = atm['taxon']
 
     # Logging -----------------------------------------------------------------
 
@@ -698,103 +703,130 @@ def extract_loci(
             acc_name = None
             acc_name_flat = None
             taxid_name_list = None
-            tried_name = None
+            tried_name = krbionames.parse_organism_name(
+                organism,
+                sep='_',
+                ncbi_authority=True)
 
-            # HACKS ###########################################################
-            hack_species_found = False
-            if hacks and 'tgrc' in hacks:
-
-                tried_name = krbionames.parse_organism_name(
-                    organism,
-                    sep='_',
-                    ncbi_authority=True)
-
-                if (tried_name['genus'] in hack_sol_genus and
-                        tried_name['species'] in hack_sol_species):
-
-                    hack_fi_specimen_voucher = krseq.get_features_with_qualifier_label(
-                        record=record,
-                        qualifier_label='specimen_voucher',
-                        feature_type='source')
-
-                    hack_fi_cultivar = krseq.get_features_with_qualifier_label(
-                        record=record,
-                        qualifier_label='cultivar',
-                        feature_type='source')
-
-                    hack_fi = None
-                    if hack_fi_specimen_voucher:
-                        hack_fi = hack_fi_specimen_voucher
-                    elif hack_fi_cultivar:
-                        hack_fi = hack_fi_cultivar
-
-                    if(hack_fi):
-                        hack_f = record.features[hack_fi[0]]
-                        voucher = None
-                        if hack_fi_specimen_voucher:
-                            voucher = hack_f.qualifiers['specimen_voucher'][0]
-                        elif hack_fi_cultivar:
-                            voucher = hack_f.qualifiers['cultivar'][0]
-                        if voucher not in do_not_repeat:
-                            if voucher in found_previously.keys():
-                                hack_species_found = found_previously[voucher]
-                            else:
-                                hack_species_found = hack_tgrc(
-                                    voucher)
-                            if hack_species_found:
-                                found_previously[voucher] = hack_species_found
-                                acc_name = hack_species_found[1]
-                                acc_name['id'] = (
-                                    'tgrc-' + hack_species_found[2])
-                                acc_name['status'] = 'TGRC'
-                                tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
-                                tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
-                            else:
-                                do_not_repeat.append(voucher)
-            ###################################################################
-
-            if (tax_id not in keeplist_taxonomy_list) and (not hack_species_found and synonymy_table and auth_file):
-                # Resolve name
-                resolved = krbionames.resolve_taxid(
-                    tax_id,
-                    ncbi_names_table,
-                    synonymy_table,
-                    auth_file,
-                    sorting='authority')
-
-                acc_name = resolved[0]
-                tried_name = resolved[1]
-
-                tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
-                tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
-
-            elif (tax_id in keeplist_taxonomy_list) or (not hack_species_found):
-
-                taxid_name_list = krbionames.names_for_ncbi_taxid(
-                    tax_id, ncbi_names_table, sorting='class')
-
-                status = 'NA'
-                if tax_id in keeplist_taxonomy_list:
-                    status = 'keeplist'
-
+            if record.id in accession_taxa_mappings_dict.keys():
+                acc_name = krbionames.parse_organism_name(
+                    accession_taxa_mappings_dict[record.id],
+                    sep=' ',
+                    ncbi_authority=False)
                 acc_name = {
-                    'status': status,
-                    'variety': taxid_name_list[0]['variety'],
-                    'authority': taxid_name_list[0]['authority'],
-                    'id': 'ncbi-' + str(tax_id),
-                    'subspecies': taxid_name_list[0]['subspecies'],
-                    'genus': taxid_name_list[0]['genus'],
-                    'species': taxid_name_list[0]['species'],
-                    'form': taxid_name_list[0]['form'],
-                    'cross': taxid_name_list[0]['cross']}
-
-                tried_name = acc_name
-
+                    'status': 'forced',
+                    'variety': acc_name['variety'],
+                    'authority': '',
+                    'id': '',
+                    'subspecies': acc_name['subspecies'],
+                    'genus': acc_name['genus'],
+                    'species': acc_name['species'],
+                    'form': acc_name['form'],
+                    'cross': acc_name['cross']}
                 tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
                 tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
+
+            else:
+                # HACKS ###########################################################
+                hack_species_found = False
+                if hacks and 'tgrc' in hacks:
+
+                    if (tried_name['genus'] in hack_sol_genus and
+                            tried_name['species'] in hack_sol_species):
+
+                        hack_fi_specimen_voucher = krseq.get_features_with_qualifier_label(
+                            record=record,
+                            qualifier_label='specimen_voucher',
+                            feature_type='source')
+
+                        hack_fi_cultivar = krseq.get_features_with_qualifier_label(
+                            record=record,
+                            qualifier_label='cultivar',
+                            feature_type='source')
+
+                        hack_fi = None
+                        if hack_fi_specimen_voucher:
+                            hack_fi = hack_fi_specimen_voucher
+                        elif hack_fi_cultivar:
+                            hack_fi = hack_fi_cultivar
+
+                        if(hack_fi):
+                            hack_f = record.features[hack_fi[0]]
+                            voucher = None
+                            if hack_fi_specimen_voucher:
+                                voucher = hack_f.qualifiers['specimen_voucher'][0]
+                            elif hack_fi_cultivar:
+                                voucher = hack_f.qualifiers['cultivar'][0]
+                            if voucher not in do_not_repeat:
+                                if voucher in found_previously.keys():
+                                    hack_species_found = found_previously[voucher]
+                                else:
+                                    hack_species_found = hack_tgrc(
+                                        voucher)
+                                if hack_species_found:
+                                    found_previously[voucher] = hack_species_found
+                                    acc_name = hack_species_found[1]
+                                    acc_name['id'] = (
+                                        'tgrc-' + hack_species_found[2])
+                                    acc_name['status'] = 'TGRC'
+                                    tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                                    tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
+                                else:
+                                    do_not_repeat.append(voucher)
+                ###################################################################
+
+                if (tax_id not in keeplist_taxonomy_list) and (not hack_species_found and synonymy_table and auth_file):
+                    # Resolve name
+                    resolved = krbionames.resolve_taxid(
+                        tax_id,
+                        ncbi_names_table,
+                        synonymy_table,
+                        auth_file,
+                        sorting='authority')
+
+                    acc_name = resolved[0]
+                    tried_name = resolved[1]
+
+                    tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                    tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
+
+                elif (tax_id in keeplist_taxonomy_list) or (not hack_species_found):
+
+                    taxid_name_list = krbionames.names_for_ncbi_taxid(
+                        tax_id, ncbi_names_table, sorting='class')
+
+                    status = 'NA'
+                    if tax_id in keeplist_taxonomy_list:
+                        status = 'keeplist'
+
+                    acc_name = {
+                        'status': status,
+                        'variety': taxid_name_list[0]['variety'],
+                        'authority': taxid_name_list[0]['authority'],
+                        'id': 'ncbi-' + str(tax_id),
+                        'subspecies': taxid_name_list[0]['subspecies'],
+                        'genus': taxid_name_list[0]['genus'],
+                        'species': taxid_name_list[0]['species'],
+                        'form': taxid_name_list[0]['form'],
+                        'cross': taxid_name_list[0]['cross']}
+
+                    tried_name = acc_name
+
+                    tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
+                    tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
 
             tried_name_flat = krbionames.flatten_organism_name(tried_name, '_')
             acc_name_flat = krbionames.flatten_organism_name(acc_name, '_')
+
+            source_info = str(record.features[0].qualifiers)
+
+            source_info = source_info.replace('{', '')
+            source_info = source_info.replace('}', '')
+            source_info = source_info.replace('[', '')
+            source_info = source_info.replace(']', '')
+            source_info = source_info.replace('\'', '')
+
+            # {'organelle': ['plastid:chloroplast'], 'isolate': ['LB546'], 'mol_type': ['genomic DNA'], 'organism': ['Solanum thelopodium'], 'db_xref': ['taxon:205585']}
 
             if acc_name['status'] == '':
                 log_handle.write(
@@ -802,7 +834,7 @@ def extract_loci(
                     record.id + '\t' +
                     tried_name_flat.replace('_', ' ') + '\t' +
                     tax_id + '\t' +
-                    'NO_MATCH\n')
+                    'NO_MATCH\t' + source_info + '\n')
             elif len(seq) <= minlen:
                 log_handle.write(
                     name1 + '_' + name2 + '\t' +
@@ -810,7 +842,7 @@ def extract_loci(
                     tried_name_flat.replace('_', ' ') + '\t' +
                     tax_id + '\t' +
                     'SHORT' + '\t' +
-                    acc_name_flat.replace('_', ' ') + '\n')
+                    acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
             else:
                 if acc_name['status'] == 'TGRC':
                     log_handle.write(
@@ -819,7 +851,15 @@ def extract_loci(
                         tried_name_flat.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
                         'TGRC' + '\t' +
-                        acc_name_flat.replace('_', ' ') + '\n')
+                        acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
+                elif acc_name['status'] == 'forced':
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        tried_name_flat.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'FORCED' + '\t' +
+                        acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
                 else:
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
@@ -827,7 +867,7 @@ def extract_loci(
                         tried_name_flat.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
                         'MATCH' + '\t' +
-                        acc_name_flat.replace('_', ' ') + '\n')
+                        acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
 
                 # Record id for the fasta output
                 sequence_record_id = produce_seq_id(

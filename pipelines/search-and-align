@@ -62,6 +62,7 @@ if __name__ == '__main__':
         force_reverse_complement_file = input_dir + 'force_reverse_complement_records'
         good_sequences_dir = input_dir + 'good_sequences'
         additional_sequences_file = input_dir + 'additional_sequences.fasta'
+        accession_taxa_mappings_file = input_dir + 'accession_taxa_mappings.tsv'
 
         temp_dir = output_dir + 'temp'
         log_dir = output_dir + '99-logs'
@@ -167,6 +168,17 @@ if __name__ == '__main__':
                 stripchar='"',
                 rettype='set')
 
+            accession_taxa_mappings_file
+
+            accession_taxa_mappings_list = krio.read_table_file(
+                path=accession_taxa_mappings_file,
+                has_headers=False,
+                headers=('accession', 'taxon'),
+                delimiter='\t',
+                quotechar=None,
+                stripchar='"',
+                rettype='dict')
+
             # Extract loci
             krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
@@ -182,6 +194,7 @@ if __name__ == '__main__':
                 unresolvable_taxonomy_list=unresolvable_taxonomy_list,
                 keeplist_taxonomy_list=keeplist_taxonomy_list,
                 force_reverse_complement_list=force_reverse_complement_list,
+                accession_taxa_mappings_list=accession_taxa_mappings_list,
                 log_dir=log_dir)
 
         if not commands or 'flatten' in commands:
