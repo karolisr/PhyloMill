@@ -586,7 +586,7 @@ def extract_loci(
         krcl.hide_cursor()
 
         # Locus may have different names
-        locus = locus.split(',')
+        locus = locus.split('$')
 
         for i, record in enumerate(records):
             krcl.print_progress(i + 1, records_count, 50, '\t')
