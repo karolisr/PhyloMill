@@ -20,6 +20,8 @@ N.................any base
 . or -............gap
 """
 
+IUPAC_AMBIGUOUS_DNA_STRING = 'RYSWKMBDHVN.-'
+
 IUPAC_DNA_STRING = 'ACGT'
 
 IUPAC_DNA_CHARACTERS = set(

@@ -1578,7 +1578,7 @@ if __name__ == '__main__':
                     write_log(msg, lfp)
                     ############################################################
 
-                    concatenated_aln = kralign.concatenate(all_aln_filtered)
+                    concatenated_aln = kralign.concatenate(all_aln_filtered, 10)
                     cat_aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '_concatenated.phy'
                     AlignIO.write(concatenated_aln, cat_aln_output_file_path, "phylip-relaxed")
 

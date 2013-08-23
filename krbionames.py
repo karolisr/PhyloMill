@@ -195,7 +195,7 @@ def flatten_organism_name(parsed_name, sep=' '):
 
 
 def accepted_name(name, synonymy_table, auth_file, sep=' ',
-                  allow_loose_matching=True, ncbi_authority=False, resolve_hybrids=False, level=1):
+                  allow_loose_matching=True, ncbi_authority=False, resolve_hybrids=False, level=1, score=0):
     import copy
     # Emma Goldberg's module to standardize authority
     from krtp.eg import stdauth
@@ -226,37 +226,55 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
         return((accepted, 0))
 
     matching_entries = list()
-    for s in synonymy_table:
-        if o['genus'] == s['Genus'] and o['species'] == s['Species']:
-            matching_entries.append([s, 0])
 
-    if len(matching_entries) == 0:
-        return(None)
+    if level == 1:
+        for s in synonymy_table:
+            if o['genus'] == s['Genus'] and o['species'] == s['Species']:
+                matching_entries.append([s, 0])
 
-    for me in matching_entries:
-        s = me[0]
+        if len(matching_entries) == 0:
+            return(None)
 
-        if o['authority'] != '' and o['authority'] == s['Authority']:
-            me[1] = me[1] + 2
-        elif o['authority'] == '' and o['authority'] == s['Authority']:
-            me[1] = me[1] + 1
+        for me in matching_entries:
+            s = me[0]
 
-        if o['subspecies'] != '' and o['subspecies'] == s['Subspecies']:
-            me[1] = me[1] + 3
-        elif o['subspecies'] == '' and o['subspecies'] == s['Subspecies']:
-            me[1] = me[1] + 1
+            if o['authority'] != '' and o['authority'] == s['Authority']:
+                me[1] = me[1] + 3
+            elif o['authority'] == '' and o['authority'] == s['Authority']:
+                me[1] = me[1] + 1
 
-        if o['variety'] != '' and o['variety'] == s['Variety']:
-            me[1] = me[1] + 3
-        elif o['variety'] == '' and o['variety'] == s['Variety']:
-            me[1] = me[1] + 1
+            if o['subspecies'] != '' and o['subspecies'] == s['Subspecies']:
+                me[1] = me[1] + 3
+            elif o['subspecies'] == '' and o['subspecies'] == s['Subspecies']:
+                me[1] = me[1] + 1
 
-        if (o['authority'] == ''
-                and (s['Subspecies'] == '' and s['Variety'] == '')
-                and not s['Status'].lower().startswith('syn')):
-            me[1] = me[1] + 2
+            if o['variety'] != '' and o['variety'] == s['Variety']:
+                me[1] = me[1] + 3
+            elif o['variety'] == '' and o['variety'] == s['Variety']:
+                me[1] = me[1] + 1
+
+            if (o['authority'] == ''
+                    and (s['Subspecies'] == '' and s['Variety'] == '')
+                    and not s['Status'].lower().startswith('syn')):
+                me[1] = me[1] + 2
+    else:
+        for s in synonymy_table:
+            if (o['genus'] == s['Genus'] and
+                o['species'] == s['Species'] and
+                o['authority'] == s['Authority'] and
+                o['subspecies'] == s['Subspecies'] and
+                o['variety'] == s['Variety']
+            ):
+                matching_entries.append([s, 99])
+
+        if len(matching_entries) == 0:
+            return(None)
 
     matching_entries.sort(key=lambda x: x[1], reverse=True)
+
+    # for m in matching_entries:
+    #     print(m)
+    # print('======= =======')
 
     for me in matching_entries:
         s = me[0]
@@ -271,7 +289,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
             if s in synonymy_table:
                 synonymy_table.remove(s)
             return(accepted_name(accepted, synonymy_table, auth_file,
-                                 sep=sep, resolve_hybrids=resolve_hybrids, level=level + 1))
+                                 sep=sep, resolve_hybrids=resolve_hybrids, level=level + 1, score=me[1]))
         else:
             return((accepted, me[1]))
 
@@ -337,6 +355,8 @@ def resolve_name(taxid_name_list, synonymy_table, auth_file):
     acc_names = list()
 
     for name_to_try in taxid_name_list:
+        # print(name_to_try)
+        # print('+++++++++++++++++++++++')
         acc_name = accepted_name(
             name=name_to_try,
             synonymy_table=synonymy_table,
@@ -355,7 +375,7 @@ def resolve_name(taxid_name_list, synonymy_table, auth_file):
         acc_name = {'status': '', 'variety': '', 'authority': '', 'id': '', 'subspecies': '', 'genus': '', 'species': ''}
         tried_name = taxid_name_list[0]
 
-    ret_value = (acc_name, tried_name)
+    ret_value = (acc_name, tried_name, acc_names)
 
     return(ret_value)
 
@@ -364,7 +384,7 @@ def resolve_taxid(tax_id, ncbi_names_table, synonymy_table, auth_file, sorting='
     # A list of organism names based on NCBI taxid. This is a
     #   sorted list with the most complete names at lower indexes.
     taxid_name_list = names_for_ncbi_taxid(
-        tax_id, ncbi_names_table, sorting='authority')
+        tax_id, ncbi_names_table, sorting=sorting)
 
     ret_value = resolve_name(taxid_name_list, synonymy_table, auth_file)
     return(ret_value)

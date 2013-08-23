@@ -361,6 +361,98 @@ def parse_seq_id(seq_id, separator_0='|'):
     return(parsed)
 
 
+def feature_for_locus(record, feature_type, qualifier_label, locus_name_list, match_stringency='strict'):
+
+    import krseq
+
+    feature_indexes = list()
+    loose_matching = False
+    if match_stringency.lower() == 'loose':
+        loose_matching = True
+    for l in locus_name_list:
+        fi = krseq.get_features_with_qualifier(
+            record=record, qualifier_label=qualifier_label,
+            qualifier=l.strip(), feature_type=feature_type,
+            loose=loose_matching)
+        feature_indexes = feature_indexes + fi
+
+    feature_indexes = list(set(feature_indexes))
+    feature_indexes.sort()
+    feature = None
+    log_message = ''
+
+    if len(feature_indexes) == 0:
+        log_message = 'No locus annotation.'
+    elif len(feature_indexes) > 1:
+        # Let user pick which of the indexes to use
+        print("\n\n\tFound more than one annotation for "+str(locus_name_list)+" please pick the correct index:")
+
+        for fi in feature_indexes:
+
+            # print("\n\t\tIndex: "+str(fi))
+            print("\n\t\t"+str(record.id))
+            print()
+
+            rng = range(1, 6)
+            rng.reverse()
+            for n in rng:
+                if fi-n >= 0:
+                    f = record.features[fi-n]
+                    if f.type == feature_type:
+                        for fq in f.qualifiers.keys():
+                            if fq == qualifier_label:
+                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\t\t---- ---- ---- ----')
+
+            f = record.features[fi]
+            for fq in f.qualifiers.keys():
+                if fq == qualifier_label:
+                    print("\t\t" + str(fi) + " > " + fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\t\t---- ---- ---- ----')
+
+            rng.reverse()
+            for n in rng:
+                if fi+n < len(record.features):
+                    f = record.features[fi+n]
+                    if f.type == feature_type:
+                        for fq in f.qualifiers.keys():
+                            if fq == qualifier_label:
+                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\n\t\t==== ==== ==== ==== ==== ==== ==== ==== ==== ==== ====')
+
+        class BadChoiceException(Exception):
+            pass
+
+        while True:
+            picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
+            try:
+                if str(picked_fi).lower().startswith('exclude'):
+                    print()
+                    log_message = 'More than one locus annotation. User excluded.'
+                    break
+                else:
+                    try:
+                        int(picked_fi)
+                    except ValueError:
+                        print("\n\tBad choice.")
+                        continue
+                    if int(picked_fi) in feature_indexes:
+                        feature = record.features[int(picked_fi)]
+                        print()
+                        break
+                    else:
+                        raise(BadChoiceException)
+            except BadChoiceException:
+                print("\n\tBad choice.")
+    else:
+        feature = record.features[feature_indexes[0]]
+
+    return((feature, log_message))
+
+
 def extract_loci(
     search_results_dir,
     output_dir,
@@ -375,7 +467,7 @@ def extract_loci(
     unresolvable_taxonomy_list=None,
     keeplist_taxonomy_list=None,
     force_reverse_complement_list=None,
-    accession_taxa_mappings_list=None,
+    taxa_mappings_list=None,
     log_dir=None
 ):
 
@@ -440,14 +532,15 @@ def extract_loci(
     krio.prepare_directory(temp_dir)
 
     file_list = krio.parse_directory(search_results_dir, file_name_sep)
+    file_list.sort(reverse=True)
 
     unresolvable_taxonomy_dict = dict()
     for ud in unresolvable_taxonomy_list:
         unresolvable_taxonomy_dict[ud['Name']] = ud['Danger']
 
-    accession_taxa_mappings_dict = dict()
-    for atm in accession_taxa_mappings_list:
-        accession_taxa_mappings_dict[atm['accession']] = atm['taxon']
+    taxa_mappings_dict = dict()
+    for atm in taxa_mappings_list:
+        taxa_mappings_dict[atm['accession']] = atm['taxon']
 
     # Logging -----------------------------------------------------------------
 
@@ -506,7 +599,7 @@ def extract_loci(
             oid = o['id']
 
         tr = '<tr onMouseOver="this.bgColor=\'gold\';" onMouseOut="this.bgColor=\'#FFFFFF\';">'
-        if o['genus'] == '':
+        if o['status'] == '':
             tr = '<tr bgcolor="#FFFF33">'
 
         handle.write(
@@ -585,8 +678,8 @@ def extract_loci(
 
         krcl.hide_cursor()
 
-        # Locus may have different names
-        locus = locus.split('$')
+        #######################################################################
+        #######################################################################
 
         for i, record in enumerate(records):
             krcl.print_progress(i + 1, records_count, 50, '\t')
@@ -594,105 +687,125 @@ def extract_loci(
             # genbank records contain "features" which contain annotation
             #   information. Here we look for the feature that contains our
             #   target locus and note its index
+            seq = None
+            # Look for regions between annotations
+            if '->' in locus:
+                locus_name_list = locus.split('->')
+                locus_A = locus_name_list[0]
+                locus_B = locus_name_list[1]
 
-            feature_indexes = list()
+                # Locus may have different names
+                locus_name_list_A = locus_A.split('$')
+                locus_name_list_B = locus_B.split('$')
 
-            loose_matching = False
+                feature_tuple_A = feature_for_locus(
+                    record, feature_type, qualifier_label, locus_name_list_A,
+                    match_stringency)
+                feature_A = feature_tuple_A[0]
+                feature_log_message_A = feature_tuple_A[1]
 
-            if match_stringency.lower() == 'loose':
-                loose_matching = True
+                feature_tuple_B = feature_for_locus(
+                    record, feature_type, qualifier_label, locus_name_list_B,
+                    match_stringency)
+                feature_B = feature_tuple_B[0]
+                feature_log_message_B = feature_tuple_B[1]
 
-            for l in locus:
-                fi = krseq.get_features_with_qualifier(
-                    record=record, qualifier_label=qualifier_label,
-                    qualifier=l.strip(), feature_type=feature_type,
-                    loose=loose_matching)
-                feature_indexes = feature_indexes + fi
-            feature_indexes = list(set(feature_indexes))
-
-            feature = None
-
-            if len(feature_indexes) == 0:
-                log_handle.write(
-                    name1 + '_' + name2 + '\t' +
-                    record.id + '\t' +
-                    '\t' +
-                    '\t' +
-                    'No locus annotation.\n')
-                continue
-
-            elif len(feature_indexes) > 1:
-                # log_handle.write(
-                #     name1 + '_' + name2 + '\t' +
-                #     record.id + '\t' +
-                #     '\t' +
-                #     '\t' +
-                #     'More than one locus annotation.\n')
-                # Let user pick which of the indexes to use
-                print("\n\n\tFound more than one annotation for "+str(locus)+" please pick the correct index:")
-                for fi in feature_indexes:
-                    print("\n\t\tIndex: "+str(fi))
-                    print("\t\t"+str(record.id))
-                    f = record.features[fi]
-                    print("\t\tStrand: "+str(f.strand))
-                    print("\t\t"+str(f.location))
-                    for fq in f.qualifiers.keys():
-                        print("\t\t\t"+fq + ': ' + str(f.qualifiers[fq]))
-                    print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
-
-                # picked_fi = raw_input("\n\tPick index: ")
-                # if int(picked_fi) in feature_indexes:
-                #     feature = record.features[int(picked_fi)]
-                # else:
-                #     print("\n\t Bad choice.")
-
-                picked_index = False
-
-                class BadChoiceException(Exception):
-                    pass
-
-                while True:
-                    picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
-                    try:
-                        if str(picked_fi).lower().startswith('exclude'):
-                            picked_index = False
-                            print()
-                            break
-                        else:
-                            try:
-                                int(picked_fi)
-                            except ValueError:
-                                print("\n\tBad choice.")
-                                continue
-                            if int(picked_fi) in feature_indexes:
-                                feature = record.features[int(picked_fi)]
-                                picked_index = True
-                                print()
-                                break
-                            else:
-                                raise(BadChoiceException)
-                    except BadChoiceException:
-                        print("\n\tBad choice.")
-
-                if not picked_index:
+                if not (feature_A and feature_B):
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        '\t' +
+                        '\t' +
+                        'Both loci are required: ' + feature_log_message_A + ' / ' + feature_log_message_B + '\n')
                     continue
 
-            else:
-                feature = record.features[feature_indexes[0]]
+                start_A = int(feature_A.location.start)
+                end_A = int(feature_A.location.end)
+                # strand_A = int(feature_A.location.strand)
 
-            # There should be only one matching index.
-            start = int(feature.location.start)
-            end = int(feature.location.end)
-            strand = int(feature.location.strand)
-            # Extract relevant region
-            seq = record.seq[start:end]
-            # If the feature is in reverse orientation, reverse-complement.
-            if strand == -1 or force_rev_comp == 'yes':
-                seq = seq.reverse_complement()
-            # If the record is in the force_reverse_complement_list, we reverse
-            # complement it, no matter what happend to it before
-            if record.id in force_reverse_complement_list:
-                seq = seq.reverse_complement()
+                start_B = int(feature_B.location.start)
+                end_B = int(feature_B.location.end)
+                # strand_B = int(feature_B.location.strand)
+
+                d1 = abs(start_A - start_B)
+                d2 = abs(end_A - start_B)
+                d3 = abs(start_A - end_B)
+                d4 = abs(end_A - end_B)
+
+                distances = (d1, d2, d3, d4)
+
+                min_distance = min(distances)
+                min_index = distances.index(min_distance)
+
+                start = 0
+                end = 0
+
+                rev_comp = False
+
+                if min_index == 0:
+                    if start_B < start_A:
+                        rev_comp = True
+                    start = min(start_A, start_B)
+                    end = max(start_A, start_B)
+                elif min_index == 1:
+                    if start_B < end_A:
+                        rev_comp = True
+                    start = min(end_A, start_B)
+                    end = max(end_A, start_B)
+                elif min_index == 2:
+                    if end_B < start_A:
+                        rev_comp = True
+                    start = min(start_A, end_B)
+                    end = max(start_A, end_B)
+                elif min_index == 3:
+                    if end_B < end_A:
+                        rev_comp = True
+                    start = min(end_A, end_B)
+                    end = max(end_A, end_B)
+
+                # Extract relevant region
+                seq = record.seq[start:end]
+
+                # If the feature is in reverse orientation, reverse-complement.
+                if rev_comp or force_rev_comp == 'yes':
+                    seq = seq.reverse_complement()
+
+            else:
+                # Locus may have different names
+                locus_name_list = locus.split('$')
+
+                feature_tuple = feature_for_locus(
+                    record, feature_type, qualifier_label, locus_name_list,
+                    match_stringency)
+
+                feature = feature_tuple[0]
+                feature_log_message = feature_tuple[1]
+
+                if not feature:
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        '\t' +
+                        '\t' +
+                        feature_log_message + '\n')
+                    continue
+
+                # There should be only one matching index.
+                start = int(feature.location.start)
+                end = int(feature.location.end)
+                strand = int(feature.location.strand)
+                # Extract relevant region
+                seq = record.seq[start:end]
+                # If the feature is in reverse orientation, reverse-complement.
+                if strand == -1 or force_rev_comp == 'yes':
+                    seq = seq.reverse_complement()
+                # If the record is in the force_reverse_complement_list, we reverse
+                # complement it, no matter what happend to it before
+                if record.id in force_reverse_complement_list:
+                    seq = seq.reverse_complement()
+
+            ###################################################################
+            ###################################################################
 
             # Deal with the organism name
             tax_id = krncbi.get_ncbi_tax_id(record)
@@ -708,21 +821,44 @@ def extract_loci(
                 sep='_',
                 ncbi_authority=True)
 
-            if record.id in accession_taxa_mappings_dict.keys():
-                acc_name = krbionames.parse_organism_name(
-                    accession_taxa_mappings_dict[record.id],
-                    sep=' ',
-                    ncbi_authority=False)
-                acc_name = {
-                    'status': 'forced',
-                    'variety': acc_name['variety'],
-                    'authority': '',
-                    'id': '',
-                    'subspecies': acc_name['subspecies'],
-                    'genus': acc_name['genus'],
-                    'species': acc_name['species'],
-                    'form': acc_name['form'],
-                    'cross': acc_name['cross']}
+            if (tax_id in taxa_mappings_dict.keys()) or (record.id in taxa_mappings_dict.keys()):
+
+                # Check if there is a hard mapping for the organism name for
+                # this taxid
+                if tax_id in taxa_mappings_dict.keys():
+                    acc_name = krbionames.parse_organism_name(
+                        taxa_mappings_dict[tax_id],
+                        sep=' ',
+                        ncbi_authority=False)
+                    acc_name = {
+                        'status': 'forced_taxid',
+                        'variety': acc_name['variety'],
+                        'authority': '',
+                        'id': '',
+                        'subspecies': acc_name['subspecies'],
+                        'genus': acc_name['genus'],
+                        'species': acc_name['species'],
+                        'form': acc_name['form'],
+                        'cross': acc_name['cross']}
+
+                # Check if there is a hard mapping for the organism name for
+                # this accession
+                if record.id in taxa_mappings_dict.keys():
+                    acc_name = krbionames.parse_organism_name(
+                        taxa_mappings_dict[record.id],
+                        sep=' ',
+                        ncbi_authority=False)
+                    acc_name = {
+                        'status': 'forced_acc',
+                        'variety': acc_name['variety'],
+                        'authority': '',
+                        'id': '',
+                        'subspecies': acc_name['subspecies'],
+                        'genus': acc_name['genus'],
+                        'species': acc_name['species'],
+                        'form': acc_name['form'],
+                        'cross': acc_name['cross']}
+
                 tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
                 tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
 
@@ -784,20 +920,39 @@ def extract_loci(
                         auth_file,
                         sorting='authority')
 
-                    acc_name = resolved[0]
-                    tried_name = resolved[1]
+                    resolved_list = resolved[2]
+
+                    genus_set = set()
+                    species_set = set()
+
+                    for n in resolved_list:
+                        genus_set.add(n[1]['genus'])
+                        species_set.add(n[1]['species'])
+
+                    if len(genus_set) > 1 or len(species_set) > 1:
+                        acc_name = krbionames.parse_organism_name(organism, sep='_', ncbi_authority=False)
+                        acc_name['status'] = 'syn_collision'
+                        if acc_name['cross'] != '':
+                            acc_name['status'] = ''
+                        acc_name['id'] = 'ncbi-' + str(tax_id)
+                        tried_name = acc_name
+                    else:
+                        acc_name = resolved[0]
+                        tried_name = resolved[1]
 
                     tax_log(record.id, tax_id, tried_name, acc_name, tax_log_handle)
                     tax_log_html(record.id, tax_id, tried_name, acc_name, tax_log_html_handle)
 
                 elif (tax_id in keeplist_taxonomy_list) or (not hack_species_found):
 
-                    taxid_name_list = krbionames.names_for_ncbi_taxid(
-                        tax_id, ncbi_names_table, sorting='class')
+                    # taxid_name_list = krbionames.names_for_ncbi_taxid(
+                    #     tax_id, ncbi_names_table, sorting='class')
 
                     status = 'NA'
                     if tax_id in keeplist_taxonomy_list:
                         status = 'keeplist'
+
+                    taxid_name_list = [krbionames.parse_organism_name(organism, sep='_', ncbi_authority=False)]
 
                     acc_name = {
                         'status': status,
@@ -852,13 +1007,29 @@ def extract_loci(
                         tax_id + '\t' +
                         'TGRC' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
-                elif acc_name['status'] == 'forced':
+                elif acc_name['status'] == 'forced_acc':
                     log_handle.write(
                         name1 + '_' + name2 + '\t' +
                         record.id + '\t' +
                         tried_name_flat.replace('_', ' ') + '\t' +
                         tax_id + '\t' +
-                        'FORCED' + '\t' +
+                        'FORCED_ACC' + '\t' +
+                        acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
+                elif acc_name['status'] == 'forced_taxid':
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        tried_name_flat.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'FORCED_TAXID' + '\t' +
+                        acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
+                elif acc_name['status'] == 'syn_collision':
+                    log_handle.write(
+                        name1 + '_' + name2 + '\t' +
+                        record.id + '\t' +
+                        tried_name_flat.replace('_', ' ') + '\t' +
+                        tax_id + '\t' +
+                        'SYN_COLLISION' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
                 else:
                     log_handle.write(
@@ -919,9 +1090,12 @@ def one_locus_per_organism(
     temp_dir,
     file_name_sep,
     usearch_exe,
-    aln_program_exe,
-    aln_program,
-    aln_options,
+    ref_aln_program_exe,
+    ref_aln_program,
+    ref_aln_program_options,
+    locus_aln_program_exe,
+    locus_aln_program,
+    locus_aln_program_options,
     good_sequences_dir,
     log_dir,
     additional_sequences
@@ -947,6 +1121,8 @@ def one_locus_per_organism(
     import krio
     import krbioio
     import kralign
+    import kriupac
+    import krusearch
 
     ps = os.path.sep
     ls = '\t'
@@ -954,11 +1130,15 @@ def one_locus_per_organism(
 
     good_sequences_dir_base = good_sequences_dir.rstrip(ps) + ps
 
-    review_0_dir_base = output_dir + '-review-0' + ps
-    review_1_dir_base = output_dir + '-review-1' + ps
-    review_0_new_dir_base = output_dir + '-review-0-updated' + ps
-    review_1_new_dir_base = output_dir + '-review-1-updated' + ps
-    reviewed_dir_base = output_dir + '-reviewed' + ps
+    all_seq_aln_dir_base = output_dir + '-0-reference-alignments' + ps
+
+    # review_0_dir_base = output_dir + '-review-0' + ps
+    # review_1_dir_base = output_dir + '-review-1' + ps
+    # review_0_new_dir_base = output_dir + '-review-0-updated' + ps
+    # review_1_new_dir_base = output_dir + '-review-1-updated' + ps
+    review_dir_base = output_dir + '-1-review' + ps
+    review_new_dir_base = output_dir + '-2-review-updated' + ps
+    reviewed_dir_base = output_dir + '-3-reviewed' + ps
 
     lengths_log_file = log_dir + ps + '04-flat-0-lengths.csv'
     lengths_log_handle = open(lengths_log_file, 'w')
@@ -972,10 +1152,21 @@ def one_locus_per_organism(
         if not cont.lower() == 'y':
             exit(0)
 
-    krio.prepare_directory(review_0_dir_base)
-    krio.prepare_directory(review_1_dir_base)
-    krio.prepare_directory(review_0_new_dir_base)
-    krio.prepare_directory(review_1_new_dir_base)
+    produce_ref_aln = False
+    if first_run:
+        produce_ref_aln = raw_input("\n\tProduce reference alignments? Y/N: ")
+        if produce_ref_aln.lower() == 'y':
+            produce_ref_aln = True
+        else:
+            produce_ref_aln = False
+
+    krio.prepare_directory(all_seq_aln_dir_base)
+    # krio.prepare_directory(review_0_dir_base)
+    # krio.prepare_directory(review_1_dir_base)
+    # krio.prepare_directory(review_0_new_dir_base)
+    # krio.prepare_directory(review_1_new_dir_base)
+    krio.prepare_directory(review_dir_base)
+    krio.prepare_directory(review_new_dir_base)
     krio.prepare_directory(reviewed_dir_base)
 
     print('\n\tPreparing output directory "', output_dir, '"', sep='')
@@ -1024,6 +1215,7 @@ def one_locus_per_organism(
         for r in additional_sequences:
             parsed_id = parse_seq_id(r.id)
             if parsed_id['locus'] == name1:
+                # print(r.id)
                 records.append(r)
 
         all_loci_dict[name1] = all_loci_dict[name1] + records
@@ -1038,12 +1230,17 @@ def one_locus_per_organism(
     for name1 in all_loci_dict.keys():
         print('\n\tProcessing', name1)
 
-        review_0_dir = review_0_dir_base + name1 + '_'
-        review_1_dir = review_1_dir_base + name1 + '_'
-        review_0_new_dir = review_0_new_dir_base + name1 + '_'
-        review_1_new_dir = review_1_new_dir_base + name1 + '_'
+        # review_0_dir = review_0_dir_base + name1 + '_'
+        # review_1_dir = review_1_dir_base + name1 + '_'
+        # review_0_new_dir = review_0_new_dir_base + name1 + '_'
+        # review_1_new_dir = review_1_new_dir_base + name1 + '_'
+
+        review_dir = review_dir_base + name1 + '_'
+        review_new_dir = review_new_dir_base + name1 + '_'
         reviewed_dir = reviewed_dir_base + name1 + '_'
         good_sequences_dir = good_sequences_dir_base + name1 + '_'
+
+        name1_all_seq = list()
 
         log_file = log_dir + ps + '04-flat-' + name1 + '.tsv'
         log_handle = open(log_file, 'w')
@@ -1093,6 +1290,9 @@ def one_locus_per_organism(
                 r_accession = parse_seq_id(r.id)['accessions'][0]
                 r_lrp = parse_seq_id(r.id)['lrps'][0]
 
+                # if r_accession == 'HM006842.1':
+                #     print(r.id)
+
                 for k in dedupe_records_dict.keys():
 
                     dedupe_accession = parse_seq_id(k)['accessions'][0]
@@ -1103,7 +1303,14 @@ def one_locus_per_organism(
                         if str(r.seq).lower() == str(dedupe_records_dict[k].seq).lower():
                             if dedupe_lrp.lower() == 'x':
                                 if r_lrp.lower() != 'x':
-                                    dedupe_records_dict[k] = r
+                                    # if r_accession == 'HM006842.1':
+                                    #     print(k, r.id)
+                                    if r.id in dedupe_records_dict.keys():
+                                        if len(r.seq) > len(dedupe_records_dict[r.id].seq):
+                                            dedupe_records_dict[r.id] = r
+                                    else:
+                                        dedupe_records_dict[r.id] = r
+                                    dedupe_records_dict.pop(k)
                                     lrp_match = True
                         if not lrp_match and r_lrp == dedupe_lrp:
                             lrp_match = True
@@ -1114,18 +1321,30 @@ def one_locus_per_organism(
                     if lrp_match:
                         if seq_longer:
                             dedupe_records_dict[r.id] = r
+                            # if r_accession == 'HM006842.1':
+                            #     print('lrp_match, seq_longer')
+                            #     print(r.id)
                     else:
+                        # if r_accession == 'HM006842.1':
+                        #     print('not lrp_match')
+                        #     print(r.id)
                         dedupe_records_dict[r.id] = r
                 else:
+                    # if r_accession == 'HM006842.1':
+                    #     print('not id_match')
+                    #     print(r.id)
                     dedupe_records_dict[r.id] = r
+
+            # if r_accession == 'HM006842.1':
+            #     print('*** ***')
+            #     for i in dedupe_records_dict.keys():
+            #         print(i, dedupe_records_dict[i].id)
 
             # Check if there are previous alignments or sequences for this
             # new_name
             new_records = False
-
             good_sequences_seq = os.path.exists(good_sequences_dir + new_name + '.fasta')
             good_sequences_aln = os.path.exists(good_sequences_dir + new_name + '.phy')
-
             if good_sequences_seq and good_sequences_aln:
                 print('\n\tWARNING: Both the alignment and sequence file exists for ' + name1 + ' ' + new_name + '.')
 
@@ -1141,8 +1360,15 @@ def one_locus_per_organism(
                 all_ids_in_dedupe = set()
                 for k in dedupe_records_dict.keys():
                     all_ids_in_dedupe.add(parse_seq_id(k)['accessions'][0])
-                ids_union = all_previous_ids.union(all_ids_in_dedupe)
-                if len(ids_union) > len(all_previous_ids):
+
+                # all_previous_ids = list(all_previous_ids)
+                # all_previous_ids_good = set()
+                # for pi in all_previous_ids:
+                #     if (pi not in cutlist_records) and (pi not in cutlist_records_auto):
+                #         all_previous_ids_good.add(pi)
+
+                # ids_union = all_previous_ids.union(all_ids_in_dedupe)
+                if all_ids_in_dedupe != all_previous_ids:
                     new_records = True
 
             # Combine sequences by locus relative position if from the same accession
@@ -1161,6 +1387,12 @@ def one_locus_per_organism(
 
                         parsed_id = parse_seq_id(acc_list[0].id)
                         accession = parsed_id['accessions'][0]
+
+                        # if accession == 'HM006842.1':
+                        #     print('=== ===')
+                        #     for l in acc_list:
+                        #         print(l.id)
+                        #     print('--- ---')
 
                         acc_list.sort(key=lambda x: x.id, reverse=False)
 
@@ -1188,26 +1420,35 @@ def one_locus_per_organism(
                                 seq=Seq.Seq(cat_seq), id=cat_id, name='',
                                 description='')
                             dedupe_records_lrp.append(sequence_record)
+
+                        # if accession == 'HM006842.1':
+                        #     for l in acc_list:
+                        #         print(l.id)
+                        #     print('--- ---')
+
                     else:
                         dedupe_records_lrp.append(acc_list[0])
 
-            dir_0 = None
-            dir_1 = None
+            # dir_0 = None
+            # dir_1 = None
+            dir_rev = None
 
             if first_run and new_records:
-                dir_0 = review_0_new_dir
-                dir_1 = review_1_new_dir
+                # dir_0 = review_0_new_dir
+                # dir_1 = review_1_new_dir
+                dir_rev = review_new_dir
             else:
-                dir_0 = review_0_dir
-                dir_1 = review_1_dir
+                # dir_0 = review_0_dir
+                # dir_1 = review_1_dir
+                dir_rev = review_dir
 
             if first_run and len(dedupe_records_lrp) > 1:
                 if new_records or not good_sequences_aln:
                     aln = kralign.align(
                         records=dedupe_records_lrp,
-                        program=aln_program,
-                        options=aln_options,
-                        program_executable=aln_program_exe)
+                        program=locus_aln_program,
+                        options=locus_aln_program_options,
+                        program_executable=locus_aln_program_exe)
                     aln.sort()
                     cons = kralign.consensus(
                         aln, threshold=0.1, unknown='N',
@@ -1218,10 +1459,13 @@ def one_locus_per_organism(
                         tot_bs = tot_bs + len(bs)
                     similarity = float(len(bases_at_sites)) / float(tot_bs)
                     if similarity >= 0.95:
-                        AlignIO.write(aln, dir_1 + new_name + '.phy', "phylip-relaxed")
+                        AlignIO.write(aln, dir_rev + new_name + '.phy', "phylip-relaxed")
+                        for s in aln:
+                            s.seq = Seq.Seq(str(s.seq).replace('-', ''))
+                            name1_all_seq.append(s)
                     else:
                         #######################################################
-                        n_count = 10
+                        n_count = 0
                         new_aln = None
                         all_lrps = set()
                         for s in aln:
@@ -1252,7 +1496,7 @@ def one_locus_per_organism(
                                         pos = pos + prev_seq_len
                                         seq = pos * '-' + n_count * 'N' + seq
                                         pos = pos + n_count
-                                        prev_seq_len = seq_len + n_count
+                                        prev_seq_len = seq_len
                                     elif last_lrp == lrps[-1]:
                                         seq = pos * '-' + seq
                                 prev_seq_len = max(prev_seq_len, seq_len)
@@ -1269,16 +1513,24 @@ def one_locus_per_organism(
                                 s.seq = Seq.Seq(seq)
                             new_aln = MultipleSeqAlignment(seq_records)
                         #######################################################
-                        AlignIO.write(new_aln, dir_0 + new_name + '.phy', "phylip-relaxed")
+                        AlignIO.write(new_aln, dir_rev + new_name + '.phy', "phylip-relaxed")
+                        for s in new_aln:
+                            s.seq = Seq.Seq(str(s.seq).replace('-', ''))
+                            name1_all_seq.append(s)
                 elif good_sequences_aln:
                     aln = AlignIO.read(good_sequences_dir + new_name + '.phy', "phylip-relaxed")
                     AlignIO.write(aln, reviewed_dir + new_name + '.phy', "phylip-relaxed")
+                    for s in aln:
+                        s.seq = Seq.Seq(str(s.seq).replace('-', ''))
+                        name1_all_seq.append(s)
             elif first_run and len(dedupe_records_lrp) == 1:
                 if new_records or not good_sequences_seq:
-                    SeqIO.write(dedupe_records_lrp[0], dir_1 + new_name + '.fasta', "fasta")
+                    SeqIO.write(dedupe_records_lrp[0], dir_rev + new_name + '.fasta', "fasta")
+                    name1_all_seq.append(dedupe_records_lrp[0])
                 elif good_sequences_seq:
                     seq = SeqIO.read(good_sequences_dir + new_name + '.fasta', "fasta")
                     SeqIO.write(seq, reviewed_dir + new_name + '.fasta', "fasta")
+                    name1_all_seq.append(seq)
             elif not first_run and os.path.exists(reviewed_dir + new_name + '.phy'):
                 aln = AlignIO.read(reviewed_dir + new_name + '.phy', "phylip-relaxed")
                 cons_ids = set()
@@ -1290,20 +1542,91 @@ def one_locus_per_organism(
                     cons_ids.add(accession)
 
                 ###############################################################
-                consensus = kralign.consensus(aln, threshold=0.4, unknown='N')
+                consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
                 consensus_seq = consensus[0]
-                bases_per_site = consensus[3]
+                # bases_per_site = consensus[3]
+                proportion_identical = consensus[5]
 
-                if len(aln) > 3 or bases_per_site < 1.7:
-                    pass
-                else:
-                    len_of_seq_in_aln = list()
+                # if len(aln) > 3 or bases_per_site < 1.5:
+                #     pass
+                # else:
+                #     len_of_seq_in_aln = list()
+                #     for a in aln:
+                #         seq_str = str(a.seq).lower().replace('n', '').replace('-', '').replace('.', '')
+                #         len_of_seq_in_aln.append(len(seq_str))
+                #     max_len_index = len_of_seq_in_aln.index(max(len_of_seq_in_aln))
+                #     consensus_seq = str(aln[max_len_index].seq).replace('-', '').replace('.', '')
+                #     consensus_seq = Seq.Seq(consensus_seq)
+
+                if proportion_identical < 0.975:
+
+                    records_to_cluster = list()
+
                     for a in aln:
-                        seq_str = str(a.seq).lower().replace('n', '').replace('-', '').replace('.', '')
+                        seq_str = str(a.seq).lower()
+                        for amb in kriupac.IUPAC_AMBIGUOUS_DNA_STRING:
+                        # for amb in '-.':
+                            amb = amb.lower()
+                            seq_str = seq_str.replace(amb, '')
+                        # print(seq_str)
+                        seq_to_cluster = Seq.Seq(seq_str)
+                        sequence_record_to_cluster = SeqRecord.SeqRecord(
+                            seq=seq_to_cluster, id=a.id, name='', description='')
+                        records_to_cluster.append(sequence_record_to_cluster)
+
+                    # Cluster
+                    cluster_dict = krusearch.cluster_records(
+                        records_to_cluster,
+                        '0.97',
+                        temp_dir,
+                        sorted_input=False,
+                        algorithm='smallmem',  # fast smallmem
+                        strand='plus',  # plus both
+                        threads=1,
+                        quiet=True,
+                        program=usearch_exe,
+                        heuristics=False,
+                        query_coverage=0.3,
+                        target_coverage=0.3,
+                        sizein=False,
+                        sizeout=False,
+                        usersort=False)
+
+                    sorted_clusters = list()
+                    for k in cluster_dict.keys():
+                        sorted_clusters.append(cluster_dict[k])
+                    sorted_clusters.sort(key=lambda x: len(x), reverse=True)
+                    # if len(sorted_clusters) > 0 :
+                    #     print(proportion_identical)
+                    #     for c in sorted_clusters:
+                    #         if len(c) > 0:
+                    #             print(len(c), c[0][1])
+                    #     print('*** *** *** *** *** *** *** ***')
+
+                    selected_records = list()
+
+                    if len(sorted_clusters[0]) > 1:
+                        for sr in sorted_clusters[0]:
+                            sr_id = sr[1]
+                            for a in aln:
+                                if a.id == sr_id:
+                                    selected_records.append(a)
+                    else:
+                        selected_records = aln
+
+                    len_of_seq_in_aln = list()
+                    for a in selected_records:
+                        seq_str = str(a.seq).lower()
+                        for amb in kriupac.IUPAC_AMBIGUOUS_DNA_STRING:
+                            amb = amb.lower()
+                            seq_str = seq_str.replace(amb, '')
                         len_of_seq_in_aln.append(len(seq_str))
                     max_len_index = len_of_seq_in_aln.index(max(len_of_seq_in_aln))
-                    consensus_seq = str(aln[max_len_index].seq).replace('-', '').replace('.', '')
+                    consensus_seq = str(selected_records[max_len_index].seq).replace('-', '').replace('.', '')
                     consensus_seq = Seq.Seq(consensus_seq)
+
+                # else:
+                #     print(proportion_identical, new_name)
 
                 sequence_record = SeqRecord.SeqRecord(
                     seq=consensus_seq, id=new_name, name='', description='')
@@ -1331,7 +1654,16 @@ def one_locus_per_organism(
                     shutil.rmtree(temp_dir)
                     exit(0)
 
-        # END LOOP ALL new_name --------------------------------------------------
+        # END LOOP ALL new_name -----------------------------------------------
+
+        if first_run and produce_ref_aln:
+            SeqIO.write(name1_all_seq, all_seq_aln_dir_base + name1 + '.fasta', "fasta")
+            aln = kralign.align(
+                records=name1_all_seq,
+                program=ref_aln_program,
+                options=ref_aln_program_options,
+                program_executable=ref_aln_program_exe)
+            AlignIO.write(aln, all_seq_aln_dir_base + name1 + '.phy', "phylip-relaxed")
 
         if not first_run:
 

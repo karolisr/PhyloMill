@@ -138,6 +138,7 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     consensus = ''
     accepted_bases_at_sites = list()
     raw_counts_at_sites = list()
+    identities = list()
     column_count = alignment.get_alignment_length()
     for column in range(0, column_count):
         # Count individual characters in the column
@@ -186,6 +187,12 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
 
         if len(site_set) == 0:
             site_set.add(unknown)
+
+        if len(site_set) > 1:
+            identities.append(0)
+        else:
+            identities.append(1)
+
         site_list = list(site_set)
         site_list.sort()
         site_str = ''.join(site_list)
@@ -205,8 +212,9 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     consensus = Seq.Seq(consensus)
 
     count_per_site = float(sum(raw_counts_at_sites)) / float(len(raw_counts_at_sites))
+    proportion_identical = float(sum(identities)) / float(len(identities))
 
-    ret_value = (consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site)
+    ret_value = (consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical)
 
     return(ret_value)
 
