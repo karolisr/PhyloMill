@@ -57,7 +57,7 @@ def concatenate(alignments, padding_length=0, partitions=None):
 
     if not partitions:
         partitions = [(1,aln1_length)]
-    partitions.append((1+padding_length+aln1_length,padding_length+aln1_length+aln2_length))
+    partitions.append((1+aln1_length,padding_length+aln1_length+aln2_length))
 
     result_seq_list = list()
     for aln1_key in aln1_dict.keys():
