@@ -1830,12 +1830,26 @@ def concatenate(
         f.close()
 
         # Concatenate
+        partitions_output_file = log_dir + ps + '06-locus-partitions' + '.csv'
+        raxml_partitions_output_file = log_dir + ps + '06-locus-partitions-raxml'
+        f_part = open(partitions_output_file, 'wb')
+        f_part_raxml = open(raxml_partitions_output_file, 'wb')
         raw_alignments = list()
         for a in alignments:
             raw_alignments.append(a[0])
         concatenated = kralign.concatenate(raw_alignments, int(number_of_gaps_between_loci))
+        cat_aln = concatenated[0]
+        cat_partitions = concatenated[1]
+        f_part.write('locus,start,end\n')
+        for i, part in enumerate(cat_partitions):
+            raxml_part_line = 'DNA, ' + order_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
+            f_part_raxml.write(raxml_part_line)
+            part_line = order_list[i] + ',' + str(part[0]) + ',' + str(part[1]) + '\n'
+            f_part.write(part_line)
         concatenated_output_file = output_dir + ps + 'concatenated' + '.phy'
-        krbioio.write_alignment_file(concatenated, concatenated_output_file,
+        krbioio.write_alignment_file(cat_aln, concatenated_output_file,
                                      'phylip-relaxed')
+        f_part.close()
+        f_part_raxml.close()
 
 # End pipeline functions ------------------------------------------------------

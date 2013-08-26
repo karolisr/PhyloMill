@@ -2,7 +2,7 @@ from __future__ import print_function
 #from __future__ import unicode_literals
 
 
-def concatenate(alignments, padding_length=0):
+def concatenate(alignments, padding_length=0, partitions=None):
 
     '''
     Concatenate alignments based on the Seq ids; row order does not
@@ -30,8 +30,11 @@ def concatenate(alignments, padding_length=0):
     aln2 = None
     if len(alignments) > 2:
         aln2 = alignments.pop()
-        aln1 = concatenate(alignments=alignments,
-                           padding_length=padding_length)
+        result1 = concatenate(alignments=alignments,
+                              padding_length=padding_length,
+                              partitions=partitions)
+        aln1 = result1[0]
+        partitions = result1[1]
     elif len(alignments) == 2:
         aln1 = alignments[0]
         aln2 = alignments[1]
@@ -51,6 +54,11 @@ def concatenate(alignments, padding_length=0):
     aln1_gaps = SeqRecord(Seq('-' * aln1_length, alphabet))
     aln2_gaps = SeqRecord(Seq('-' * aln2_length, alphabet))
     padding = SeqRecord(Seq('N' * padding_length, alphabet))
+
+    if not partitions:
+        partitions = [(1,aln1_length)]
+    partitions.append((1+padding_length+aln1_length,padding_length+aln1_length+aln2_length))
+
     result_seq_list = list()
     for aln1_key in aln1_dict.keys():
         merged_Seq = None
@@ -75,7 +83,7 @@ def concatenate(alignments, padding_length=0):
         result_seq_list.append(merged_Seq)
     result_alignment = MultipleSeqAlignment(result_seq_list, alphabet)
     result_alignment.sort()
-    return result_alignment
+    return((result_alignment, partitions))
 
 
 def align(records, program, options='', program_executable=''):
