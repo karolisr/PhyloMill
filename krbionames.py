@@ -272,9 +272,17 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
 
     matching_entries.sort(key=lambda x: x[1], reverse=True)
 
-    # for m in matching_entries:
-    #     print(m)
-    # print('======= =======')
+    if level < 2:
+        for m in matching_entries:
+            # print(m[0]['AccGenus']+'_'+m[0]['AccSpecies'], m[0]['AccSubspecies'], m[0]['AccVariety'], m[1])
+            new_name = {
+            'genus': m[0]['AccGenus'],
+            'species': m[0]['AccSpecies'],
+            'subspecies': m[0]['AccSubspecies'],
+            'variety': m[0]['AccVariety']
+            }
+            print('\t'+flatten_organism_name(new_name, '_'))
+        # print('======= =======')
 
     for me in matching_entries:
         s = me[0]
