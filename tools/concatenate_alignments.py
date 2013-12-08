@@ -44,7 +44,7 @@ def concatenate(
         if not f['ext'].startswith('phy'):
             continue
 
-        file_name = f['name']
+        file_name = f['name'].split('_trimal')[0]
 
         aln = AlignIO.read(f['path'], "phylip-relaxed")
         if aln:
