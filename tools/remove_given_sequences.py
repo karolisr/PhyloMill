@@ -19,6 +19,8 @@ if __name__ == '__main__':
                         help='Output alignment file path.')
     parser.add_argument('-f', '--format', type=unicode,
                         help='Alignment file format.')
+    parser.add_argument('-n', '--names', type=unicode,
+                        help='')
 
     # fasta, phylip-relaxed
     # http://biopython.org/wiki/AlignIO
@@ -35,6 +37,8 @@ if __name__ == '__main__':
         output_file = args.output_file
     if args.format:
         format = args.format
+    if args.names:
+        names = args.names.split(',')
 
     if input_file and output_file and format:
 
@@ -43,11 +47,11 @@ if __name__ == '__main__':
         good_sequences = list()
 
         for a in alignment:
-            s_str = str(a.seq)
-            s_str = s_str.replace('-', '')
-            if len(s_str) > 10:
+            if a.id not in names:
                 sequence_record = SeqRecord(seq=a.seq, id=a.id, name='', description='')
                 good_sequences.append(sequence_record)
+            else:
+                print('Removing ' + a.id)
 
         new_aln = MultipleSeqAlignment(good_sequences)
 

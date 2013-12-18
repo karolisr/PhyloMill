@@ -55,9 +55,11 @@ def prepare_directory(path):
     '''
 
     import os
+    ps = os.path.sep
     if not os.path.exists(path):
         os.makedirs(path)
-    return
+    path = path.rstrip(ps) + ps
+    return(path)
 
 # The commented file reading class from:
 # http://www.mfasold.net/blog/2010/02/

@@ -40,7 +40,6 @@ def concatenate(
     alignments = [x.strip() for x in order_of_loci]
 
     for f in file_list:
-
         if not f['ext'].startswith('phy'):
             continue
 
@@ -111,7 +110,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-i', '--input', type=unicode,
+    parser.add_argument('-i', '--input_dir', type=unicode,
                         help='')
     parser.add_argument('-o', '--output_dir', type=unicode,
                         help='')
@@ -124,4 +123,4 @@ if __name__ == '__main__':
 
     order = args.order.split(',')
 
-    concatenate(args.input,args.output_dir,order,args.gaps,args.output_dir)
+    concatenate(args.input_dir,args.output_dir,order,args.gaps,args.output_dir)
