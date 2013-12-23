@@ -56,8 +56,10 @@ These modules depend on these Python packages:
 * [Biopython](http://biopython.org)
 * [Unidecode](http://pypi.python.org/pypi/Unidecode)
 	* On Ubuntu this can be installed: `sudo apt-get install python-unidecode`
+	* On MacOSX this can be installed using MacPorts: `sudo port install py27-unidecode`
 * [Levenshtein](https://pypi.python.org/pypi/python-Levenshtein)
 	* On Ubuntu this can be installed: `sudo apt-get install python-levenshtein`
+	* On MacOSX this can be installed using MacPorts: `sudo port install py27-levenshtein`
 
 Some modules in this package allow for interaction with:
 
