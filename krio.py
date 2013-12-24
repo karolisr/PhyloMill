@@ -101,7 +101,8 @@ class CommentedFile:
 
 
 def read_table_file(
-    path,
+    handle=None,
+    path=None,
     has_headers=False,
     headers=None,
     delimiter=',',
@@ -119,7 +120,10 @@ def read_table_file(
 
     import krother
 
-    handle = CommentedFile(open(path, 'rb'), commentstring=commentchar)
+    if not handle:
+        handle = CommentedFile(open(path, 'rb'), commentstring=commentchar)
+    else:
+        handle = CommentedFile(handle, commentstring=commentchar)
     if headers is not None:
         has_headers = False
     if has_headers:

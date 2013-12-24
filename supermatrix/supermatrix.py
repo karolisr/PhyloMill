@@ -1,4 +1,4 @@
-# !/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
@@ -14,29 +14,61 @@ PS = os.path.sep
 RESOURCES_DIR = 'resources'
 ICONS_DIR = RESOURCES_DIR + PS + 'icons'
 
-class KRWorkflowStep(QtGui.QGroupBox):
+class KRQueriesWindow(QtGui.QWidget):
 
-    def __init__(self, title='title'):
-
-        super(KRWorkflowStep, self).__init__(title)
-
+    def __init__(self, search_queries):
+        super(KRQueriesWindow, self).__init__()
+        self.search_queries = search_queries
         self.init_ui()
 
     def init_ui(self):
+        h_box = QtGui.QHBoxLayout()
+        self.list_widget = QtGui.QListWidget()
+        self.list_widget.setFixedWidth(200)
+        right_side_layout = QtGui.QVBoxLayout()
+        h_box.addWidget(self.list_widget)
+        h_box.addLayout(right_side_layout)
+        h_box.addStretch(0)
 
-        # name_label = QtGui.QLabel(name)
+        # right_side_layout.addWidget()
 
-        configure_button = QtGui.QPushButton("Configure")
+        self.setLayout(h_box)
+
+    def set_queries(self, search_queries):
+        self.search_queries = search_queries
+        self.list_widget.clear()
+        for locus_line in self.search_queries:
+            locus_name = locus_line['name1']
+            self.list_widget.addItem(locus_name)
+
+class KRWorkflowStep(QtGui.QGroupBox):
+
+    def __init__(self, title, configure_slot):
+
+        super(KRWorkflowStep, self).__init__(title)
+        self.init_ui(configure_slot)
+
+    def init_ui(self, configure_slot):
+
+        status_label = QtGui.QLabel('Status')
+
+        if configure_slot:
+            configure_button = QtGui.QPushButton("Configure")
+            configure_button.setFixedSize(100, 32)
+            configure_button.clicked.connect(configure_slot)
+
         run_button = QtGui.QPushButton("Run")
+        run_button.setFixedSize(100, 32)
 
-        hbox = QtGui.QHBoxLayout()
-        # hbox.addWidget(name_label)
-        # hbox.addSpacing(0)
-        hbox.addStretch(0)
-        hbox.addWidget(configure_button)
-        hbox.addWidget(run_button)
+        h_box = QtGui.QHBoxLayout()
+        h_box.addWidget(status_label)
+        h_box.addSpacing(10)
+        h_box.addStretch(0)
+        if configure_slot:
+            h_box.addWidget(configure_button)
+        h_box.addWidget(run_button)
 
-        self.setLayout(hbox)
+        self.setLayout(h_box)
 
 class KRMainWindow(QtGui.QMainWindow):
 
@@ -45,24 +77,37 @@ class KRMainWindow(QtGui.QMainWindow):
         super(KRMainWindow, self).__init__()
 
         self.name = name
+
+        self.init_data()
+        self.init_windows()
         self.init_ui(width, height)
+
+    def init_data(self):
+        self.search_queries = dict()
+
+    def init_windows(self):
+        self.configure_queries_window = KRQueriesWindow(self.search_queries)
+        self.configure_queries_window.resize(500, 500)
+        self.configure_queries_window.setWindowTitle('Simple')
 
     def init_ui(self, width, height):
 
-        step_1 = KRWorkflowStep(title='1. Search && Download')
-        step_2 = KRWorkflowStep(title='2. Filter')
-
-        vbox = QtGui.QVBoxLayout()
-        vbox.addWidget(step_1)
-        vbox.addWidget(step_2)
-        vbox.addStretch(0)
-
-        self.widget = QtGui.QWidget()
-        self.widget.setLayout(vbox)
-        self.setCentralWidget(self.widget)
-
         self.create_actions()
         self.create_menus()
+
+        step_1 = KRWorkflowStep(title='1. Search && Download',
+            configure_slot=self.configure_queries_window.show)
+        step_2 = KRWorkflowStep(title='2. Filter',
+            configure_slot=None)
+
+        v_box = QtGui.QVBoxLayout()
+        v_box.addWidget(step_1)
+        v_box.addWidget(step_2)
+        v_box.addStretch(0)
+
+        self.widget = QtGui.QWidget()
+        self.widget.setLayout(v_box)
+        self.setCentralWidget(self.widget)
 
         self.resize(width, height)
 
@@ -74,8 +119,31 @@ class KRMainWindow(QtGui.QMainWindow):
 
     def open(self):
 
-        chosen = QtGui.QFileDialog(self).getExistingDirectory(self)
+        import zipfile
+        from krpy import krio
+
+        chosen = QtGui.QFileDialog(self).getOpenFileName(self)
         print(chosen)
+
+        input_file = zipfile.ZipFile(str(chosen), 'r')
+
+        search_queries_handle = None
+
+        for name in input_file.namelist():
+            if name == 'search_queries':
+                search_queries_handle = input_file.open(name, 'rU')
+
+        self.search_queries = krio.read_table_file(
+            handle=search_queries_handle,
+            has_headers=True,
+            headers=None,
+            delimiter='\t',
+            quotechar="'")
+
+        self.configure_queries_window.set_queries(self.search_queries)
+
+        print(self.search_queries)
+
         return(chosen)
 
     def save(self):
@@ -136,7 +204,7 @@ class KRMainWindow(QtGui.QMainWindow):
 def main():
 
     application = QtGui.QApplication(sys.argv)
-    main_window = KRMainWindow(name='Supermatrix', width=0, height=0)
+    main_window = KRMainWindow(name='Supermatrix', width=500, height=0)
     sys.exit(application.exec_())
 
 if __name__ == '__main__':

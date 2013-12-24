@@ -19,9 +19,9 @@ def search_and_download(
     '''
 
     import os
-    import krio
-    import krncbi
-    import krbioio
+    from krpy import krio
+    from krpy import krncbi
+    from krpy import krbioio
 
     ps = os.path.sep
 
@@ -130,22 +130,22 @@ def search_and_download(
     # handle.close()
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    import krio
+#     from krpy import krio
 
-    QUERY_FILE = '../testdata/search_queries'
-    QUERIES = krio.read_table_file(QUERY_FILE, has_headers=True,
-                                   headers=None, delimiter='\t',
-                                   quotechar="'")
-    OUTPUT_DIR = '../testdata/testoutputdir'
-    LOG_DIR = '../testdata/testlogdir'
-    FILE_NAME_SEP = '$'
-    EMAIL = 'test@test.com'
+#     QUERY_FILE = '../testdata/search_and_align/search_queries'
+#     QUERIES = krio.read_table_file(QUERY_FILE, has_headers=True,
+#                                    headers=None, delimiter='\t',
+#                                    quotechar="'")
+#     OUTPUT_DIR = '../testdata/testoutputdir'
+#     LOG_DIR = '../testdata/testlogdir'
+#     FILE_NAME_SEP = '$'
+#     EMAIL = 'test@test.com'
 
-    search_and_download(
-        QUERIES,
-        OUTPUT_DIR,
-        FILE_NAME_SEP,
-        EMAIL,
-        LOG_DIR)
+#     search_and_download(
+#         QUERIES,
+#         OUTPUT_DIR,
+#         FILE_NAME_SEP,
+#         EMAIL,
+#         LOG_DIR)
