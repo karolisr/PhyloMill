@@ -1,3 +1,4 @@
+# @PydevCodeAnalysisIgnore
 #!/usr/bin/env python
 
 from __future__ import print_function
@@ -198,10 +199,10 @@ if __name__ == '__main__':
         if not commands or 'flatten' in commands:
 
             ref_aln_program = config.get('Flatten', 'ref_align_program')
-            ref_aln_program_exe = config.get('General', ref_aln_program+'_executable')
+            ref_aln_program_exe = config.get('General', ref_aln_program + '_executable')
 
             locus_aln_program = config.get('Flatten', 'locus_align_program')
-            locus_aln_program_exe = config.get('General', locus_aln_program+'_executable')
+            locus_aln_program_exe = config.get('General', locus_aln_program + '_executable')
 
             cutlist_records = krio.read_table_file(
                 path=cutlist_records_file,
@@ -258,7 +259,7 @@ if __name__ == '__main__':
         if not commands or 'align' in commands:
 
             aln_program = config.get('Align', 'align_program')
-            aln_program_exe = config.get('General', aln_program+'_executable')
+            aln_program_exe = config.get('General', aln_program + '_executable')
             aln_options = config.get('Align', 'align_program_options')
 
             # Align loci

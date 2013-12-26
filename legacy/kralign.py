@@ -1,5 +1,6 @@
+# @PydevCodeAnalysisIgnore
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 
 def concatenate(alignments, padding_length=0, partitions=None):
@@ -56,8 +57,8 @@ def concatenate(alignments, padding_length=0, partitions=None):
     padding = SeqRecord(Seq('N' * padding_length, alphabet))
 
     if not partitions:
-        partitions = [(1,aln1_length)]
-    partitions.append((1+aln1_length,padding_length+aln1_length+aln2_length))
+        partitions = [(1, aln1_length)]
+    partitions.append((1 + aln1_length, padding_length + aln1_length + aln2_length))
 
     result_seq_list = list()
     for aln1_key in aln1_dict.keys():

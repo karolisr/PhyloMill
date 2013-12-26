@@ -1,8 +1,9 @@
+# @PydevCodeAnalysisIgnore
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 
 def write_log(msg, log_file_path, append=True):
@@ -628,42 +629,42 @@ if __name__ == '__main__':
                         if f_hq:
                             # SeqIO.write(sequences=fr, handle=handle_f_hq,
                             #             format='fasta')
-                            handle_f_hq.write('>'+f_title+'\n'+f_seq+'\n')
+                            handle_f_hq.write('>' + f_title + '\n' + f_seq + '\n')
                             str_fhq = str(len(f_seq))
                         else:
                             # SeqIO.write(sequences=fr, handle=handle_f_lq,
                             #             format='fasta')
-                            handle_f_lq.write('>'+f_title+'\n'+f_seq+'\n')
+                            handle_f_lq.write('>' + f_title + '\n' + f_seq + '\n')
                             str_flq = str(len(f_seq))
 
                         if r_hq:
                             # SeqIO.write(sequences=rr, handle=handle_r_hq,
                             #             format='fasta')
-                            handle_r_hq.write('>'+r_title+'\n'+r_seq+'\n')
+                            handle_r_hq.write('>' + r_title + '\n' + r_seq + '\n')
                             str_rhq = str(len(r_seq))
                         elif r_reads:
                             # SeqIO.write(sequences=rr, handle=handle_r_lq,
                             #             format='fasta')
-                            handle_r_lq.write('>'+r_title+'\n'+r_seq+'\n')
+                            handle_r_lq.write('>' + r_title + '\n' + r_seq + '\n')
                             str_rlq = str(len(r_seq))
 
                         if f_hq and r_hq and consensus:
                             # SeqIO.write(sequences=consensus,
                             #             handle=handle_all_hq,
                             #             format='fasta')
-                            handle_all_hq.write('>'+consensus_title+'\n' +
-                                                consensus+'\n')
+                            handle_all_hq.write('>' + consensus_title + '\n' +
+                                                consensus + '\n')
                             str_cons = str(len(consensus))
 
                         if f_hq and not consensus:
                             # SeqIO.write(sequences=fr, handle=handle_all_hq,
                             #             format='fasta')
-                            handle_all_hq.write('>'+f_title+'\n'+f_seq+'\n')
+                            handle_all_hq.write('>' + f_title + '\n' + f_seq + '\n')
 
                         if r_hq and not consensus:
                             # SeqIO.write(sequences=rr, handle=handle_all_hq,
                             #             format='fasta')
-                            handle_all_hq.write('>'+r_title+'\n'+r_seq+'\n')
+                            handle_all_hq.write('>' + r_title + '\n' + r_seq + '\n')
 
                         reads_string = (
                             str_fhq + '\t' +
@@ -894,7 +895,7 @@ if __name__ == '__main__':
             queue = JoinableQueue()
 
             aln_program = config.get('Align Within Samples', 'program')
-            aln_program_exe = config.get('General', aln_program+'_executable')
+            aln_program_exe = config.get('General', aln_program + '_executable')
             aln_program_options = config.get('Align Within Samples', 'options')
 
             # def t(f):
@@ -1165,7 +1166,7 @@ if __name__ == '__main__':
 
             results_new.sort(key=lambda x: x['sample'], reverse=False)
 
-            with open(analyzed_samples_output_dir+'stats.csv', 'wb') as f:
+            with open(analyzed_samples_output_dir + 'stats.csv', 'wb') as f:
                 # fieldnames = ['sample', 'barcode', 'rpc', 'clusters', 'rps',
                 #               'sites', 'fA', 'fC', 'fG', 'fT', 'e', 'pi',
                 #               'negll']
@@ -1448,7 +1449,7 @@ if __name__ == '__main__':
                         next_line_out = False
                         next_line_in = False
                     for o in outgroups:
-                        if l.startswith('>'+o):
+                        if l.startswith('>' + o):
                             outgroup_lines.append(l)
                             next_line_out = True
                             break
@@ -1500,7 +1501,7 @@ if __name__ == '__main__':
             write_log(msg, lfp)
 
             aln_program = config.get('Align Between Samples', 'program')
-            aln_program_exe = config.get('General', aln_program+'_executable')
+            aln_program_exe = config.get('General', aln_program + '_executable')
             aln_program_options = config.get('Align Between Samples', 'options')
 
             for f in file_list:
