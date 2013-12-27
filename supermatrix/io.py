@@ -12,7 +12,10 @@ from __future__ import division
 __all__ = []
 __version__ = 0.1
 __date__ = '2013-12-26'
-__updated__ = '2013-12-26'
+__updated__ = '2013-12-27'
+
+import zipfile
+import krpy
 
 
 def parse_input_file(file_path):
@@ -22,10 +25,9 @@ def parse_input_file(file_path):
         input files.
     '''
 
-    import zipfile
-    import krpy
-
     search_queries_file_name = 'search_queries.tsv'
+
+    search_queries_handle = None
 
     with zipfile.ZipFile(file_path, 'r') as zip_file:
         krpy.debug.message('Reading file: ' + file_path + '.',
@@ -34,10 +36,15 @@ def parse_input_file(file_path):
             krpy.debug.message('Reading file: ' + file_name + ' in ' +
                                file_path + '.', parse_input_file)
             if file_name == search_queries_file_name:
-                pass
+                search_queries_handle = zip_file.open(file_name, 'rU')
 
-    return()
+            # TODO: check that all files exist in the input file.
+
+    search_queries = krpy.io.read_table_file(handle=search_queries_handle,
+        has_headers=True, headers=None, delimiter='\t', quotechar="'")
+
+    return {'search_queries': search_queries}
 
 if __name__ == '__main__':
-
-    parse_input_file('test_data/sm_input.krsm')
+    if krpy.debug.RUN_DEBUG_CODE:
+        parse_input_file('test_data/sm_input.krsm')
