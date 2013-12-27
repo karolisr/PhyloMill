@@ -1,5 +1,7 @@
+# @PydevCodeAnalysisIgnore
+# pylint: skip-file
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 
 def entrez_db_list(email):
@@ -111,18 +113,18 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
     for uid_start in range(0, uid_count, large_batch_size):
         while True:
-            ###
+            # ##
             downloaded_uids = set()
             to_download_uids = set()
-            ###
+            # ##
             try:
                 uid_end = min(uid_count, uid_start + large_batch_size)
                 print('Downloading records %i to %i of %i.'
                       % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
-                ###
+                # ##
                 to_download_uids |= set(small_batch)
-                ###
+                # ##
                 small_batch_count = len(small_batch)
                 epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
                 webenv = epost['WebEnv']
@@ -145,11 +147,11 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
                 n_rec_to_download = uid_end - uid_start
                 rec_downloaded = len(temp_records)
-                ###
+                # ##
                 import krseq
                 for x in temp_records:
                     downloaded_uids.add(krseq.get_annotation(x, 'gi'))
-                ###
+                # ##
             except:
                 print('    HTTP problem, retrying...')
                 time.sleep(5)
@@ -193,8 +195,8 @@ if __name__ == '__main__':
     PS = os.path.sep
 
     # entrez_db_list
-    #print(entrez_db_list('test@test.com'))
+    # print(entrez_db_list('test@test.com'))
 
     # esearch
-    #print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
+    # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
     #      'test@test.com'))

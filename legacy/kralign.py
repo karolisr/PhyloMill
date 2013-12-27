@@ -1,4 +1,5 @@
 # @PydevCodeAnalysisIgnore
+# pylint: skip-file
 from __future__ import print_function
 # from __future__ import unicode_literals
 
@@ -171,7 +172,7 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
                 counts_expanded[k] = counts_expanded.get(k, 0) + counts[k]
         # print(counts_expanded)
         # Get the total characters in the column
-        # TODO: should N, and gaps be excluded?
+        # TO DO: should N, and gaps be excluded?
         total = 0
         for k in counts_expanded.keys():
             if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):

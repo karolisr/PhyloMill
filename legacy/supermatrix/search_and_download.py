@@ -1,3 +1,5 @@
+# @PydevCodeAnalysisIgnore
+# pylint: skip-file
 #!/usr/bin/env python
 
 '''

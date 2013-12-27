@@ -1,5 +1,7 @@
+# @PydevCodeAnalysisIgnore
+# pylint: skip-file
 from __future__ import print_function
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 
 def read_barcodes(file_path, delimiter, id_header, barcode_header):
@@ -158,7 +160,7 @@ def align_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
 
     for i in range(1, l1 + l2):
 
-        #print('i =', i)
+        # print('i =', i)
 
         b = min(l1, i)
         c = max(0, l2 - i)
@@ -167,8 +169,8 @@ def align_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
             d = l2 + l1 - i
         a = abs(d - b - c)
 
-        #print('r1[', a, ':', b, ']', r1[a:b], sep='')
-        #print('r2[', c, ':', d, ']', r2[c:d], sep='')
+        # print('r1[', a, ':', b, ']', r1[a:b], sep='')
+        # print('r2[', c, ':', d, ']', r2[c:d], sep='')
 
         mask = compare_sequences(r1[a:b], r2[c:d], ignore=ignore)
 
@@ -208,8 +210,8 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
 
     # best_alignment = (match, total, ratio, (a, b), (c, d))
 
-    o = best_alignment[1]     # length of overlap excluding ignored characters
-    r = best_alignment[2]     # match / (match + miss)
+    o = best_alignment[1]  # length of overlap excluding ignored characters
+    r = best_alignment[2]  # match / (match + miss)
 
     a = best_alignment[3][0]  # [a:b] - alignment range on the first sequence
     b = best_alignment[3][1]
@@ -286,7 +288,7 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
     #   [a:b] - is the alignment range on the first sequence
     #   [c:d] - is the alignment range on the second sequence
 
-    mmmr_cutoff_seq_oligo = 0.8 ###
+    mmmr_cutoff_seq_oligo = 0.8  # ##
 
     # Forward
     if r_oligo and f_seq_str:
@@ -639,7 +641,7 @@ def combine_demultiplexed_results(input_dir, output_dir):
     for f in file_list:
         output_file_path = output_dir + f['full']
         output_file_handle = open(output_file_path, 'wa')
-        for part in range(1, len(directory_list)+1):
+        for part in range(1, len(directory_list) + 1):
             part_directory_path = input_dir + str(part) + ps
             part_file_path = part_directory_path + f['full']
             shutil.copyfileobj(open(part_file_path, 'rb'),
@@ -738,7 +740,7 @@ def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                     ids = list()
                     for seq in aln:
                         # print(seq.id)
-                        seq.id = seq.id.split('_')[0] ###
+                        seq.id = seq.id.split('_')[0]  # ##
                         ids.append(seq.id)
                     if len(set(ids)) == len(ids):
                         alignments.append(aln)
@@ -831,10 +833,10 @@ def nt_freq(nt_counts_file):
     #       float(t_g)/float(total),
     #       float(t_t)/float(total))
 
-    return([float(t_a)/float(total),
-            float(t_c)/float(total),
-            float(t_g)/float(total),
-            float(t_t)/float(total)])
+    return([float(t_a) / float(total),
+            float(t_c) / float(total),
+            float(t_g) / float(total),
+            float(t_t) / float(total)])
 
 
 def nt_site_counts(nt_counts_file, min_total_per_site=1, max_total_per_site=0,
@@ -950,7 +952,7 @@ def like_homo(s, p, e):
     total_s = sum(s)
     likelihood = 0
     for i in range(0, 4):
-        l = p[i] * binom.pmf(total_s-s[i], total_s, e)
+        l = p[i] * binom.pmf(total_s - s[i], total_s, e)
         likelihood = likelihood + l
     return(likelihood)
 
@@ -976,13 +978,13 @@ def like_hetero(s, p, e):
 
     from scipy.stats import binom
     total_s = sum(s)
-    S = 1.0 - sum([x*x for x in p])
+    S = 1.0 - sum([x * x for x in p])
     likelihood = 0
     for i in range(0, 4):
-        for j in range(i+1, 4):
+        for j in range(i + 1, 4):
             l = (2.0 * p[i] * p[j] *
-                 binom.pmf(total_s-s[i]-s[j], total_s, (2*e)/3.0) *
-                 binom.pmf(s[i], s[i]+s[j], 0.5) / S)
+                 binom.pmf(total_s - s[i] - s[j], total_s, (2 * e) / 3.0) *
+                 binom.pmf(s[i], s[i] + s[j], 0.5) / S)
             likelihood = likelihood + l
     return(likelihood)
 
@@ -1007,7 +1009,7 @@ def like_homo_hetero(s, p, e, pi):
             pi - nucleotide diversity
     '''
 
-    likelihood = (1.0-pi) * like_homo(s, p, e) + pi * like_hetero(s, p, e)
+    likelihood = (1.0 - pi) * like_homo(s, p, e) + pi * like_hetero(s, p, e)
     return likelihood
 
 
@@ -1188,7 +1190,7 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site
     prob_hom_2 = stats.binom.pmf(k2, n, e)
 
     prior_het = pi
-    prior_hom = (1.0-pi) / 2.0
+    prior_hom = (1.0 - pi) / 2.0
 
     prob_het = prob_het * prior_het
     prob_hom_1 = prob_hom_1 * prior_hom
@@ -1271,9 +1273,9 @@ if __name__ == '__main__':
     # combine_demultiplexed_results
     # combine_demultiplexed_results(
     #     input_dir='/home/karolis/Dropbox/code/test/rad/
-    #02-demultiplexed-fastq-parts',
+    # 02-demultiplexed-fastq-parts',
     #     output_dir='/home/karolis/Dropbox/code/test/rad/
-    #03-demultiplexed-fastq-combined')
+    # 03-demultiplexed-fastq-combined')
 
     # ns = [[99, 1, 0, 0],
     #      [50, 49, 1, 0],
