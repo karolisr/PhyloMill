@@ -23,8 +23,24 @@ def parse_search_queries_file(search_queries_handle):
     Parse tab-separated search queries file.
     TODO: describe search queries file structure.
     '''
-    search_queries = krpy.io.read_table_file(handle=search_queries_handle,
+    search_queries_raw = krpy.io.read_table_file(handle=search_queries_handle,
         has_headers=True, headers=None, delimiter='\t', quotechar="'")
+
+    # Produce a dictionary with name1 as keys and a list of dictionaries as
+    # value. Each item in a list will have a unique name2.
+    search_queries = dict()
+    for query_line in search_queries_raw:
+        if query_line['name1'] not in search_queries:
+            search_queries[query_line['name1']] = list()
+        search_queries[query_line['name1']].append(query_line)
+
+    if krpy.debug.RUN_DEBUG_CODE:
+        for key in search_queries.keys():
+            for key_2_entry in search_queries[key]:
+                krpy.debug.message(
+                    'name1: ' + key + ', name2: ' + key_2_entry['name2'],
+                    parse_search_queries_file)
+
     return search_queries
 
 

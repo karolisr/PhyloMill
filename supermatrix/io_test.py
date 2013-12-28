@@ -20,14 +20,20 @@ def test_parse_search_queries_file():
     with open('test_data/search_queries.tsv', 'r') as search_queries_handle:
         search_queries = supermatrix.io.parse_search_queries_file(
                                                         search_queries_handle)
-    for query in search_queries:
-        if query['name1'] == 'GBSSI':
-            assert query['query'] == '(waxy[Gene Name] OR GBSSI[Gene Name]) '\
+    assert 'GBSSI' in search_queries.keys()
+    assert 'matK' in search_queries.keys()
+
+    for key in search_queries.keys():
+        if key == 'GBSSI':
+            assert search_queries['GBSSI'][0]['query'] == \
+            '(waxy[Gene Name] OR GBSSI[Gene Name]) '\
             'AND (txid197382[Organism] OR txid197388[Organism] OR '\
             'txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] '\
             'OR txid4070[Organism])'
-        if query['name1'] == 'matK' and query['name2'] == '2':
-            assert query['query'] == 'DONOTDOWNLOAD'
+        if key == 'matK':
+            for name_2_line in search_queries['matK']:
+                if name_2_line['name2'] == '2':
+                    assert name_2_line['query'] == 'DONOTDOWNLOAD'
 
 
 def test_parse_input_file():
