@@ -11,7 +11,6 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__date__ = '2013-12-26'
 __updated__ = '2013-12-27'
 
 RUN_DEBUG_CODE = True
@@ -21,7 +20,7 @@ SILENCE_DEBUG_MESSAGES = False
 def message(msg, sender):
 
     '''
-        Used for simple and unified console logging.
+    Used for simple and unified console logging.
     '''
     if not SILENCE_DEBUG_MESSAGES:
         print(str(sender) + ': ' + str(msg))

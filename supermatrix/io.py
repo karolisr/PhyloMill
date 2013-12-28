@@ -11,7 +11,6 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__date__ = '2013-12-26'
 __updated__ = '2013-12-27'
 
 import zipfile

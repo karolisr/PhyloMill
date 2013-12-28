@@ -11,7 +11,6 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__date__ = '2013-12-26'
 __updated__ = '2013-12-27'
 
 import krpy
@@ -91,11 +90,9 @@ import krpy
 # http://www.mfasold.net/blog/2010/02/
 #   python-recipe-read-csvtsv-textfiles-and-ignore-comment-lines
 class CommentedFile:
-
     '''
     Provide an open file handle with comments removed.
     '''
-
     def __init__(self, f, commentstring="#"):
         self.f = f
         self.commentstring = commentstring
