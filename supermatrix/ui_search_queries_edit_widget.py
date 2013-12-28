@@ -16,6 +16,18 @@ __updated__ = '2013-12-27'
 from PyQt4 import QtGui
 
 
+class SearchQueriesTreeView(QtGui.QTreeView):
+    '''
+    SearchQueriesTreeView
+    '''
+
+    def __init__(self):
+        '''
+        Constructor
+        '''
+        super(SearchQueriesTreeView, self).__init__()
+
+
 class SearchQueriesEditWidget(QtGui.QWidget):
     '''
     SearchQueriesEditWidget
