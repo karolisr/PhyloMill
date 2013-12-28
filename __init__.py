@@ -8,4 +8,4 @@ from krpy import debug
 from krpy import io
 from krpy import other
 
-from krpy.tree_node import TreeNode
+from krpy.Node import Node

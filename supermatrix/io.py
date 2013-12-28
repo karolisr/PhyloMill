@@ -13,7 +13,7 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__updated__ = '2013-12-27'
+__updated__ = '2013-12-28'
 
 import zipfile
 import krpy
@@ -29,31 +29,28 @@ def parse_search_queries_file(search_queries_handle):
 
     # Produce a dictionary with name1 as keys and a list of dictionaries as
     # value. Each item in a list will have a unique name2.
-    search_queries = dict()
+    search_queries_dict = dict()
     for query_line in search_queries_raw:
-        if query_line['name1'] not in search_queries:
-            search_queries[query_line['name1']] = list()
-        search_queries[query_line['name1']].append(query_line)
-
-    if krpy.debug.RUN_DEBUG_CODE:
-        for key in search_queries.keys():
-            for key_2_entry in search_queries[key]:
-                krpy.debug.message(
-                    'name1: ' + key + ', name2: ' + key_2_entry['name2'],
-                    parse_search_queries_file)
+        if query_line['name1'] not in search_queries_dict:
+            search_queries_dict[query_line['name1']] = list()
+        search_queries_dict[query_line['name1']].append(query_line)
 
     # Construct hierarchical structure.
-    main_root = krpy.TreeNode('root')
-    for key in search_queries.keys():
-        name_1_root = krpy.TreeNode(key)
-        main_root.add_child(name_1_root)
-        for key_2_entry in search_queries[key]:
-            name_2_node = krpy.TreeNode(key_2_entry['name2'])
-            name_1_root.add_child(name_2_node)
+    search_queries_tree = krpy.Node('loci')
+    for key in search_queries_dict.keys():
+        name_1_root = krpy.Node(name=key, data=None,
+                                parent=search_queries_tree)
+        for key_2_entry in search_queries_dict[key]:
+            krpy.Node(
+                name=key_2_entry['name2'],
+                data=key_2_entry,
+                parent=name_1_root)
 
-    print(main_root)
+    if krpy.debug.RUN_DEBUG_CODE:
+        krpy.debug.message('Search queries:', parse_search_queries_file)
+        print(search_queries_tree)
 
-    return search_queries
+    return search_queries_tree
 
 
 def parse_input_file(file_path):
@@ -69,7 +66,7 @@ def parse_input_file(file_path):
         krpy.debug.message('Reading file: ' + file_path + '.',
                            parse_input_file)
         for file_name in zip_file.namelist():
-            krpy.debug.message('Reading file: ' + file_name + ' in ' +
+            krpy.debug.message('Listing file: ' + file_name + ' in ' +
                                file_path + '.', parse_input_file)
             if file_name == search_queries_file_name:
                 search_queries_handle = zip_file.open(file_name, 'rU')
