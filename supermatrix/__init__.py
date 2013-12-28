@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 '''
 Define modules that will be part of the supermatrix package.
 '''

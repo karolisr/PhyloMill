@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 '''
 Created on Dec 26, 2013
 @author: Karolis Ramanauskas
