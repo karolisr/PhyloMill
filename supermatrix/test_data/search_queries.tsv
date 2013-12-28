@@ -1,43 +1,43 @@
 name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
 
 # ITS1-5.8S-ITS2 (internal transcribed spacer 1 - 5.8S rRNA - internal transcribed spacer 2) nuclear
-# ITS1-5.8S-ITS2	01	1	no	internal transcribed spacer 1	100	misc_RNA	product	strict	nuccore	"18S ribosomal RNA" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	02	2	no	5.8S	100	rRNA	product	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	03	3	no	internal transcribed spacer 2	100	misc_RNA	product	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	04	1	no	internal transcribed spacer 1	100	misc_RNA	product	strict	nuccore	5.8S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	05	2	no	5.8S	100	rRNA	product	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	06	X	no	5.8S	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	07	X	no	5.8S	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	08	X	no	5.8S	100	misc_RNA	product	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	09	3	no	internal transcribed spacer 2	100	misc_RNA	product	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	10	1	no	internal transcribed spacer 1, ITS1	100	misc_feature	note	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	11	3	no	internal transcribed spacer 2, ITS2	100	misc_feature	note	strict	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	12	1	no	18S->5.8S	1	rRNA	product	strict	nuccore	18S AND 5.8S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	13	3	no	5.8S->28S	1	rRNA	product	strict	nuccore	5.8S AND 28S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	14	1	no	internal transcribed spacer 1$ITS1	100	misc_RNA	product	loose	nuccore	"internal transcribed spacer 1" NOT "5.8S" NOT "18S" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	15	1	no	internal transcribed spacer 1$ITS1	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	16	1	no	internal transcribed spacer 1$ITS1	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	17	3	no	internal transcribed spacer 2$ITS2	100	misc_RNA	product	loose	nuccore	"internal transcribed spacer 2" NOT "5.8S" NOT "18S" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# ITS1-5.8S-ITS2	18	3	no	internal transcribed spacer 2$ITS2	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
-# ITS1-5.8S-ITS2	19	3	no	internal transcribed spacer 2$ITS2	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	01	1	no	internal transcribed spacer 1	100	misc_RNA	product	strict	nuccore	"18S ribosomal RNA" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	02	2	no	5.8S	100	rRNA	product	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	03	3	no	internal transcribed spacer 2	100	misc_RNA	product	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	04	1	no	internal transcribed spacer 1	100	misc_RNA	product	strict	nuccore	5.8S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	05	2	no	5.8S	100	rRNA	product	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	06	X	no	5.8S	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	07	X	no	5.8S	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	08	X	no	5.8S	100	misc_RNA	product	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	09	3	no	internal transcribed spacer 2	100	misc_RNA	product	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	10	1	no	internal transcribed spacer 1, ITS1	100	misc_feature	note	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	11	3	no	internal transcribed spacer 2, ITS2	100	misc_feature	note	strict	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	12	1	no	18S->5.8S	1	rRNA	product	strict	nuccore	18S AND 5.8S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	13	3	no	5.8S->28S	1	rRNA	product	strict	nuccore	5.8S AND 28S AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	14	1	no	internal transcribed spacer 1$ITS1	100	misc_RNA	product	loose	nuccore	"internal transcribed spacer 1" NOT "5.8S" NOT "18S" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	15	1	no	internal transcribed spacer 1$ITS1	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	16	1	no	internal transcribed spacer 1$ITS1	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	17	3	no	internal transcribed spacer 2$ITS2	100	misc_RNA	product	loose	nuccore	"internal transcribed spacer 2" NOT "5.8S" NOT "18S" AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+ITS1-5.8S-ITS2	18	3	no	internal transcribed spacer 2$ITS2	100	misc_RNA	note	loose	nuccore	DONOTDOWNLOAD
+ITS1-5.8S-ITS2	19	3	no	internal transcribed spacer 2$ITS2	100	misc_feature	note	loose	nuccore	DONOTDOWNLOAD
 
 # GBSSI (granule-bound starch synthase (waxy)) nuclear
 GBSSI	01	X	no	GBSSI$waxy	100	gene	gene	strict	nuccore	(waxy[Gene Name] OR GBSSI[Gene Name]) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # COSII markers (http://solgenomics.net/markers/cosii_markers.pl) nuclear
-# At1g13380	01	X	no	At1g13380	100	misc_feature	note	loose	nuccore	At1g13380 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# At1g13380	02	X	no	At1g13380	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
-# At1g13380	03	X	no	At1g13380	100	mRNA	locus_tag	loose	nuccore	DONOTDOWNLOAD
-# At1g13380	04	X	no	At1g13380	100	source	note	loose	nuccore	DONOTDOWNLOAD
+At1g13380	01	X	no	At1g13380	100	misc_feature	note	loose	nuccore	At1g13380 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+At1g13380	02	X	no	At1g13380	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
+At1g13380	03	X	no	At1g13380	100	mRNA	locus_tag	loose	nuccore	DONOTDOWNLOAD
+At1g13380	04	X	no	At1g13380	100	source	note	loose	nuccore	DONOTDOWNLOAD
 
 At5g14320	01	X	no	At5g14320	100	misc_feature	note	loose	nuccore	At5g14320 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 At5g14320	02	X	no	At5g14320	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
 
-# At1g20050	01	X	no	At1g20050	100	misc_feature	note	loose	nuccore	At1g20050 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# At1g20050	02	X	no	At1g20050	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
+At1g20050	01	X	no	At1g20050	100	misc_feature	note	loose	nuccore	At1g20050 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+At1g20050	02	X	no	At1g20050	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
 
-# At1g32130	01	X	no	At1g32130	100	misc_feature	note	loose	nuccore	At1g32130 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# At1g32130	02	X	no	At1g32130	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
+At1g32130	01	X	no	At1g32130	100	misc_feature	note	loose	nuccore	At1g32130 AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+At1g32130	02	X	no	At1g32130	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
 
 # ndhF (NADH dehydrogenase subunit (ndhF) gene) chloroplast
 ndhF	01	X	no	ndhF	100	gene	gene	strict	nuccore	ndhF[Gene Name] AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
@@ -51,11 +51,11 @@ matK	02	X	no	matK	100	CDS	note	strict	nuccore	DONOTDOWNLOAD
 matK	03	X	no	trnK	100	gene	gene	strict	nuccore	trnK AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # rbcL (ribulose 1 5-bisphosphate carboxylase large subunit) cloroplast
-# rbcL	01	X	no	rbcL	100	gene	gene	strict	nuccore	rbcL[Gene Name] AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+rbcL	01	X	no	rbcL	100	gene	gene	strict	nuccore	rbcL[Gene Name] AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # trnS-trnG (trnS-trnG intergenic spacer) chloroplast
-# trnS-trnG	01	X	no	trnS-trnG	100	misc_feature	note	strict	nuccore	trnS-trnG AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# trnS-trnG	02	X	no	trnS$tRNA-Ser->trnG$tRNA-Gly	1	gene	gene	strict	nuccore	(trnS OR tRNA-Ser) AND (trnG OR tRNA-Gly) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+trnS-trnG	01	X	no	trnS-trnG	100	misc_feature	note	strict	nuccore	trnS-trnG AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+trnS-trnG	02	X	no	trnS$tRNA-Ser->trnG$tRNA-Gly	1	gene	gene	strict	nuccore	(trnS OR tRNA-Ser) AND (trnG OR tRNA-Gly) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # trnT-trnL-trnF (trnT-trnL intergenic spacer, trnL, trnL-trnF intergenic spacer, trnF) chloroplast
 trnT-trnL-trnF	01	1	no	trnT-trnL	100	misc_feature	note	strict	nuccore	trnT-trnL AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
@@ -68,9 +68,9 @@ trnT-trnL-trnF	07	1	no	trnT$tRNA-Thr->trnL$tRNA-Leu	1	gene	gene	strict	nuccore	(
 trnT-trnL-trnF	08	3	no	trnL$tRNA-Leu->trnF$tRNA-Phe	1	gene	gene	strict	nuccore	(trnL OR tRNA-Leu) AND (trnF OR tRNA-Phe) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # rps16 (ribosomal protein S16) chloroplast
-# rps16	01	X	no	rps16	100	gene	gene	strict	nuccore	rps16[Gene Name] AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+rps16	01	X	no	rps16	100	gene	gene	strict	nuccore	rps16[Gene Name] AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
 
 # psbA-trnH (psbA-trnH intergenic spacer) chloroplast
-# psbA-trnH	01	X	no	psbA-trnH	100	misc_feature	note	loose	nuccore	psbA-trnH AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# psbA-trnH	02	X	yes	trnH-psbA	100	misc_feature	note	loose	nuccore	trnH-psbA AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
-# psbA-trnH	03	X	no	psbA->trnH$tRNA-His	1	gene	gene	strict	nuccore	psbA AND (trnH OR tRNA-His) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+psbA-trnH	01	X	no	psbA-trnH	100	misc_feature	note	loose	nuccore	psbA-trnH AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+psbA-trnH	02	X	yes	trnH-psbA	100	misc_feature	note	loose	nuccore	trnH-psbA AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
+psbA-trnH	03	X	no	psbA->trnH$tRNA-His	1	gene	gene	strict	nuccore	psbA AND (trnH OR tRNA-His) AND (txid197382[Organism] OR txid197388[Organism] OR txid4121[Organism] OR txid4120[Organism] OR txid4123[Organism] OR txid4070[Organism])
