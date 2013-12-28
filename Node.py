@@ -136,7 +136,7 @@ class Node(object):
         '''
         return self._parent
 
-    def row(self):
+    def index(self):
         '''
         documentation
         '''
