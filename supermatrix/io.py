@@ -53,6 +53,22 @@ def parse_search_queries_file(search_queries_handle):
     return search_queries_tree
 
 
+def write_search_queries_file(search_queries_tree, file_handle):
+    '''
+    Write tab-separated search queries file.
+    '''
+    headers = None
+    for name1_node in search_queries_tree.children():
+        for name2_node in name1_node.children():
+            if not headers:
+                headers = sorted(name2_node.data().keys())
+                file_handle.write('\t'.join(headers) + '\n')
+            fields = list()
+            for header in headers:
+                fields.append(name2_node.data()[header])
+            file_handle.write('\t'.join(fields) + '\n')
+
+
 def parse_input_file(file_path):
     '''
     Read an input (zip) file and return correct representations of all input
@@ -81,4 +97,8 @@ def parse_input_file(file_path):
 
 if __name__ == '__main__':
     if krpy.debug.RUN_DEBUG_CODE:
-        parse_input_file('test_data/sm_input.krsm')
+        INPUT_FILE_DICT = parse_input_file('test_data/sm_input.krsm')
+        with open('test_data/search_queries_write_test.tsv', 'w') as \
+        FILE_HANDLE:
+            write_search_queries_file(INPUT_FILE_DICT['search_queries'],
+                                      FILE_HANDLE)
