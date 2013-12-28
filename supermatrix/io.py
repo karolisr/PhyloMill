@@ -42,6 +42,17 @@ def parse_search_queries_file(search_queries_handle):
                     'name1: ' + key + ', name2: ' + key_2_entry['name2'],
                     parse_search_queries_file)
 
+    # Construct hierarchical structure.
+    main_root = krpy.TreeNode('root')
+    for key in search_queries.keys():
+        name_1_root = krpy.TreeNode(key)
+        main_root.add_child(name_1_root)
+        for key_2_entry in search_queries[key]:
+            name_2_node = krpy.TreeNode(key_2_entry['name2'])
+            name_1_root.add_child(name_2_node)
+
+    print(main_root)
+
     return search_queries
 
 

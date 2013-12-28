@@ -115,7 +115,7 @@ class TreeNode(object):
             output += child.log(tab_level)
 
         tab_level -= 1
-        output += "\n"
+#         output += "\n"
 
         return output
 
