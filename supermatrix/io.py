@@ -18,13 +18,21 @@ import zipfile
 import krpy
 
 
+def parse_search_queries_file(search_queries_handle):
+    '''
+    Parse tab-separated search queries file.
+    TODO: describe search queries file structure.
+    '''
+    search_queries = krpy.io.read_table_file(handle=search_queries_handle,
+        has_headers=True, headers=None, delimiter='\t', quotechar="'")
+    return search_queries
+
+
 def parse_input_file(file_path):
-
     '''
-        Read an input (zip) file and return correct representations of all
-        input files.
+    Read an input (zip) file and return correct representations of all input
+    files.
     '''
-
     search_queries_file_name = 'search_queries.tsv'
 
     search_queries_handle = None
@@ -40,8 +48,9 @@ def parse_input_file(file_path):
 
             # TODO: check that all files exist in the input file.
 
-    search_queries = krpy.io.read_table_file(handle=search_queries_handle,
-        has_headers=True, headers=None, delimiter='\t', quotechar="'")
+    search_queries = parse_search_queries_file(search_queries_handle)
+
+    search_queries_handle.close()
 
     return {'search_queries': search_queries}
 
