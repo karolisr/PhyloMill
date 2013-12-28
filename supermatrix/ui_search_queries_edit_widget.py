@@ -11,16 +11,19 @@ from __future__ import division
 
 __updated__ = '2013-12-27'
 
+from PyQt4 import QtGui
 
-class MyClass(object):
+
+class SearchQueriesEditWidget(QtGui.QWidget):
     '''
-    classdocs
+    SearchQueriesEditWidget
     '''
 
-    def __init__(self, params):
+    def __init__(self):
         '''
         Constructor
         '''
+        super(SearchQueriesEditWidget, self).__init__()
 
 if __name__ == '__main__':
     pass
