@@ -16,11 +16,27 @@ __updated__ = '2013-12-29'
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
+import krpy
+
 
 class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
     '''
     SearchQueriesTreeModel
     '''
+
+#     {
+#         'name1': 'Name',
+#         'name2': 'Name',
+#         'locus_relative_position': 'Locus relative position',
+#         'force_rev_comp': 'Force reverse complement',
+#         'locus': 'Locus',
+#         'minlen': 'Min. length',
+#         'ncbi_feature_type': 'Feature type',
+#         'ncbi_qualifier_label': 'Qualifier label',
+#         'match_stringency': 'Match stringency',
+#         'database': 'Database',
+#         'query': 'Query'
+#     }
 
     def __init__(self, root_node, parent=None):
         '''
@@ -28,6 +44,31 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
         '''
         super(SearchQueriesTreeModel, self).__init__(parent)
         self._root_node = root_node
+        self._column_headers_user = (
+                                'Name',
+                                'Locus relative position',
+                                'Force reverse complement',
+                                'Locus',
+                                'Min. length',
+                                'Feature type',
+                                'Qualifier label',
+                                'Match stringency',
+                                'Database',
+                                'Query')
+        self._column_headers = (
+#                                 'name1',
+#                                 'name2',
+                                'locus_relative_position',
+                                'force_rev_comp',
+                                'locus',
+                                'minlen',
+                                'ncbi_feature_type',
+                                'ncbi_qualifier_label',
+                                'match_stringency',
+                                'database',
+                                'query')
+
+        self._column_count = len(self._column_headers_user)
 
     def rowCount(self, parent_q_model_index):
         '''
@@ -43,7 +84,7 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
         '''
         columnCount
         '''
-        return 1
+        return self._column_count
 
     def data(self, q_model_index, role):
         '''
@@ -53,8 +94,12 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
             return None
         node = q_model_index.internalPointer()
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
-            if q_model_index.column() == 0:
+            col = q_model_index.column()
+            if col == 0:
                 return node.name()
+            else:
+                if node.data():
+                    return node.data()[self._column_headers[col - 1]]
 
 #         if role == QtCore.Qt.DecorationRole:
 #             if index.column() == 0:
@@ -84,8 +129,10 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
         '''
         headerData
         '''
-        if role == QtCore.Qt.DisplayRole:
-            return 'Search Queries'
+        if role == QtCore.Qt.DisplayRole and \
+            orientation == QtCore.Qt.Horizontal:
+
+            return self._column_headers_user[section]
 
     def flags(self, q_model_index):
         '''
@@ -175,34 +222,44 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
 #         return success
 
 
-# class SearchQueriesTreeView(QtGui.QTreeView):
-#     '''
-#     SearchQueriesTreeView
-#     '''
-#
-#     def __init__(self):
-#         '''
-#         Constructor
-#         '''
-#         super(SearchQueriesTreeView, self).__init__()
-
-
 class SearchQueriesEditWidget(QtGui.QWidget):
     '''
     SearchQueriesEditWidget
     '''
 
-    def __init__(self):
+    def __init__(self, model):
         '''
         Constructor
         '''
         super(SearchQueriesEditWidget, self).__init__()
 
+        self.init_ui()
+        self.init_model(model)
+
+    def init_ui(self):
+        '''
+        init_ui
+        '''
+        self.tree_view = QtGui.QTreeView()
+        self.tree_view.setAlternatingRowColors(True)
+
+        bottom_layout = QtGui.QHBoxLayout()
+        bottom_layout.addStretch(0)
+        bottom_layout.addWidget(QtGui.QPushButton('Save'))
+        bottom_layout.addWidget(QtGui.QPushButton('Cancel'))
+
+        v_box = QtGui.QVBoxLayout()
+        v_box.addWidget(self.tree_view)
+        v_box.addLayout(bottom_layout)
+
+        self.setLayout(v_box)
+
+    def init_model(self, model):
+        self.tree_view.setModel(model)
+
 if __name__ == '__main__':
 
     import sys
-
-    import krpy
 
     from krpy import supermatrix
 
@@ -214,12 +271,8 @@ if __name__ == '__main__':
                                                         SEARCH_QUERIES_HANDLE)
 
         APP = QtGui.QApplication(sys.argv)
-
         MODEL = SearchQueriesTreeModel(SEARCH_QUERIES)
-
-        TREE_VIEW = QtGui.QTreeView()
-        TREE_VIEW.setModel(MODEL)
-        TREE_VIEW.show()
-        TREE_VIEW.header().show()
+        SQE_WIDGET = SearchQueriesEditWidget(MODEL)
+        SQE_WIDGET.show()
 
         sys.exit(APP.exec_())
