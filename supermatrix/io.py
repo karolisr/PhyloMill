@@ -15,8 +15,14 @@ __all__ = []
 __version__ = 0.1
 __updated__ = '2013-12-28'
 
+import os
 import zipfile
+import tempfile
+import shutil
 import krpy
+
+SEARCH_QUERIES_FILE_NAME = 'search_queries.tsv'
+SEARCH_QUERIES_KEY = 'search_queries'
 
 
 def parse_search_queries_file(search_queries_handle):
@@ -53,20 +59,21 @@ def parse_search_queries_file(search_queries_handle):
     return search_queries_tree
 
 
-def write_search_queries_file(search_queries_tree, file_handle):
+def write_search_queries_file(search_queries_tree, file_path):
     '''
     Write tab-separated search queries file.
     '''
-    headers = None
-    for name1_node in search_queries_tree.children():
-        for name2_node in name1_node.children():
-            if not headers:
-                headers = sorted(name2_node.data().keys())
-                file_handle.write('\t'.join(headers) + '\n')
-            fields = list()
-            for header in headers:
-                fields.append(name2_node.data()[header])
-            file_handle.write('\t'.join(fields) + '\n')
+    with open(file_path, 'w') as file_handle:
+        headers = None
+        for name1_node in search_queries_tree.children():
+            for name2_node in name1_node.children():
+                if not headers:
+                    headers = sorted(name2_node.data().keys())
+                    file_handle.write('\t'.join(headers) + '\n')
+                fields = list()
+                for header in headers:
+                    fields.append(name2_node.data()[header])
+                file_handle.write('\t'.join(fields) + '\n')
 
 
 def parse_input_file(file_path):
@@ -74,7 +81,6 @@ def parse_input_file(file_path):
     Read an input (zip) file and return correct representations of all input
     files.
     '''
-    search_queries_file_name = 'search_queries.tsv'
 
     search_queries_handle = None
 
@@ -84,21 +90,56 @@ def parse_input_file(file_path):
         for file_name in zip_file.namelist():
             krpy.debug.message('Listing file: ' + file_name + ' in ' +
                                file_path + '.', parse_input_file)
-            if file_name == search_queries_file_name:
+            if file_name == SEARCH_QUERIES_FILE_NAME:
                 search_queries_handle = zip_file.open(file_name, 'rU')
 
             # TODO: check that all files exist in the input file.
 
-    search_queries = parse_search_queries_file(search_queries_handle)
+    search_queries_tree = parse_search_queries_file(search_queries_handle)
 
     search_queries_handle.close()
 
-    return {'search_queries': search_queries}
+    return {SEARCH_QUERIES_KEY: search_queries_tree}
+
+
+def write_input_file(data, file_path):
+    '''
+    Will write an input file to disk.
+    data is a dictionary where each item is a separate file that needs to be
+    written. Keys are:
+
+        search_queries
+
+    '''
+    for key in data.keys():
+        if key == SEARCH_QUERIES_KEY:
+            krpy.debug.message('Found: \'' + SEARCH_QUERIES_KEY + \
+                               '\' in data.', write_input_file)
+            search_queries_tree = data[key]
+            if os.path.exists(file_path):
+                krpy.debug.message('Removing: ' + SEARCH_QUERIES_FILE_NAME + \
+                               ' from ' + file_path + '.', write_input_file)
+                krpy.io.remove_file_from_zip(file_path,
+                                             SEARCH_QUERIES_FILE_NAME)
+            temp_dir = tempfile.mkdtemp()
+            temp_file_path = os.path.join(temp_dir, 'temp_' + \
+                                          SEARCH_QUERIES_FILE_NAME)
+            write_search_queries_file(search_queries_tree, temp_file_path)
+            zip_file_mode = 'a'
+            if not os.path.exists(file_path):
+                zip_file_mode = 'w'
+            with zipfile.ZipFile(file_path, zip_file_mode) as zip_file:
+                krpy.debug.message('Writing: ' + temp_file_path + ' to ' + \
+                                   file_path + '.', write_input_file)
+                zip_file.write(temp_file_path, SEARCH_QUERIES_FILE_NAME)
+            shutil.rmtree(temp_dir)
 
 if __name__ == '__main__':
     if krpy.debug.RUN_DEBUG_CODE:
+
         INPUT_FILE_DICT = parse_input_file('test_data/sm_input.krsm')
-        with open('test_data/search_queries_write_test.tsv', 'w') as \
-        FILE_HANDLE:
-            write_search_queries_file(INPUT_FILE_DICT['search_queries'],
-                                      FILE_HANDLE)
+
+        write_search_queries_file(INPUT_FILE_DICT['search_queries'],
+                                  'test_data/search_queries_write_test.tsv')
+
+        write_input_file(INPUT_FILE_DICT, 'test_data/sm_input_test.zip')

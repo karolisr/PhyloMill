@@ -47,8 +47,8 @@ def test_write_search_queries_file():
         search_queries = supermatrix.io.parse_search_queries_file(
                                                         search_queries_handle)
 
-    with open('test_data/search_queries_write_test.tsv', 'w') as file_handle:
-        supermatrix.io.write_search_queries_file(search_queries, file_handle)
+    supermatrix.io.write_search_queries_file(search_queries,
+                                    'test_data/search_queries_write_test.tsv')
 
     with open('test_data/search_queries_write_test.tsv', 'r') as \
         search_queries_handle:
@@ -77,4 +77,15 @@ def test_parse_input_file():
     '''
     from krpy import supermatrix
     out_dict = supermatrix.io.parse_input_file('test_data/sm_input.krsm')
+    assert out_dict['search_queries'] is not None
+
+
+def test_write_input_file():
+    '''
+    test_write_input_file
+    '''
+    from krpy import supermatrix
+    out_dict = supermatrix.io.parse_input_file('test_data/sm_input.krsm')
+    supermatrix.io.write_input_file(out_dict, 'test_data/sm_input_test.krsm')
+    out_dict = supermatrix.io.parse_input_file('test_data/sm_input_test.krsm')
     assert out_dict['search_queries'] is not None

@@ -13,7 +13,12 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__updated__ = '2013-12-27'
+__updated__ = '2013-12-28'
+
+import os
+import tempfile
+import zipfile
+import shutil
 
 import krpy
 
@@ -162,6 +167,24 @@ def read_table_file(handle=None, path=None, has_headers=False, headers=None,
     handle.close()
 
     return return_value
+
+
+def remove_file_from_zip(zipfname, *filenames):
+    '''
+    Removes file(s) frome a zip file.
+    '''
+    tempdir = tempfile.mkdtemp()
+    try:
+        tempname = os.path.join(tempdir, 'new.zip')
+        with zipfile.ZipFile(zipfname, 'r') as zipread:
+            with zipfile.ZipFile(tempname, 'w') as zipwrite:
+                for item in zipread.infolist():
+                    if item.filename not in filenames:
+                        data = zipread.read(item.filename)
+                        zipwrite.writestr(item, data)
+        shutil.move(tempname, zipfname)
+    finally:
+        shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
     pass
