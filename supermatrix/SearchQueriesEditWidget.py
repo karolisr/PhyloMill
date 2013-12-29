@@ -11,7 +11,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
 
-__updated__ = '2013-12-28'
+__updated__ = '2013-12-29'
 
 from PyQt4 import QtGui
 from PyQt4 import QtCore
@@ -175,16 +175,16 @@ class SearchQueriesTreeModel(QtCore.QAbstractItemModel):
 #         return success
 
 
-class SearchQueriesTreeView(QtGui.QTreeView):
-    '''
-    SearchQueriesTreeView
-    '''
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(SearchQueriesTreeView, self).__init__()
+# class SearchQueriesTreeView(QtGui.QTreeView):
+#     '''
+#     SearchQueriesTreeView
+#     '''
+#
+#     def __init__(self):
+#         '''
+#         Constructor
+#         '''
+#         super(SearchQueriesTreeView, self).__init__()
 
 
 class SearchQueriesEditWidget(QtGui.QWidget):

@@ -13,7 +13,7 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__updated__ = '2013-12-27'
+__updated__ = '2013-12-29'
 
 
 def attr(obj):
@@ -32,6 +32,7 @@ def parse_line(line, delimiter, quotechar, stripchar):
     '''
     Will parse a line separated by delimiter and will return a list. Parts
     surrounded by quotechar will be grouped even if delimiter is found within.
+    TODO: write a test for parse_line.
     '''
 
     if not isinstance(line, basestring):

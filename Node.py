@@ -13,7 +13,7 @@ from __future__ import division
 
 __all__ = []
 __version__ = 0.1
-__updated__ = '2013-12-28'
+__updated__ = '2013-12-29'
 
 
 class Node(object):
