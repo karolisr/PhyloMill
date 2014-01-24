@@ -880,11 +880,18 @@ def extract_loci(
                             qualifier_label='cultivar',
                             feature_type='source')
 
+                        hack_fi_strain = krseq.get_features_with_qualifier_label(
+                            record=record,
+                            qualifier_label='strain',
+                            feature_type='source')
+
                         hack_fi = None
                         if hack_fi_specimen_voucher:
                             hack_fi = hack_fi_specimen_voucher
                         elif hack_fi_cultivar:
                             hack_fi = hack_fi_cultivar
+                        elif hack_fi_strain:
+                            hack_fi = hack_fi_strain
 
                         if(hack_fi):
                             hack_f = record.features[hack_fi[0]]
@@ -893,6 +900,9 @@ def extract_loci(
                                 voucher = hack_f.qualifiers['specimen_voucher'][0]
                             elif hack_fi_cultivar:
                                 voucher = hack_f.qualifiers['cultivar'][0]
+                            elif hack_fi_strain:
+                                voucher = hack_f.qualifiers['strain'][0]
+
                             if voucher not in do_not_repeat:
                                 if voucher in found_previously.keys():
                                     hack_species_found = found_previously[voucher]
@@ -1202,6 +1212,8 @@ def one_locus_per_organism(
         # separator_unique = '@'
         # separator_accession = '$'
 
+        print(f['path'])
+
         records = krbioio.read_sequence_file(f['path'], 'fasta')
         for r in records:
             parsed_id = parse_seq_id(r.id)
@@ -1211,7 +1223,7 @@ def one_locus_per_organism(
                 taxid=parsed_id['taxid'],
                 old_name=parsed_id['old_name'],
                 new_name=parsed_id['new_name'])
-
+        
         for r in additional_sequences:
             parsed_id = parse_seq_id(r.id)
             if parsed_id['locus'] == name1:

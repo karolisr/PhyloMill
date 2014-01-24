@@ -281,7 +281,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
             'subspecies': m[0]['AccSubspecies'],
             'variety': m[0]['AccVariety']
             }
-            print('\t'+flatten_organism_name(new_name, '_'))
+        #   print('\t'+flatten_organism_name(new_name, '_'))
         # print('======= =======')
 
     for me in matching_entries:

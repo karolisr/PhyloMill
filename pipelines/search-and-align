@@ -229,6 +229,11 @@ if __name__ == '__main__':
 
             additional_sequences = krbioio.read_sequence_file(additional_sequences_file, 'fasta')
 
+            #print(additional_sequences)
+
+            #if len(additional_sequences) == 0:
+            #    additional_sequences = list()
+
             # One locus per organism
             new_cutlist_records_auto = krseqsearch.one_locus_per_organism(
                 extracted_results_dir=extract_loci_dir,
