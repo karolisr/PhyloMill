@@ -29,7 +29,8 @@ def get_features_with_qualifier(record, qualifier_label, qualifier,
     for feature_index in features:
         feature = record.features[feature_index]
         for q in feature.qualifiers[qualifier_label]:
-            if not loose and (q.lower().startswith(qualifier.lower())):
+            #if not loose and (q.lower().startswith(qualifier.lower())):
+            if not loose and (q.lower() == qualifier.lower()):
                 result_features.append(feature_index)
             if loose and qualifier.lower() in q.lower():
                 result_features.append(feature_index)
