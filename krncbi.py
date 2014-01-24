@@ -178,8 +178,8 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
 def get_ncbi_tax_id(record):
     import krseq
-    feature_index = krseq.get_features_with_qualifier(record, 'db_xref',
-                                                      'taxon')[0]
+    feature_index = krseq.get_features_with_qualifier(
+        record, 'db_xref', 'taxon', feature_type=None, loose=True)[0]
     # ToDo: search for taxon key as we now assume that it will always be the
     # last in the list
     return record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1]

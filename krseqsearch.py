@@ -534,9 +534,15 @@ def extract_loci(
     file_list = krio.parse_directory(search_results_dir, file_name_sep)
     file_list.sort(reverse=True)
 
+    if not unresolvable_taxonomy_list:
+        unresolvable_taxonomy_list = list()
+
     unresolvable_taxonomy_dict = dict()
     for ud in unresolvable_taxonomy_list:
         unresolvable_taxonomy_dict[ud['Name']] = ud['Danger']
+
+    if not taxa_mappings_list:
+        taxa_mappings_list = list()
 
     taxa_mappings_dict = dict()
     for atm in taxa_mappings_list:

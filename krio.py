@@ -117,7 +117,12 @@ def read_table_file(
         A list of dictionaries, one dictionary per row. Header names as keys.
     '''
 
+    import os
+
     import krother
+
+    if not os.path.exists(path):
+        return None
 
     handle = CommentedFile(open(path, 'rb'), commentstring=commentchar)
     if headers is not None:
