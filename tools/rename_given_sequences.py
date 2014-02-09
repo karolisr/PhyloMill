@@ -1,5 +1,3 @@
-# @PydevCodeAnalysisIgnore
-# pylint: skip-file
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
