@@ -1,0 +1,45 @@
+# -----------------------------------------------------------------------------
+# --commands search,filter,extract,flatten,align,concatenate
+# -----------------------------------------------------------------------------
+
+[General]
+
+# Contact email, so NCBI can inform the user if there are any problems
+email = test@test.com
+
+usearch_executable = usearch
+mafft_executable = mafft
+muscle_executable = muscle
+
+[Hacks]
+
+tgrc = No
+tgrc_data = ../data/sol_sp_with_tgrc_vouchers
+
+[Flatten]
+
+proceed_without_review = No
+
+identity_threshold = 0.60
+
+align_program = mafft
+align_program_options = --localpair --maxiterate 1000 --nuc --reorder --thread 4
+
+[Align]
+
+align_program = mafft
+
+# Fastest
+#align_program_options = --retree 1 --nuc --reorder --thread 4
+
+# Slower / More Accurate
+align_program_options = --auto --nuc --reorder --thread 4
+
+# Very Slow / Most Accurate
+#align_program_options = --localpair --maxiterate 1000 --nuc --reorder --thread 4
+
+[Concatenate]
+
+order_of_loci = GBSSI, ndhF, atpB, matK-trnK, rbcL, trnT-trnL, trnL, trnL-trnF, trnF, ITS1-5.8-ITS2, trnS-trnG, rps16, psbA-trnH, At1g13380, At5g14320, At1g20050, At1g32130
+
+number_of_gaps_between_loci = 0
