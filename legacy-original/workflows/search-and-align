@@ -1,5 +1,5 @@
-# @PydevCodeAnalysisIgnore
 #!/usr/bin/env python
+# @PydevCodeAnalysisIgnore
 
 from __future__ import print_function
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             hacks_data_location[hack] = config.get('Hacks', hack + '_data')
 
         # Parse queries file
-        queries = krio.read_table_file(query_file, has_headers=True,
+        queries = krio.read_table_file(path=query_file, has_headers=True,
                                        headers=None, delimiter='\t',
                                        quotechar="'")
 
@@ -140,7 +140,8 @@ if __name__ == '__main__':
                 rettype='dict')
 
             synonymy_table = krio.read_table_file(
-                synonymy_file, has_headers=True, headers=None, delimiter=',')
+                path=synonymy_file,
+                has_headers=True, headers=None, delimiter=',')
 
             unresolvable_taxonomy_list = krio.read_table_file(
                 path=unresolvable_taxonomy_file,
