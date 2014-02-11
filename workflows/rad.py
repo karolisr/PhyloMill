@@ -28,6 +28,7 @@ if __name__ == '__main__':
     import subprocess
     import string
     import datetime
+    import random
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
@@ -1578,9 +1579,69 @@ if __name__ == '__main__':
                     write_log(msg, lfp)
                     ############################################################
 
-                    concatenated_aln = kralign.concatenate(all_aln_filtered, 10)
+                    partitions_output_file = between_sample_alignments_output_dir + f['split'][0] + '_concatenated_partitions.csv'
+                    raxml_partitions_output_file = between_sample_alignments_output_dir + f['split'][0] + '_concatenated_partitions_raxml'
+                    f_part = open(partitions_output_file, 'wb')
+                    f_part_raxml = open(raxml_partitions_output_file, 'wb')
+
+                    concatenated = kralign.concatenate(all_aln_filtered, 10)
+
+                    concatenated_aln = concatenated[0]
+                    cat_partitions = concatenated[1]
+
+                    f_part.write('locus,start,end\n')
+                    for i, part in enumerate(cat_partitions):
+                        raxml_part_line = 'DNA, ' + str(i) + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
+                        f_part_raxml.write(raxml_part_line)
+                        part_line = str(i) + ',' + str(part[0]) + ',' + str(part[1]) + '\n'
+                        f_part.write(part_line)
+
                     cat_aln_output_file_path = between_sample_alignments_output_dir + f['split'][0] + '_concatenated.phy'
                     AlignIO.write(concatenated_aln, cat_aln_output_file_path, "phylip-relaxed")
+
+                    f_part.close()
+                    f_part_raxml.close()
+
+                    msg = '\nProducing RAxML commands...\n'
+                    print(msg)
+                    write_log(msg, lfp)
+
+                    raxml_commands_file = between_sample_alignments_output_dir + f['split'][0] + '_raxml_commands.txt'
+                    f_raxml = open(raxml_commands_file, 'wb')
+
+                    raxml_line_1 = 'raxml \\\n'
+                    f_raxml.write(raxml_line_1)
+
+                    raxml_line_2 = '-s ' + cat_aln_output_file_path + ' \\\n'
+                    f_raxml.write(raxml_line_2)
+
+                    raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
+                    f_raxml.write(raxml_line_3)
+
+                    raxml_output_dir = between_sample_alignments_output_dir + f['split'][0] + '_raxml'
+                    krio.prepare_directory(raxml_output_dir)
+
+                    raxml_line_4 = '-w ' + raxml_output_dir + ' \\\n'
+                    f_raxml.write(raxml_line_4)
+
+                    outgroups_for_tree = list()
+                    for a in concatenated_aln:
+                        if a.id in outgroups:
+                            outgroups_for_tree.append(a.id)
+
+                    raxml_line_5 = '-o ' + ','.join(outgroups_for_tree) + ' \\\n'
+                    f_raxml.write(raxml_line_5)
+
+                    raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T 4 \\\n-N 1 \\\n'
+                    f_raxml.write(raxml_line_6)
+
+                    raxml_line_7 = '-p ' + str(random.randrange(0, 1000000000)) + ' \\\n'
+                    f_raxml.write(raxml_line_7)
+
+                    raxml_line_8 = '-n ' + f['split'][0] + '\n'
+                    f_raxml.write(raxml_line_8)
+
+                    f_raxml.close()
 
         msg = 'Started: ' + str(start_time).split('.')[0]
         print(msg)
