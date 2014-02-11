@@ -639,8 +639,9 @@ def combine_demultiplexed_results(input_dir, output_dir):
     for f in file_list:
         output_file_path = output_dir + f['full']
         output_file_handle = open(output_file_path, 'wa')
-        for part in range(1, len(directory_list) + 1):
-            part_directory_path = input_dir + str(part) + ps
+#         for part in range(1, len(directory_list) + 1):
+        for part_dir in directory_list:
+            part_directory_path = input_dir + part_dir['name'] + ps
             part_file_path = part_directory_path + f['full']
             shutil.copyfileobj(open(part_file_path, 'rb'),
                                output_file_handle)
