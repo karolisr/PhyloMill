@@ -29,6 +29,7 @@ if __name__ == '__main__':
     import string
     import datetime
     import random
+    import shutil
 
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
@@ -62,6 +63,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--config', type=unicode,
                         help='Configuration file path.')
+
+    parser.add_argument('--group', type=unicode,
+                        help='Sample group to analyze.')
 
     # parser.add_argument('--output_dir', type=unicode,
     #                     help='Output directory path.')
@@ -366,11 +370,38 @@ if __name__ == '__main__':
                     handle.write(str(l) + '\n')
                 handle.close()
 
+            # Move demultiplexed files to directories by sample groups
+            msg = '\nMoving demultiplexed results to directories by group...'
+            print(msg)
+            write_log(msg, lfp)
+
+            file_list = krio.parse_directory(
+                path=dmltplx_output_dir_combined,
+                file_name_sep='_',
+                sort='forward'
+            )
+
+            for group in sample_groups_dict.keys():
+                group_samples = sample_groups_dict[group]
+
+                output_dir = dmltplx_output_dir_combined + group + ps
+                krio.prepare_directory(output_dir)
+
+                for sample_name in group_samples:
+                    for f in file_list:
+                        output_file_path = output_dir + f['full']
+                        if f['name'].startswith(sample_name):
+                            shutil.move(f['path'], output_file_path)
+
             print()
             write_log('', lfp)
 
         # Mask low quality sites ----------------------------------------------
         if commands and ('mask' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
             # if not args.quality_score_treshold:
             #     print('quality_score_treshold is required.')
             #     sys.exit(1)
@@ -384,8 +415,11 @@ if __name__ == '__main__':
             #     print('output_file_format is required.')
             #     sys.exit(1)
 
-            krio.prepare_directory(masked_output_dir)
-            file_list = krio.parse_directory(dmltplx_output_dir_combined, ' ')
+            masked_output_dir_sample = masked_output_dir + args.group + ps
+            dmltplx_output_dir_combined_sample = dmltplx_output_dir_combined + args.group + ps
+
+            krio.prepare_directory(masked_output_dir_sample)
+            file_list = krio.parse_directory(dmltplx_output_dir_combined_sample, ' ')
 
             msg = 'Masking low quality sites...\n'
             print(msg)
@@ -408,7 +442,7 @@ if __name__ == '__main__':
                     # records = FastqPhredIterator(handle_r)
                     records = FastqGeneralIterator(handle_r)
                     # records = SeqIO.parse(f['path'], 'fastq')
-                    output_file_path = masked_output_dir + f['full']
+                    output_file_path = masked_output_dir_sample + f['full']
                     handle_w = open(output_file_path, 'w')
                     for r in records:
                         masked = krnextgen.mask_low_quality_sites(
@@ -460,6 +494,10 @@ if __name__ == '__main__':
         # Bin results by quality and produce forward and reverse consensus
         # sequences
         if commands and ('bin' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
             # if not args.max_prop_low_quality_sites:
             #     print('max_prop_low_quality_sites is required.')
             #     sys.exit(1)
@@ -476,8 +514,11 @@ if __name__ == '__main__':
             #     print('threads is required.')
             #     sys.exit(1)
 
-            krio.prepare_directory(binned_output_dir)
-            file_list = krio.parse_directory(masked_output_dir, '_')
+            masked_output_dir_sample = masked_output_dir + args.group + ps
+            binned_output_dir_sample = binned_output_dir + args.group + ps
+
+            krio.prepare_directory(binned_output_dir_sample)
+            file_list = krio.parse_directory(masked_output_dir_sample, '_')
 
             msg = ('Binning results by quality and producing\n'
                    'forward and reverse consensus sequences...\n')
@@ -494,7 +535,7 @@ if __name__ == '__main__':
                     base_file_name = f['split'][0] + '_'
                     # + f['split'][1] + '_'
 
-                    base_file_path = (masked_output_dir + base_file_name +
+                    base_file_path = (masked_output_dir_sample + base_file_name +
                                       f['split'][1] + '_')
 
                     msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
@@ -511,21 +552,21 @@ if __name__ == '__main__':
                         r_reads_handle = open(base_file_path + 'r.fastq', "rU")
                         r_reads = FastqGeneralIterator(r_reads_handle)
 
-                    ofp_f_hq = (binned_output_dir + base_file_name +
+                    ofp_f_hq = (binned_output_dir_sample + base_file_name +
                                 'f_hq.fasta')
-                    ofp_f_lq = (binned_output_dir + base_file_name +
+                    ofp_f_lq = (binned_output_dir_sample + base_file_name +
                                 'f_lq.fasta')
 
                     ofp_r_hq = None
                     ofp_r_lq = None
 
                     if r_reads:
-                        ofp_r_hq = (binned_output_dir + base_file_name +
+                        ofp_r_hq = (binned_output_dir_sample + base_file_name +
                                     'r_hq.fasta')
-                        ofp_r_lq = (binned_output_dir + base_file_name +
+                        ofp_r_lq = (binned_output_dir_sample + base_file_name +
                                     'r_lq.fasta')
 
-                    ofp_all_hq = (binned_output_dir + base_file_name +
+                    ofp_all_hq = (binned_output_dir_sample + base_file_name +
                                   'all_hq.fasta')
 
                     handle_f_hq = open(ofp_f_hq, 'w')
@@ -712,6 +753,10 @@ if __name__ == '__main__':
 
         # Cluster
         if commands and ('cluster_samples' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
             # if not args.threads:
             #     print('threads is required.')
             #     sys.exit(1)
@@ -719,8 +764,11 @@ if __name__ == '__main__':
             #     print('identity_threshold is required.')
             #     sys.exit(1)
 
-            krio.prepare_directory(clustered_output_dir)
-            file_list = krio.parse_directory(binned_output_dir, '_')
+            clustered_output_dir_sample = clustered_output_dir + args.group + ps
+            binned_output_dir_sample = binned_output_dir + args.group + ps
+
+            krio.prepare_directory(clustered_output_dir_sample)
+            file_list = krio.parse_directory(binned_output_dir_sample, '_')
 
             msg = 'Sorting before clustering...\n'
             print(msg)
@@ -742,7 +790,7 @@ if __name__ == '__main__':
 
             # We need to do this again as now we have new (sorted) files in the
             # directory
-            file_list = krio.parse_directory(binned_output_dir, '_')
+            file_list = krio.parse_directory(binned_output_dir_sample, '_')
 
             print()
             write_log('', lfp)
@@ -764,8 +812,8 @@ if __name__ == '__main__':
                     print(msg)
                     write_log(msg, lfp)
 
-                    first_uc = clustered_output_dir + f['name'] + '_1_1_uc'
-                    first_cons_path = clustered_output_dir + f['name'] + '_1_2_cons'
+                    first_uc = clustered_output_dir_sample + f['name'] + '_1_1_uc'
+                    first_cons_path = clustered_output_dir_sample + f['name'] + '_1_2_cons'
 
                     krusearch.cluster_file(
                         input_file_path=f['path'],
@@ -792,7 +840,7 @@ if __name__ == '__main__':
                             ' -sortbysize ' + first_cons_path +
                             ' -output ' + first_cons_path + '_sorted'), shell=True)
 
-                    second_uc = clustered_output_dir + f['name'] + '_2_1_uc'
+                    second_uc = clustered_output_dir_sample + f['name'] + '_2_1_uc'
 
                     krusearch.cluster_file(
                         input_file_path=first_cons_path + '_sorted',
@@ -816,7 +864,7 @@ if __name__ == '__main__':
 
                     # Produce a final cluster file
 
-                    final_uc = clustered_output_dir + f['split'][0] + '.uc'
+                    final_uc = clustered_output_dir_sample + f['split'][0] + '.uc'
                     first_dict = krusearch.parse_uc_file(first_uc, 'centroid')
                     second_dict = krusearch.parse_uc_file(second_uc, 'centroid')
                     new_dict = datrie.Trie(string.printable)
@@ -873,6 +921,10 @@ if __name__ == '__main__':
 
         # Produce sample alignments and nucleotide counts per site
         if commands and ('align_samples' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
             # if not args.min_seq_cluster:
             #     print('min_seq_cluster is required.')
             #     sys.exit(1)
@@ -883,8 +935,12 @@ if __name__ == '__main__':
             #     print('threads is required.')
             #     sys.exit(1)
 
-            krio.prepare_directory(sample_alignments_output_dir)
-            file_list = krio.parse_directory(clustered_output_dir, '_')
+            clustered_output_dir_sample = clustered_output_dir + args.group + ps
+            sample_alignments_output_dir_sample = sample_alignments_output_dir + args.group + ps
+            binned_output_dir_sample = binned_output_dir + args.group + ps
+
+            krio.prepare_directory(sample_alignments_output_dir_sample)
+            file_list = krio.parse_directory(clustered_output_dir_sample, '_')
 
             msg = ('Producing sample alignments and\n'
                    'read counts per site...\n')
@@ -902,12 +958,12 @@ if __name__ == '__main__':
             def t(q):
                 while True:
                     f = q.get()
-                    fasta_file_path = binned_output_dir + f['name'] + '_all_hq.fasta'
+                    fasta_file_path = binned_output_dir_sample + f['name'] + '_all_hq.fasta'
                     aln_output_file_path = (
-                        sample_alignments_output_dir +
+                        sample_alignments_output_dir_sample +
                         f['name'] + '.alignment')
                     counts_output_file_path = (
-                        sample_alignments_output_dir +
+                        sample_alignments_output_dir_sample +
                         f['name'] + '.counts')
 
                     msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' starting...'
@@ -1034,6 +1090,10 @@ if __name__ == '__main__':
 
         # Estimate error rate, heterozygosity. Produce some statistics
         if commands and ('analyze_samples' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
             # if not args.min_seq_cluster:
             #     print('min_seq_cluster is required.')
             #     sys.exit(1)
@@ -1050,7 +1110,9 @@ if __name__ == '__main__':
             #     print('threads is required.')
             #     sys.exit(1)
 
-            file_list = krio.parse_directory(sample_alignments_output_dir, '_')
+            sample_alignments_output_dir_sample = sample_alignments_output_dir + args.group + ps
+
+            file_list = krio.parse_directory(sample_alignments_output_dir_sample, '_')
 
             msg = ('Estimating error rate and within-sample heterozygosity...\n')
             print(msg)
@@ -1195,9 +1257,17 @@ if __name__ == '__main__':
 
         # Call consensus bases
         if commands and ('consensus' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
 
-            krio.prepare_directory(consensus_output_dir)
-            file_list = krio.parse_directory(sample_alignments_output_dir, '_')
+            group = args.group
+
+            consensus_output_dir_sample = consensus_output_dir + group + ps
+            sample_alignments_output_dir_sample = sample_alignments_output_dir + group + ps
+
+            krio.prepare_directory(consensus_output_dir_sample)
+            file_list = krio.parse_directory(sample_alignments_output_dir_sample, '_')
 
             msg = 'Calling consensus bases...\n'
             print(msg)
@@ -1210,49 +1280,49 @@ if __name__ == '__main__':
             group_stats = dict()
             sample_stats = dict()
 
-            for group in sample_groups_dict.keys():
-                group_samples = sample_groups_dict[group]
-                e_list = list()
-                h_list = list()
-                for sample in group_samples:
-                    stats_path = analyzed_samples_output_dir + str(sample) + '.stats'
-                    samples_stats_handle = open(stats_path, 'rb')
-                    lines = samples_stats_handle.readlines()
-                    e = float("inf")
-                    pi = 0.0
-                    for l in lines:
-                        if l.startswith('e'):
-                            e = float(l.split('\t')[1])
-                            e_list.append(e)
-                        if l.startswith('pi'):
-                            pi = float(l.split('\t')[1])
-                            h_list.append(pi)
-                    sample_stats[sample] = (e, pi)
-                mean_error = sum(e_list) / float(len(e_list))
-                mean_heter = sum(h_list) / float(len(h_list))
-                group_stats[group] = (mean_error, mean_heter)
-                # print(group)
-                # print('e', mean_error)
-                # print('pi', mean_heter)
+#             for group in sample_groups_dict.keys():
+            group_samples = sample_groups_dict[group]
+            e_list = list()
+            h_list = list()
+            for sample in group_samples:
+                stats_path = analyzed_samples_output_dir + str(sample) + '.stats'
+                samples_stats_handle = open(stats_path, 'rb')
+                lines = samples_stats_handle.readlines()
+                e = float("inf")
+                pi = 0.0
+                for l in lines:
+                    if l.startswith('e'):
+                        e = float(l.split('\t')[1])
+                        e_list.append(e)
+                    if l.startswith('pi'):
+                        pi = float(l.split('\t')[1])
+                        h_list.append(pi)
+                sample_stats[sample] = (e, pi)
+            mean_error = sum(e_list) / float(len(e_list))
+            mean_heter = sum(h_list) / float(len(h_list))
+            group_stats[group] = (mean_error, mean_heter)
+            # print(group)
+            # print('e', mean_error)
+            # print('pi', mean_heter)
 
             use_mean_e_and_pi = config.getboolean('Consensus', 'use_mean_e_and_pi')
 
             # Print log messages
             if use_mean_e_and_pi:
                 msg = 'Using mean group error rate and within-sample heterozygosity:\n\n'
-                for group in sample_groups_dict.keys():
-                    error = group_stats[group][0]
-                    heter = group_stats[group][1]
-                    msg = msg + group + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
+#                 for group in sample_groups_dict.keys():
+                error = group_stats[group][0]
+                heter = group_stats[group][1]
+                msg = msg + group + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
                 print(msg)
                 write_log(msg, lfp)
             else:
                 msg = 'Using per-sample error rate and within-sample heterozygosity:\n\n'
-                for group in sample_groups_dict.keys():
-                    for sample in sample_groups_dict[group]:
-                        error = sample_stats[sample][0]
-                        heter = sample_stats[sample][1]
-                        msg = msg + sample + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
+#                 for group in sample_groups_dict.keys():
+                for sample in sample_groups_dict[group]:
+                    error = sample_stats[sample][0]
+                    heter = sample_stats[sample][1]
+                    msg = msg + sample + ' e=' + str(error) + ', pi=' + str(heter) + '\n'
                 print(msg)
                 write_log(msg, lfp)
             # End print log messages
@@ -1275,7 +1345,7 @@ if __name__ == '__main__':
                         0,
                         rettype='dict')
 
-                    handle = open((consensus_output_dir +
+                    handle = open((consensus_output_dir_sample +
                                    f['split'][0] +
                                    '_' +
                                    'consensus' +
@@ -1285,12 +1355,12 @@ if __name__ == '__main__':
                     error = float("inf")
                     heter = 0.0
                     if use_mean_e_and_pi:
-                        for group in sample_groups_dict.keys():
-                            group_samples = sample_groups_dict[group]
-                            if current_sample in group_samples:
-                                error = group_stats[group][0]
-                                heter = group_stats[group][1]
-                                break
+#                         for group in sample_groups_dict.keys():
+                        group_samples = sample_groups_dict[group]
+                        if current_sample in group_samples:
+                            error = group_stats[group][0]
+                            heter = group_stats[group][1]
+#                             break
                     else:
                         error = sample_stats[current_sample][0]
                         heter = sample_stats[current_sample][1]
@@ -1356,60 +1426,63 @@ if __name__ == '__main__':
             max_prop_low_quality_sites = config.getfloat(
                 'Consensus', 'max_prop_low_quality_sites')
 
-            for group in sample_groups_dict.keys():
+#             for group in sample_groups_dict.keys():
 
-                group_samples = sample_groups_dict[group]
+            group_samples = sample_groups_dict[group]
 
-                consensus_handle = open((grouped_consensus_output_dir + group
-                                        + '_consensus' + '.fasta'), 'wb')
+            consensus_handle = open((grouped_consensus_output_dir + group
+                                    + '_consensus' + '.fasta'), 'wb')
 
-                consensus_handle_masked = open((grouped_consensus_output_dir
-                                               + group + '_consensus_masked'
-                                               + '.fasta'), 'wb')
+            consensus_handle_masked = open((grouped_consensus_output_dir
+                                           + group + '_consensus_masked'
+                                           + '.fasta'), 'wb')
 
-                # for f in file_list:
-                for sample in group_samples:
-                    # sample = f['split'][0]
-                    # f_handle = open(f['path'], 'rb')
-                    f_handle = open(consensus_output_dir + sample + '_consensus.fasta', 'rb')
-                    lines = f_handle.readlines()
-                    label = ''
-                    for l in lines:
-                        if l.startswith('>'):
-                            label = l.split('>')[1]
-                        else:
-                            l = l.strip()
-                            seq = l.strip(low_quality_residue)
+            # for f in file_list:
+            for sample in group_samples:
+                # sample = f['split'][0]
+                # f_handle = open(f['path'], 'rb')
+                f_handle = open(consensus_output_dir_sample + sample + '_consensus.fasta', 'rb')
+                lines = f_handle.readlines()
+                label = ''
+                for l in lines:
+                    if l.startswith('>'):
+                        label = l.split('>')[1]
+                    else:
+                        l = l.strip()
+                        seq = l.strip(low_quality_residue)
 
-                            prop_lq = krnextgen.proportion_low_quality_sites(
-                                seq, low_quality_residue=low_quality_residue)
+                        prop_lq = krnextgen.proportion_low_quality_sites(
+                            seq, low_quality_residue=low_quality_residue)
 
-                            # print(str(len(seq)) + ' ' + str(prop_lq) + ' ' + seq)
+                        # print(str(len(seq)) + ' ' + str(prop_lq) + ' ' + seq)
 
-                            if len(seq) >= min_read_length and prop_lq <= max_prop_low_quality_sites:
-                                consensus_handle.write('>' + sample + '_' + label)
-                                consensus_handle.write(seq + '\n')
+                        if len(seq) >= min_read_length and prop_lq <= max_prop_low_quality_sites:
+                            consensus_handle.write('>' + sample + '_' + label)
+                            consensus_handle.write(seq + '\n')
 
-                                consensus_handle_masked.write('>' + sample + '_' + label)
-                                # seq = re.sub('[RYMKWS]', low_quality_residue, seq)
-                                # print(seq)
-                                for k in iupac.keys():
-                                    for i in range(0, seq.count(iupac[k])):
-                                        # rand = binom.rvs(1, 0.5)
-                                        # rand = binomial(1, 0.5)
-                                        rand = numpy.random.randint(0, 2)
-                                        seq = seq.replace(iupac[k], k[rand], 1)
-                                # print(seq)
-                                consensus_handle_masked.write(seq + '\n')
+                            consensus_handle_masked.write('>' + sample + '_' + label)
+                            # seq = re.sub('[RYMKWS]', low_quality_residue, seq)
+                            # print(seq)
+                            for k in iupac.keys():
+                                for i in range(0, seq.count(iupac[k])):
+                                    # rand = binom.rvs(1, 0.5)
+                                    # rand = binomial(1, 0.5)
+                                    rand = numpy.random.randint(0, 2)
+                                    seq = seq.replace(iupac[k], k[rand], 1)
+                            # print(seq)
+                            consensus_handle_masked.write(seq + '\n')
 
-                consensus_handle.close()
-                consensus_handle_masked.close()
+            consensus_handle.close()
+            consensus_handle_masked.close()
 
             print()
             write_log('', lfp)
 
         # Cluster sequences between samples
         if commands and ('cluster_between' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
 
             krio.prepare_directory(between_sample_clusters_output_dir)
             file_list = krio.parse_directory(grouped_consensus_output_dir, '_')
@@ -1421,6 +1494,10 @@ if __name__ == '__main__':
             for f in file_list:
                 if f['split'][-1] != 'masked':
                     continue
+
+                if not f['name'].startswith(args.group):
+                    continue
+
                 # f_path = consensus_output_dir + 'consensus.fasta'
                 msg = krother.timestamp() + ' - ' + f['split'][0]
                 print(msg)
@@ -1488,6 +1565,9 @@ if __name__ == '__main__':
 
         # Align loci between samples
         if commands and ('align_between' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
 
             min_seq_locus = config.getint('Align Between Samples', 'min_seq_locus')
             max_hetero_per_column = config.getint('Align Between Samples', 'max_het_per_column')
@@ -1505,6 +1585,10 @@ if __name__ == '__main__':
             aln_program_options = config.get('Align Between Samples', 'options')
 
             for f in file_list:
+
+                if not f['name'].startswith(args.group):
+                    continue
+
                 msg = krother.timestamp() + ' - ' + f['split'][0]
                 print(msg)
                 write_log(msg, lfp)
