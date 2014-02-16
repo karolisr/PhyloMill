@@ -21,6 +21,8 @@ if __name__ == '__main__':
                         help='Alignment file format.')
     parser.add_argument('-n', '--names', type=unicode,
                         help='')
+    parser.add_argument('-a', '--action', type=unicode,
+                        help='keep or remove')
 
     # fasta, phylip-relaxed
     # http://biopython.org/wiki/AlignIO
@@ -39,6 +41,8 @@ if __name__ == '__main__':
         format = args.format
     if args.names:
         names = args.names.split(',')
+    if args.action:
+        action = args.action
 
     if input_file and output_file and format:
 
@@ -46,12 +50,20 @@ if __name__ == '__main__':
 
         good_sequences = list()
 
-        for a in alignment:
-            if a.id not in names:
-                sequence_record = SeqRecord(seq=a.seq, id=a.id, name='', description='')
-                good_sequences.append(sequence_record)
-            else:
-                print('Removing ' + a.id)
+        if action == 'remove':
+            for a in alignment:
+                if a.id not in names:
+                    sequence_record = SeqRecord(seq=a.seq, id=a.id, name='', description='')
+                    good_sequences.append(sequence_record)
+                else:
+                    print('Removing ' + a.id)
+        elif action == 'keep':
+            for a in alignment:
+                if a.id in names:
+                    sequence_record = SeqRecord(seq=a.seq, id=a.id, name='', description='')
+                    good_sequences.append(sequence_record)
+                else:
+                    print('Removing ' + a.id)
 
         new_aln = MultipleSeqAlignment(good_sequences)
 
