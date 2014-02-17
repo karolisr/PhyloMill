@@ -155,10 +155,10 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                 time.sleep(5)
                 continue
 
-            print(rec_downloaded, n_rec_to_download)
-            print(len(downloaded_uids), len(to_download_uids))
-            print(downloaded_uids - to_download_uids)
-            print(to_download_uids - downloaded_uids)
+            # print(rec_downloaded, n_rec_to_download)
+            # print(len(downloaded_uids), len(to_download_uids))
+            # print(downloaded_uids - to_download_uids)
+            # print(to_download_uids - downloaded_uids)
 
             # if rec_downloaded == n_rec_to_download:
             print('    Downloaded', rec_downloaded, 'of',
