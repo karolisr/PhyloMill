@@ -120,7 +120,7 @@ if __name__ == '__main__':
         if not commands or 'filter' in commands:
 
             # Filter records
-            krseqsearch.filter_records(
+            krseqsearch.filter_results(
                 search_results_dir=search_results_dir,
                 output_dir=filtered_results_dir,
                 cutlist_records_file=cutlist_records_file,

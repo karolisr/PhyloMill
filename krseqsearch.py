@@ -211,22 +211,17 @@ def search_and_download(queries, output_dir, file_name_sep, email, input_dir, lo
     handle.close()
 
 
-def filter_records(search_results_dir, output_dir, cutlist_records_file,
-                   cutlist_taxonomy_file):
+def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
 
-    import os
-    import krio
-    import krbioio
-    import krcl
-    import krseq
-    import krncbi
+    from krpy import krcl
+    from krpy import krseq
+    from krpy import krncbi
+    from krpy import krio
 
-    ps = os.path.sep
+    records_filtered_id = list()
+    records_filtered_tax = list()
 
-    print('\nFiltering records.')
-
-    print('\n\tPreparing output directory "', output_dir, '"', sep='')
-    krio.prepare_directory(output_dir)
+    krcl.hide_cursor()
 
     cutlist_records = None
     cutlist_taxonomy = None
@@ -251,6 +246,63 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
             quotechar='"',
             rettype='set')
 
+    print('\n\tFiltering records for ids.')
+    if cutlist_records:
+        records_count = len(records)
+        for i, record in enumerate(records):
+            krcl.print_progress(i + 1, records_count, 50, '\t')
+            if cutlist_records:
+                if ((record.id not in cutlist_records) and
+                    (krseq.get_annotation(record, 'gi') not in
+                        cutlist_records)):
+                    records_filtered_id.append(record)
+    else:
+        records_filtered_id = records
+    print('\n\tAccepted', len(records_filtered_id), 'records.')
+
+    print('\n\tFiltering records for taxonomy.')
+    if cutlist_taxonomy:
+        records_count = len(records_filtered_id)
+        for i, record in enumerate(records_filtered_id):
+            krcl.print_progress(i + 1, records_count, 50, '\t')
+            if cutlist_taxonomy:
+                if ((krncbi.get_ncbi_tax_id(record) not in
+                    cutlist_taxonomy) and
+                    krseq.get_annotation(record, 'organism') not in
+                        cutlist_taxonomy):
+                    records_filtered_tax.append(record)
+    else:
+        records_filtered_tax = records_filtered_id
+    print('\n\tAccepted', len(records_filtered_tax), 'records.')
+
+    results = None
+
+    if cutlist_taxonomy:
+        results = records_filtered_tax
+    else:
+        results = records_filtered_id
+
+    krcl.show_cursor()
+
+    return(results)
+
+
+def filter_results(search_results_dir, output_dir, cutlist_records_file,
+                   cutlist_taxonomy_file):
+
+    import os
+    import krio
+    import krbioio
+    import krseq
+    import krncbi
+
+    ps = os.path.sep
+
+    print('\nFiltering records.')
+
+    print('\n\tPreparing output directory "', output_dir, '"', sep='')
+    krio.prepare_directory(output_dir)
+
     file_list = krio.parse_directory(search_results_dir, ' ')
 
     # Iterate over search results
@@ -264,50 +316,13 @@ def filter_records(search_results_dir, output_dir, cutlist_records_file,
         # Read search results
         records = krbioio.read_sequence_file(f['path'], 'genbank')
 
-        records_filtered_id = list()
-        records_filtered_tax = list()
-
         print('\n\tProcessing: ', f['full'], sep='')
 
-        krcl.hide_cursor()
-
-        print('\n\tFiltering records for ids.')
-        if cutlist_records:
-            records_count = len(records)
-            for i, record in enumerate(records):
-                krcl.print_progress(i + 1, records_count, 50, '\t')
-                if cutlist_records:
-                    if ((record.id not in cutlist_records) and
-                        (krseq.get_annotation(record, 'gi') not in
-                            cutlist_records)):
-                        records_filtered_id.append(record)
-        else:
-            records_filtered_id = records
-        print('\n\tAccepted', len(records_filtered_id), 'records.')
-
-        print('\n\tFiltering records for taxonomy.')
-        if cutlist_taxonomy:
-            records_count = len(records_filtered_id)
-            for i, record in enumerate(records_filtered_id):
-                krcl.print_progress(i + 1, records_count, 50, '\t')
-                if cutlist_taxonomy:
-                    if ((krncbi.get_ncbi_tax_id(record) not in
-                        cutlist_taxonomy) and
-                        krseq.get_annotation(record, 'organism') not in
-                            cutlist_taxonomy):
-                        records_filtered_tax.append(record)
-        else:
-            records_filtered_tax = records_filtered_id
-        print('\n\tAccepted', len(records_filtered_tax), 'records.')
+        filtered_records = filter_records(records,
+            cutlist_records_file, cutlist_taxonomy_file)
 
         # Write results
-        if cutlist_taxonomy:
-            krbioio.write_sequence_file(records_filtered_tax, output_file,
-                                        'gb')
-        else:
-            krbioio.write_sequence_file(records_filtered_id, output_file, 'gb')
-
-        krcl.show_cursor()
+        krbioio.write_sequence_file(filtered_records, output_file, 'gb')
 
 
 def produce_seq_id(locus, reference_id, taxid, old_name, new_name, separator_0='|'):
@@ -1229,7 +1244,7 @@ def one_locus_per_organism(
                 taxid=parsed_id['taxid'],
                 old_name=parsed_id['old_name'],
                 new_name=parsed_id['new_name'])
-        
+
         for r in additional_sequences:
             parsed_id = parse_seq_id(r.id)
             if parsed_id['locus'] == name1:
