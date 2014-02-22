@@ -1272,8 +1272,6 @@ def one_locus_per_organism(
         # separator_unique = '@'
         # separator_accession = '$'
 
-        print(f['path'])
-
         records = krbioio.read_sequence_file(f['path'], 'fasta')
         for r in records:
             parsed_id = parse_seq_id(r.id)
@@ -1298,9 +1296,9 @@ def one_locus_per_organism(
     all_record_ids = all_records.keys()
 
     # LOOP ALL NAME1 ----------------------------------------------------------
-
+    print('')
     for name1 in all_loci_dict.keys():
-        print('\n\tProcessing', name1)
+        print('\tProcessing', name1)
 
         # review_0_dir = review_0_dir_base + name1 + '_'
         # review_1_dir = review_1_dir_base + name1 + '_'
