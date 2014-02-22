@@ -246,7 +246,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
             quotechar='"',
             rettype='set')
 
-    print('\n\tFiltering records for ids.')
+    print('\tFiltering records for ids.')
     if cutlist_records:
         records_count = len(records)
         for i, record in enumerate(records):
@@ -258,9 +258,9 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
                     records_filtered_id.append(record)
     else:
         records_filtered_id = records
-    print('\n\tAccepted', len(records_filtered_id), 'records.')
+    print('\tAccepted', len(records_filtered_id), 'records.')
 
-    print('\n\tFiltering records for taxonomy.')
+    print('\tFiltering records for taxonomy.')
     if cutlist_taxonomy:
         records_count = len(records_filtered_id)
         for i, record in enumerate(records_filtered_id):
@@ -273,7 +273,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
                     records_filtered_tax.append(record)
     else:
         records_filtered_tax = records_filtered_id
-    print('\n\tAccepted', len(records_filtered_tax), 'records.')
+    print('\tAccepted', len(records_filtered_tax), 'records.')
 
     results = None
 
