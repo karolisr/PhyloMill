@@ -221,7 +221,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     records_filtered_id = list()
     records_filtered_tax = list()
 
-    krcl.hide_cursor()
+    # krcl.hide_cursor()
 
     cutlist_records = None
     cutlist_taxonomy = None
@@ -282,7 +282,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     else:
         results = records_filtered_id
 
-    krcl.show_cursor()
+    # krcl.show_cursor()
 
     return(results)
 
@@ -904,7 +904,7 @@ def extract_loci(
 
         print('\n\tProcessing: ', name1, ' ', name2, ' / ', locus, sep='')
 
-        krcl.hide_cursor()
+        # krcl.hide_cursor()
 
         #######################################################################
         #######################################################################
@@ -1128,7 +1128,7 @@ def extract_loci(
 
         print('\n\tAccepted', len(sequences), 'sequences.')
 
-        krcl.show_cursor()
+        # krcl.show_cursor()
 
     all_logs = set()
     file_list = krio.parse_directory(log_dir, file_name_sep)
