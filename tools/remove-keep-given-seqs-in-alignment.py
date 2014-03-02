@@ -11,6 +11,8 @@ if __name__ == '__main__':
     from Bio.Align import MultipleSeqAlignment
     from Bio.SeqRecord import SeqRecord
 
+    from krpy import krio
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-i', '--input_file', type=unicode,
@@ -40,7 +42,19 @@ if __name__ == '__main__':
     if args.format:
         format = args.format
     if args.names:
-        names = args.names.split(',')
+
+        names = krio.read_table_file(
+            path=args.names,
+            has_headers=False,
+            headers=None,
+            delimiter=',',
+            quotechar=None,
+            stripchar='"',
+            rettype='set')
+
+        if not names:
+            names = args.names.split(',')
+
     if args.action:
         action = args.action
 
