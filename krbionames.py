@@ -191,6 +191,10 @@ def flatten_organism_name(parsed_name, sep=' '):
     if sub_bool and parsed_name['subspecies'] != '':
         name = name + sep + sub_string + sep + parsed_name['subspecies']
 
+    # TODO: This solves an issue where sometimes names of type:
+    # A b x C d do not get the spaces renamed by separators correctly
+    name = name.replace(' ', sep)
+
     return name
 
 
