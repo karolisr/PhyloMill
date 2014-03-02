@@ -174,35 +174,35 @@ def search_and_download(queries, output_dir, file_name_sep, email, input_dir, lo
             # Download records.
             krncbi.download_sequence_records(file_path, result_uids, db, email)
 
-    downloaded_gis_file = input_dir.rstrip(ps) + ps + 'downloaded_gis.csv'
+    downloaded_gis_file = log_dir.rstrip(ps) + ps + '01-downloaded-gis.csv'
 
     # First find previously downloaded GIs and see how many of them are the same
-    previous_uids = krio.read_table_file(
-        path=downloaded_gis_file,
-        has_headers=False,
-        headers=None,
-        delimiter=',',
-        quotechar=None,
-        stripchar='"',
-        rettype='set')
+    # previous_uids = krio.read_table_file(
+    #     path=downloaded_gis_file,
+    #     has_headers=False,
+    #     headers=None,
+    #     delimiter=',',
+    #     quotechar=None,
+    #     stripchar='"',
+    #     rettype='set')
 
-    novel_gis_file = log_dir.rstrip(ps) + ps + '01-novel-gis.csv'
-    missing_gis_file = log_dir.rstrip(ps) + ps + '01-missing-gis.csv'
+    # novel_gis_file = log_dir.rstrip(ps) + ps + '01-novel-gis.csv'
+    # missing_gis_file = log_dir.rstrip(ps) + ps + '01-missing-gis.csv'
 
-    novel_uids = all_uids - previous_uids
-    missing_uids = previous_uids - all_uids
+    # novel_uids = all_uids - previous_uids
+    # missing_uids = previous_uids - all_uids
 
-    novel_uids = list(novel_uids)
-    handle = open(novel_gis_file, 'w')
-    for uid in novel_uids:
-        handle.write(uid+'\n')
-    handle.close()
+    # novel_uids = list(novel_uids)
+    # handle = open(novel_gis_file, 'w')
+    # for uid in novel_uids:
+    #     handle.write(uid+'\n')
+    # handle.close()
 
-    missing_uids = list(missing_uids)
-    handle = open(missing_gis_file, 'w')
-    for uid in missing_uids:
-        handle.write(uid+'\n')
-    handle.close()
+    # missing_uids = list(missing_uids)
+    # handle = open(missing_gis_file, 'w')
+    # for uid in missing_uids:
+    #     handle.write(uid+'\n')
+    # handle.close()
 
     all_uids = list(all_uids)
     handle = open(downloaded_gis_file, 'w')
@@ -250,7 +250,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     if cutlist_records:
         records_count = len(records)
         for i, record in enumerate(records):
-            krcl.print_progress(i + 1, records_count, 50, '\t')
+            # krcl.print_progress(i + 1, records_count, 50, '\n')
             if cutlist_records:
                 if ((record.id not in cutlist_records) and
                     (krseq.get_annotation(record, 'gi') not in
@@ -264,7 +264,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     if cutlist_taxonomy:
         records_count = len(records_filtered_id)
         for i, record in enumerate(records_filtered_id):
-            krcl.print_progress(i + 1, records_count, 50, '\t')
+            # krcl.print_progress(i + 1, records_count, 50, '\t')
             if cutlist_taxonomy:
                 if ((krncbi.get_ncbi_tax_id(record) not in
                     cutlist_taxonomy) and
@@ -787,11 +787,15 @@ def check_organism_name(record, ncbi_names_table, synonymy_table, auth_file,
             # taxid_name_list = krbionames.names_for_ncbi_taxid(
             #     tax_id, ncbi_names_table, sorting='class')
 
+            taxid_name_list = [krbionames.parse_organism_name(organism, sep='_', ncbi_authority=False)]
+
             status = 'NA'
             if tax_id in keeplist_taxonomy_list:
                 status = 'keeplist'
-
-            taxid_name_list = [krbionames.parse_organism_name(organism, sep='_', ncbi_authority=False)]
+            elif taxid_name_list[0]['cross'] != '':
+                status = 'hybrid'
+            elif taxid_name_list[0]['species'] == '':
+                status = 'no_specific'
 
             acc_name = {
                 'status': status,
@@ -827,7 +831,8 @@ def extract_loci(
     keeplist_taxonomy_list=None,
     force_reverse_complement_list=None,
     taxa_mappings_list=None,
-    log_dir=None
+    log_dir=None,
+    remove_hybrids=False
 ):
 
     '''
@@ -1069,6 +1074,22 @@ def extract_loci(
                     tax_id + '\t' +
                     'SHORT' + '\t' +
                     acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
+            elif (remove_hybrids and acc_name['status'] == 'hybrid'):
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
+                    tried_name_flat.replace('_', ' ') + '\t' +
+                    tax_id + '\t' +
+                    'HYBRID' + '\t' +
+                    acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
+            elif (acc_name['status'] == 'no_specific'):
+                log_handle.write(
+                    name1 + '_' + name2 + '\t' +
+                    record.id + '\t' +
+                    tried_name_flat.replace('_', ' ') + '\t' +
+                    tax_id + '\t' +
+                    'NO_SPECIFIC' + '\t' +
+                    acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
             else:
                 if acc_name['status'] == 'TGRC':
                     log_handle.write(
@@ -1213,6 +1234,9 @@ def one_locus_per_organism(
     lengths_log_file = log_dir + ps + '04-flat-0-lengths.csv'
     lengths_log_handle = open(lengths_log_file, 'w')
     lengths_log_handle.write('locus,mean,median,stdev\n')
+
+    if not cutlist_records_auto:
+        cutlist_records_auto = set()
 
     # Check if the output directory exists. If it does we will treat this as a
     # second run.
@@ -1520,15 +1544,22 @@ def one_locus_per_organism(
                         options=locus_aln_program_options,
                         program_executable=locus_aln_program_exe)
                     aln.sort()
-                    cons = kralign.consensus(
-                        aln, threshold=0.1, unknown='N',
-                        resolve_ambiguities=False)
-                    bases_at_sites = cons[1]
-                    tot_bs = 0
-                    for bs in bases_at_sites:
-                        tot_bs = tot_bs + len(bs)
-                    similarity = float(len(bases_at_sites)) / float(tot_bs)
-                    if similarity >= 0.95:
+                    all_lrps = set()
+                    for s in aln:
+                        seq_id = s.id
+                        parsed_id = parse_seq_id(seq_id)
+                        lrps = parsed_id['lrps']
+                        all_lrps |= set(lrps)
+                    # cons = kralign.consensus(
+                    #     aln, threshold=0.1, unknown='N',
+                    #     resolve_ambiguities=False)
+                    # bases_at_sites = cons[1]
+                    # tot_bs = 0
+                    # for bs in bases_at_sites:
+                    #     tot_bs = tot_bs + len(bs)
+                    # similarity = float(len(bases_at_sites)) / float(tot_bs)
+                    # if similarity >= 0.95:
+                    if len(all_lrps) == 1:
                         AlignIO.write(aln, dir_rev + new_name + '.phy', "phylip-relaxed")
                         for s in aln:
                             s.seq = Seq.Seq(str(s.seq).replace('-', ''))
@@ -1537,51 +1568,45 @@ def one_locus_per_organism(
                         #######################################################
                         n_count = 0
                         new_aln = None
-                        all_lrps = set()
+                        # if len(all_lrps) == 1 and list(all_lrps)[0].lower() == 'x':
+                        #     new_aln = aln
+                        # else:
+                        seq_records = list()
+                        last_lrp = None
+                        prev_seq_len = 0
+                        pos = 0
                         for s in aln:
+                            seq = str(s.seq).replace('-', '')
+                            seq_len = len(seq)
                             seq_id = s.id
                             parsed_id = parse_seq_id(seq_id)
                             lrps = parsed_id['lrps']
-                            all_lrps |= set(lrps)
-                        if len(all_lrps) == 1 and list(all_lrps)[0].lower() == 'x':
-                            new_aln = aln
-                        else:
-                            seq_records = list()
-                            last_lrp = None
-                            prev_seq_len = 0
-                            pos = 0
-                            for s in aln:
-                                seq = str(s.seq).replace('-', '')
-                                seq_len = len(seq)
-                                seq_id = s.id
-                                parsed_id = parse_seq_id(seq_id)
-                                lrps = parsed_id['lrps']
-                                if not last_lrp:
+                            if not last_lrp:
+                                last_lrp = lrps[-1]
+                            else:
+                                if lrps[-1].lower() == 'x':
+                                    pass
+                                elif last_lrp < lrps[-1]:
                                     last_lrp = lrps[-1]
-                                else:
-                                    if lrps[-1].lower() == 'x':
-                                        pass
-                                    elif last_lrp < lrps[-1]:
-                                        last_lrp = lrps[-1]
-                                        pos = pos + prev_seq_len
-                                        seq = pos * '-' + n_count * 'N' + seq
-                                        pos = pos + n_count
-                                        prev_seq_len = seq_len
-                                    elif last_lrp == lrps[-1]:
-                                        seq = pos * '-' + seq
-                                prev_seq_len = max(prev_seq_len, seq_len)
-                                sequence_record = SeqRecord.SeqRecord(
-                                    seq=Seq.Seq(seq), id=seq_id, name='',
-                                    description='')
-                                seq_records.append(sequence_record)
-                            max_len = 0
-                            for s in seq_records:
-                                max_len = max(max_len, len(s.seq))
-                            for s in seq_records:
-                                len_diff = max_len - len(s.seq)
-                                seq = str(s.seq) + len_diff * '-'
-                                s.seq = Seq.Seq(seq)
-                            new_aln = MultipleSeqAlignment(seq_records)
+                                    pos = pos + prev_seq_len
+                                    seq = pos * '-' + n_count * 'N' + seq
+                                    pos = pos + n_count
+                                    prev_seq_len = seq_len
+                                elif last_lrp == lrps[-1]:
+                                    seq = pos * '-' + seq
+                            prev_seq_len = max(prev_seq_len, seq_len)
+                            sequence_record = SeqRecord.SeqRecord(
+                                seq=Seq.Seq(seq), id=seq_id, name='',
+                                description='')
+                            seq_records.append(sequence_record)
+                        max_len = 0
+                        for s in seq_records:
+                            max_len = max(max_len, len(s.seq))
+                        for s in seq_records:
+                            len_diff = max_len - len(s.seq)
+                            seq = str(s.seq) + len_diff * '-'
+                            s.seq = Seq.Seq(seq)
+                        new_aln = MultipleSeqAlignment(seq_records)
                         #######################################################
                         AlignIO.write(new_aln, dir_rev + new_name + '.phy', "phylip-relaxed")
                         for s in new_aln:
@@ -1826,7 +1851,8 @@ def concatenate(
     output_dir,
     order_of_loci,
     number_of_gaps_between_loci,
-    log_dir
+    log_dir,
+    raxml_dir
 ):
 
     '''
@@ -1845,6 +1871,7 @@ def concatenate(
     import krbioio
     import kralign
     import copy
+    import random
 
     ps = os.path.sep
 
@@ -1921,5 +1948,36 @@ def concatenate(
                                      'phylip-relaxed')
         f_part.close()
         f_part_raxml.close()
+
+        print('\n\tProducing RAxML commands.')
+
+        raxml_commands_file = log_dir + ps + '06-raxml-commands.txt'
+        f_raxml = open(raxml_commands_file, 'wb')
+
+        raxml_line_1 = 'raxml \\\n'
+        f_raxml.write(raxml_line_1)
+
+        raxml_line_2 = '-s ' + concatenated_output_file + ' \\\n'
+        f_raxml.write(raxml_line_2)
+
+        raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
+        f_raxml.write(raxml_line_3)
+
+        krio.prepare_directory(raxml_dir)
+
+        raxml_line_4 = '-w ' + raxml_dir + ' \\\n'
+        f_raxml.write(raxml_line_4)
+
+        raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T 4 \\\n-N 1 \\\n'
+        f_raxml.write(raxml_line_6)
+
+        rand_seed = str(random.randrange(0, 1000000000))
+        raxml_line_7 = '-p ' + rand_seed + ' \\\n'
+        f_raxml.write(raxml_line_7)
+
+        raxml_line_8 = '-n ' + 'concatenated_' + rand_seed + '\n'
+        f_raxml.write(raxml_line_8)
+
+        f_raxml.close()
 
 # End pipeline functions ------------------------------------------------------

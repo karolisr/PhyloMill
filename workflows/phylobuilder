@@ -12,6 +12,9 @@ if __name__ == '__main__':
 
     import os
     import sys
+    import inspect
+    import shutil
+    from subprocess import call
 
     import ConfigParser
 
@@ -29,6 +32,8 @@ if __name__ == '__main__':
                         help='Output directory path.')
     parser.add_argument('-c', '--commands', type=unicode,
                         help='Commands to run.')
+    parser.add_argument('-p', '--prepare_project_dir', type=unicode,
+                        help='Prepares clean project directory.')
 
     args = parser.parse_args()
 
@@ -36,6 +41,22 @@ if __name__ == '__main__':
     output_dir = None
 
     ps = os.path.sep
+
+    # script filename (usually with path)
+    script_file_path = inspect.getfile(inspect.currentframe())
+    # script directory path
+    script_dir_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+    # Prepare clean project directory
+    if args.prepare_project_dir:
+        prj_template_dir_path = script_dir_path.strip('workflows') + 'phylobuilder-project-template'
+        prj_dir_path = args.prepare_project_dir.rstrip(ps) + ps
+        shutil.copytree(prj_template_dir_path, prj_dir_path, symlinks=False, ignore=None)
+        wd = os.getcwd()
+        os.chdir(prj_dir_path+'03-name_resolution')
+        call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
+        os.chdir(wd)
+        sys.exit(0)
 
     if args.input_dir:
         input_dir = args.input_dir.rstrip(ps) + ps
@@ -49,23 +70,27 @@ if __name__ == '__main__':
 
         file_name_sep = '$'
 
-        query_file = input_dir + 'search_queries'
-        synonymy_file = input_dir + 'synonymy.csv'
-        ncbi_names_file = input_dir + 'ncbi_tax_names'
-        authority_file = input_dir + 'authority_alternates.dat'
-        cutlist_records_file = input_dir + 'cutlist_records'
-        cutlist_records_auto_file = input_dir + 'cutlist_records_auto'
+        # 03-name_resolution
+        nr_input_dir = input_dir + '03-name_resolution' + ps
+
+        queries_dir = input_dir + '01-search_strategies' + ps
+        synonymy_file = nr_input_dir + 'synonymy.csv'
+        ncbi_names_file = nr_input_dir + 'ncbi_tax_names'
+        authority_file = nr_input_dir + 'authority_alternates.dat'
+        cutlist_records_file = input_dir + '02-cutlist_records'
         # keeplist_records_file = input_dir + 'keeplist_records'
-        cutlist_taxonomy_file = input_dir + 'cutlist_taxonomy'
-        unresolvable_taxonomy_file = input_dir + 'unresolvable.csv'
-        keeplist_taxonomy_file = input_dir + 'keeplist_taxonomy'
-        force_reverse_complement_file = input_dir + 'force_reverse_complement_records'
-        good_sequences_dir = input_dir + 'good_sequences'
-        additional_sequences_file = input_dir + 'additional_sequences.fasta'
-        taxa_mappings_file = input_dir + 'taxa_mappings.tsv'
+        cutlist_taxonomy_file = input_dir + '02-cutlist_taxonomy'
+        unresolvable_taxonomy_file = nr_input_dir + 'unresolvable.csv'
+        keeplist_taxonomy_file = nr_input_dir + 'keeplist_taxonomy'
+        force_reverse_complement_file = input_dir + '03-force_reverse_complement_records'
+        good_sequences_dir = input_dir + '04-good_sequences'
+        additional_sequences_file = input_dir + '04-additional_sequences.fasta'
+        taxa_mappings_file = nr_input_dir + 'taxa_mappings.tsv'
 
         temp_dir = output_dir + 'temp'
         log_dir = output_dir + '99-logs'
+
+        cutlist_records_auto_file = log_dir + ps + '04-flat-cutlist-records-auto.csv'
 
         search_results_dir = output_dir + '01-search-results'
         filtered_results_dir = output_dir + '02-filtered-results'
@@ -73,6 +98,7 @@ if __name__ == '__main__':
         one_locus_per_organism_dir = output_dir + '04-one-locus-per-organism'
         aligned_dir = output_dir + '05-aligned'
         concatenated_dir = output_dir + '06-concatenated'
+        raxml_dir = output_dir + '07-raxml'
 
         # Create output directory
         krio.prepare_directory(output_dir)
@@ -80,8 +106,9 @@ if __name__ == '__main__':
         krio.prepare_directory(log_dir)
 
         # Get configuration information
-        config_file_path = input_dir + 'config'
-        config = ConfigParser.SafeConfigParser()
+        config_file_path = input_dir + '00-config'
+        config = ConfigParser.SafeConfigParser(allow_no_value=True)
+        config.optionxform=str
         config.read(config_file_path)
 
         hacks_items = config.items('Hacks')
@@ -97,10 +124,29 @@ if __name__ == '__main__':
         for hack in hacks:
             hacks_data_location[hack] = config.get('Hacks', hack + '_data')
 
-        # Parse queries file
-        queries = krio.read_table_file(path=query_file, has_headers=True,
-                                       headers=None, delimiter='\t',
-                                       quotechar="'")
+        # Parse taxa
+        tax_ids = config.items('Taxa')
+        tax_ids = [x[0] for x in tax_ids]
+        tax_ncbi_query_strings = list()
+        for t in tax_ids:
+            tnqs = 'txid' + str(t) + '[Organism]'
+            tax_ncbi_query_strings.append(tnqs)
+        taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
+
+        # Parse loci
+        loci = config.items('Loci')
+        loci = [x[0] for x in loci]
+        queries = list()
+        for l in loci:
+            q = krio.read_table_file(path=queries_dir+l, has_headers=True,
+                                           headers=None, delimiter='\t',
+                                           quotechar="'")
+            queries = queries + q
+
+        # Add taxa information to queries
+        for q in queries:
+            if not (q['query'].lower().startswith('donotdownload')):
+                q['query'] = q['query'] + ' AND (' + taxa_query_str + ')'
 
         commands = None
         if args.commands:
@@ -178,6 +224,8 @@ if __name__ == '__main__':
                 stripchar='"',
                 rettype='dict')
 
+            remove_hybrids = config.getboolean('Extract', 'remove_hybrids')
+
             # Extract loci
             krseqsearch.extract_loci(
                 search_results_dir=filtered_results_dir,
@@ -194,7 +242,8 @@ if __name__ == '__main__':
                 keeplist_taxonomy_list=keeplist_taxonomy_list,
                 force_reverse_complement_list=force_reverse_complement_list,
                 taxa_mappings_list=taxa_mappings_list,
-                log_dir=log_dir)
+                log_dir=log_dir,
+                remove_hybrids=remove_hybrids)
 
         if not commands or 'flatten' in commands:
 
@@ -278,7 +327,7 @@ if __name__ == '__main__':
 
         if not commands or 'concatenate' in commands:
 
-            order_of_loci = config.get('Concatenate', 'order_of_loci').split(',')
+            order_of_loci = loci
             number_of_gaps_between_loci = config.getint('Concatenate', 'number_of_gaps_between_loci')
 
             # Produce a concatenated alignment
@@ -287,4 +336,5 @@ if __name__ == '__main__':
                 output_dir=concatenated_dir,
                 order_of_loci=order_of_loci,
                 number_of_gaps_between_loci=number_of_gaps_between_loci,
-                log_dir=log_dir)
+                log_dir=log_dir,
+                raxml_dir=raxml_dir)
