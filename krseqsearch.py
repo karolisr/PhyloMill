@@ -1240,6 +1240,12 @@ def one_locus_per_organism(
 
     # Check if the output directory exists. If it does we will treat this as a
     # second run.
+
+    # KRDEBUG
+    # first_run = True
+    # produce_ref_aln = False
+    # END KRDEBUG
+
     first_run = not os.path.exists(reviewed_dir_base)
     if not first_run:
         cont = raw_input("\n\tThis is a second run, continue? Y/N: ")
@@ -1536,6 +1542,8 @@ def one_locus_per_organism(
                 # dir_1 = review_1_dir
                 dir_rev = review_dir
 
+            # 2014-03-02 - Change the way LRPs are treated.
+            # Make it so it's more convinient to review locus alignments
             if first_run and len(dedupe_records_lrp) > 1:
                 if new_records or not good_sequences_aln:
                     aln = kralign.align(
@@ -1544,12 +1552,14 @@ def one_locus_per_organism(
                         options=locus_aln_program_options,
                         program_executable=locus_aln_program_exe)
                     aln.sort()
-                    all_lrps = set()
-                    for s in aln:
-                        seq_id = s.id
-                        parsed_id = parse_seq_id(seq_id)
-                        lrps = parsed_id['lrps']
-                        all_lrps |= set(lrps)
+
+                    # all_lrps = set()
+                    # for s in aln:
+                        # seq_id = s.id
+                        # parsed_id = parse_seq_id(seq_id)
+                        # lrps = parsed_id['lrps']
+                        # all_lrps |= set(lrps)
+
                     # cons = kralign.consensus(
                     #     aln, threshold=0.1, unknown='N',
                     #     resolve_ambiguities=False)
@@ -1559,7 +1569,35 @@ def one_locus_per_organism(
                     #     tot_bs = tot_bs + len(bs)
                     # similarity = float(len(bases_at_sites)) / float(tot_bs)
                     # if similarity >= 0.95:
-                    if len(all_lrps) == 1:
+
+                    # If there is some overlap between all the sequences in the
+                    # alignment, we return the alignment
+
+                    list_of_lrp_lists = list()
+                    for s in aln:
+                        seq_id = s.id
+                        parsed_id = parse_seq_id(seq_id)
+                        lrps = parsed_id['lrps']
+                        list_of_lrp_lists.append(lrps)
+                    list_of_lrp_lists.sort()
+                    running_list = set()
+                    lrp_overlap = True
+                    for lrp_list in list_of_lrp_lists:
+                        if len(running_list) == 0:
+                            running_list = set(lrp_list)
+                            continue
+                        o = False
+                        for lrp in lrp_list:
+                            if (lrp in running_list) or (str(lrp).lower() == 'x'):
+                                o = True
+                                running_list |= set(lrp_list)
+                                break
+                        if not o:
+                            lrp_overlap = False
+                            break
+
+                    # if len(all_lrps) == 1:
+                    if lrp_overlap:
                         AlignIO.write(aln, dir_rev + new_name + '.phy', "phylip-relaxed")
                         for s in aln:
                             s.seq = Seq.Seq(str(s.seq).replace('-', ''))
