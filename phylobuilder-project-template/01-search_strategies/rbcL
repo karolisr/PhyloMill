@@ -1,0 +1,4 @@
+name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
+
+# rbcL (ribulose 1 5-bisphosphate carboxylase large subunit) cloroplast
+rbcL	01	X	no	rbcL	100	gene	gene	strict	nuccore	rbcL[Gene Name]

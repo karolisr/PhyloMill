@@ -1,0 +1,6 @@
+name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
+
+# matK (maturase in trnK intron) chloroplast
+matK	01	X	no	matK	100	gene	gene	strict	nuccore	matK
+matK	02	X	no	matK	100	CDS	note	strict	nuccore	DONOTDOWNLOAD
+matK	03	X	no	trnK	100	gene	gene	strict	nuccore	trnK

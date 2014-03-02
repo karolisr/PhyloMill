@@ -1,0 +1,4 @@
+name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
+
+At5g14320	01	X	no	At5g14320	100	misc_feature	note	loose	nuccore	At5g14320
+At5g14320	02	X	no	At5g14320	100	mRNA	product	loose	nuccore	DONOTDOWNLOAD
