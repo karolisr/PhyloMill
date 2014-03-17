@@ -249,6 +249,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     print('\tFiltering records for ids.')
     if cutlist_records:
         records_count = len(records)
+        print('\tFound ' + str(records_count) + ' records.')
         for i, record in enumerate(records):
             # krcl.print_progress(i + 1, records_count, 50, '\n')
             if cutlist_records:
@@ -263,6 +264,7 @@ def filter_records(records, cutlist_records_file, cutlist_taxonomy_file):
     print('\tFiltering records for taxonomy.')
     if cutlist_taxonomy:
         records_count = len(records_filtered_id)
+        print('\tFound ' + str(records_count) + ' records.')
         for i, record in enumerate(records_filtered_id):
             # krcl.print_progress(i + 1, records_count, 50, '\t')
             if cutlist_taxonomy:
@@ -325,7 +327,7 @@ def filter_results(search_results_dir, output_dir, cutlist_records_file,
         krbioio.write_sequence_file(filtered_records, output_file, 'gb')
 
 
-def produce_seq_id(locus, reference_id, taxid, old_name, new_name, separator_0='|'):
+def produce_seq_id(locus, reference_id, taxid, old_name, new_name, group, separator_0='|'):
     sequence_record_id = (
         locus + separator_0 +
         # NCBI accession
@@ -335,7 +337,9 @@ def produce_seq_id(locus, reference_id, taxid, old_name, new_name, separator_0='
         # NCBI taxid
         old_name + separator_0 +
         # Accepted name
-        new_name)
+        new_name + separator_0 +
+        # Group
+        group)
     return(sequence_record_id)
 
 
@@ -353,6 +357,7 @@ def parse_seq_id(seq_id, separator_0='|'):
     parsed['taxid'] = seq_id_split_0[2]
     parsed['old_name'] = seq_id_split_0[3]
     parsed['new_name'] = seq_id_split_0[4]
+    parsed['group'] = seq_id_split_0[5]
     reference_id_split_lrps = parsed['reference_id'].split(separator_lrps)
     reference_id_split_unique = parsed['reference_id'].split(separator_unique)
     lrps = False
@@ -832,7 +837,8 @@ def extract_loci(
     force_reverse_complement_list=None,
     taxa_mappings_list=None,
     log_dir=None,
-    remove_hybrids=False
+    remove_hybrids=False,
+    groups=None
 ):
 
     '''
@@ -1132,9 +1138,16 @@ def extract_loci(
                         'MATCH' + '\t' +
                         acc_name_flat.replace('_', ' ') + '\t' + source_info + '\n')
 
+                taxonomy = krseq.get_taxonomy(record)
+                taxonomy.reverse()
+                group = 'no_group'
+                for t in taxonomy:
+                    if t in groups:
+                        group = t
+
                 # Record id for the fasta output
                 sequence_record_id = produce_seq_id(
-                    name1, record.id, tax_id, tried_name_flat, acc_name_flat)
+                    name1, record.id, tax_id, tried_name_flat, acc_name_flat, group)
 
                 # Produce a biopython sequence record object
                 sequence_record = SeqRecord.SeqRecord(
@@ -1310,7 +1323,8 @@ def one_locus_per_organism(
                 reference_id=locus_relative_position+separator_lrps+parsed_id['reference_id'],
                 taxid=parsed_id['taxid'],
                 old_name=parsed_id['old_name'],
-                new_name=parsed_id['new_name'])
+                new_name=parsed_id['new_name'],
+                group=parsed_id['group'])
 
         for r in additional_sequences:
             parsed_id = parse_seq_id(r.id)
@@ -1356,6 +1370,8 @@ def one_locus_per_organism(
         name1_records_by_new_name = dict()
         for record in name1_records:
             parsed_id = parse_seq_id(record.id)
+            # Make new_name contain group name
+            # new_name = parsed_id['new_name'] + '_' + parsed_id['group']
             new_name = parsed_id['new_name']
             if not new_name in name1_records_by_new_name:
                 name1_records_by_new_name[new_name] = list()
@@ -1514,7 +1530,8 @@ def one_locus_per_organism(
                                 reference_id=separator_lrp.join(lrps) + separator_lrps + accession,
                                 taxid=parsed_id['taxid'],
                                 old_name=parsed_id['old_name'],
-                                new_name=parsed_id['new_name'])
+                                new_name=parsed_id['new_name'],
+                                group=parsed_id['group'])
 
                             sequence_record = SeqRecord.SeqRecord(
                                 seq=Seq.Seq(cat_seq), id=cat_id, name='',
@@ -1761,8 +1778,10 @@ def one_locus_per_organism(
                 # else:
                 #     print(proportion_identical, new_name)
 
+                group = parsed_id['group']
+
                 sequence_record = SeqRecord.SeqRecord(
-                    seq=consensus_seq, id=new_name, name='', description='')
+                    seq=consensus_seq, id=new_name+'__'+group, name='', description='')
                 ###############################################################
 
                 name1_results.append(sequence_record)
@@ -1772,11 +1791,12 @@ def one_locus_per_organism(
                 seq = SeqIO.read(reviewed_dir + new_name + '.fasta', "fasta")
                 parsed_id = parse_seq_id(seq.id)
                 accession = parsed_id['accessions'][0]
+                group = parsed_id['group']
                 if accession in all_record_ids:
                     all_record_ids.remove(accession)
                 log_message = new_name + ls + accession + nl
                 log_handle.write(log_message)
-                seq.id = new_name
+                seq.id = new_name+'__'+group
                 seq.name = ''
                 seq.description = ''
                 name1_results.append(seq)

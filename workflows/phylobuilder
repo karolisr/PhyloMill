@@ -133,6 +133,10 @@ if __name__ == '__main__':
             tax_ncbi_query_strings.append(tnqs)
         taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
 
+        # Parse groups
+        groups = config.items('Groups')
+        groups = [x[0] for x in groups]
+
         # Parse loci
         loci = config.items('Loci')
         loci = [x[0] for x in loci]
@@ -243,7 +247,8 @@ if __name__ == '__main__':
                 force_reverse_complement_list=force_reverse_complement_list,
                 taxa_mappings_list=taxa_mappings_list,
                 log_dir=log_dir,
-                remove_hybrids=remove_hybrids)
+                remove_hybrids=remove_hybrids,
+                groups=groups)
 
         if not commands or 'flatten' in commands:
 

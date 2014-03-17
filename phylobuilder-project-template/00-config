@@ -23,6 +23,12 @@ taxid1
 taxid2
 taxid3
 
+[Groups]
+
+group1
+group2
+group3
+
 [Loci]
 
 locus1
