@@ -215,7 +215,8 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
         o = name
     # Take available authority information and translate it into an
     # accepted form.
-    o['authority'] = stdauth.translate(o['authority'], authority_alternates)
+    unicode_auth = unicode(o['authority'])
+    o['authority'] = stdauth.translate(unicode_auth, authority_alternates)
     # This will store the accepted name
     accepted = dict()
     accepted['genus'] = ''
