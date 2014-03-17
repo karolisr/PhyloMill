@@ -1,6 +1,10 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+def get_taxonomy(seq_record):
+    return_value = seq_record.annotations['taxonomy']
+    return return_value
+
 
 def get_annotation(seq_record, annotation_label):
     return_value = None
