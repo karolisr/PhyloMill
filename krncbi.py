@@ -102,7 +102,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     uid_count = len(uids)
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 500
+    large_batch_size = 200
     small_batch_size = 100
 
     # Perhaps these may be function arguments?
@@ -160,16 +160,18 @@ def download_sequence_records(file_path, uids, db, entrez_email):
             # print(downloaded_uids - to_download_uids)
             # print(to_download_uids - downloaded_uids)
 
-            # if rec_downloaded == n_rec_to_download:
-            print('    Downloaded', rec_downloaded, 'of',
-                  n_rec_to_download, 'records.')
-            SeqIO.write(temp_records, out_handle, 'gb')
-            fetch_handle.close()
-            break
-            # else:
-            #     fetch_handle.close()
-            #     print('    Download corrupted, retrying...')
-            #     continue
+            if rec_downloaded == n_rec_to_download:
+                print('    Downloaded', rec_downloaded, 'of',
+                      n_rec_to_download, 'records.')
+                SeqIO.write(temp_records, out_handle, 'gb')
+                fetch_handle.close()
+                break
+            else:
+                fetch_handle.close()
+                print('    Downloaded', rec_downloaded, 'of',
+                      n_rec_to_download, 'records.')
+                print('    Download corrupted, retrying...')
+                continue
 
     out_handle.close()
 
