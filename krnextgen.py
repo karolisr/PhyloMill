@@ -201,7 +201,8 @@ def align_reads(r1, r2, mmmr_cutoff=0.85, ignore='N'):
     return(best_alignment)
 
 
-def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
+def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85,
+                      concatenate=False, ignore='N'):
 
     best_alignment = align_reads(r1, r2, mmmr_cutoff=mmmr_cutoff,
                                  ignore=ignore)
@@ -260,7 +261,8 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
                     cons.append(ignore)
         cons = ''.join([char for char in cons])
     else:
-        cons = r1 + r2
+        if concatenate:
+            cons = r1 + r2
         message = 0
 
     ret_value = [o, r, message, cons, best_alignment]
@@ -270,6 +272,7 @@ def consensus_fr_read(r1, r2, min_overlap=5, mmmr_cutoff=0.85, ignore='N'):
 
 def bin_reads(title, f_seq_str, r_seq_str=None,
               max_prop_low_quality_sites=0.10, min_overlap=5, mmmr_cutoff=0.85,
+              concatenate=False,
               low_quality_residue='N', f_oligo=None, r_oligo=None,
               min_read_length=10):
 
@@ -358,6 +361,7 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
             r2=r_seq_str,
             min_overlap=min_overlap,
             mmmr_cutoff=mmmr_cutoff,
+            concatenate=concatenate,
             ignore=low_quality_residue)
 
         cons_message = consensus[2]
@@ -368,7 +372,7 @@ def bin_reads(title, f_seq_str, r_seq_str=None,
         # will be judged based on the whole cluster.
         if cons_message == 3:
             consensus = None
-        elif len(consensus[3]) < min_read_length:
+        elif (consensus[3] and len(consensus[3]) < min_read_length):
             consensus = None
         else:
             cons_alignment = consensus[4]

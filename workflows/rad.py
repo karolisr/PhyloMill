@@ -615,6 +615,7 @@ if __name__ == '__main__':
                         'Bin', 'max_prop_low_quality_sites')
                     min_overlap = config.getint('Bin', 'min_overlap')
                     mmmr_cutoff = config.getfloat('Bin', 'mmmr_cutoff')
+                    concatenate = config.getboolean('Bin', 'concatenate')
                     low_quality_residue = config.get(
                         'General', 'low_quality_residue')
                     min_read_length = config.getint('Bin', 'min_read_length')
@@ -626,6 +627,8 @@ if __name__ == '__main__':
                         if r_reads:
                             r_title, r_seq, r_qual = r_reads.next()
 
+                        # print(concatenate)
+
                         binned = krnextgen.bin_reads(
                             title=f_title,
                             f_seq_str=f_seq,
@@ -633,6 +636,7 @@ if __name__ == '__main__':
                             max_prop_low_quality_sites=max_prop_low_quality_sites,
                             min_overlap=min_overlap,
                             mmmr_cutoff=mmmr_cutoff,
+                            concatenate=concatenate,
                             low_quality_residue=low_quality_residue,
                             f_oligo=f_oligo,
                             r_oligo=r_oligo,
