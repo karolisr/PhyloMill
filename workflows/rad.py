@@ -200,13 +200,32 @@ if __name__ == '__main__':
         sample_groups = config.items('Sample Groups')
         for group in sample_groups:
             if group[0] != 'outgroup_samples':
-                samples = group[1].split(',')
+                samples = group[1].replace('\n', '').split(',')
                 sample_groups_dict[group[0]] = samples
-        outgroups = config.get('Sample Groups', 'outgroup_samples').split(',')
+        outgroups = config.get('Sample Groups', 'outgroup_samples').replace('\n', '').split(',')
 
         # print(outgroups)
         # for k in sample_groups_dict.keys():
         #     print(k, sample_groups_dict[k])
+
+        # Map to Reference options
+        groups_map_ref_loci_dict = dict()
+        groups_map_to_ref_step_dict = dict()
+        map_to_reference_options = config.items('Map to Reference')
+        for mtro in map_to_reference_options:
+            mtro_name = mtro[0].split('.')
+            if mtro_name[1] == 'infer_loci_using_reference':
+                map_bool = config.getboolean('Map to Reference', mtro[0])
+                groups_map_ref_loci_dict[mtro_name[0]] = map_bool
+            else:
+                map_to_ref_options = mtro_name[1].split('_')
+                map_to_ref_options[0] = int(map_to_ref_options[0])
+                map_to_ref_options.append(mtro[1])
+                if mtro_name[0] not in groups_map_to_ref_step_dict.keys():
+                    groups_map_to_ref_step_dict[mtro_name[0]] = list()
+                groups_map_to_ref_step_dict[mtro_name[0]].append(map_to_ref_options)
+        for key in groups_map_to_ref_step_dict.keys():
+            groups_map_to_ref_step_dict[key].sort(key=lambda x: x[0], reverse=False)
 
         lfp = output_dir + 'log.txt'
 
@@ -345,6 +364,8 @@ if __name__ == '__main__':
             write_log(msg, lfp)
             mismatch = False
             for f in combined_file_list:
+                if f['isdir']:
+                    continue
                 handle = open(f['path'], "rU")
                 records = FastqGeneralIterator(handle)
                 # records = SeqIO.parse(f['path'], 'fastq')
@@ -755,10 +776,211 @@ if __name__ == '__main__':
             print()
             write_log('', lfp)
 
+        # Map to Reference
+        if commands and ('map_to_reference' in commands):
+            if not args.group:
+                print('Sample group is required.')
+                sys.exit(1)
+
+            if args.group not in groups_map_to_ref_step_dict.keys():
+                print("Group '" + args.group + "' does not have any options set in the 'Map to Reference' section of the configuration file.")
+                sys.exit(1)
+
+            msg = 'Mapping to reference...\n'
+            print(msg)
+            write_log(msg, lfp)
+
+            ###KRTEMP
+
+            binned_output_dir_sample = binned_output_dir + args.group + ps
+            file_list = krio.parse_directory(binned_output_dir_sample, '_')
+
+            steps = groups_map_to_ref_step_dict[args.group]
+
+            # last_action = ''
+
+            for i, step in enumerate(steps):
+
+                order = step[0]
+                program = step[1]
+                action = step[2]
+                index_path = step[3]
+
+                if i > 0:
+                    print()
+                    write_log('', lfp)
+
+                msg = 'Step ' + str(order) + ' ' + program + ' ' + action + '\n'
+                print(msg)
+                write_log(msg, lfp)
+
+                mapped_output_dir_sample = binned_output_dir + args.group + '-' + str(order) + '-' + program + '-' + action + ps
+                krio.prepare_directory(mapped_output_dir_sample)
+
+                for f in file_list:
+                    if f['ext'] == 'fasta' and f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+
+                        msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+                        print(msg)
+                        write_log(msg, lfp)
+
+                        bowtie2_out_fasta_option = ''
+                        if program == 'bowtie2' and action == 'reject':
+                            bowtie2_out_fasta_option = ' --un '
+                        elif program == 'bowtie2' and action == 'accept':
+                            bowtie2_out_fasta_option = ' --al '
+
+                        subprocess.call(
+                            (config.get('General', program+'_executable') +
+                                ' --quiet' +
+                                ' --threads ' + str(cpu) +
+                                # ' --non-deterministic ' +
+                                ' --seed ' + config.get('General', 'random_seed') +
+                                ' --no-unal' +
+                                ' --no-hd' +
+                                ' --no-sq' +
+                                ' -f' +
+                                ' --gbar 2' +
+                                ' -k 100' +
+                                ' --np 0' +
+                                ' --n-ceil L,0,0.5' +
+                                ' --end-to-end' +
+                                # ' --local' +
+                                # ' --ma 0' +
+                                ' --mp 6,2' +
+                                ' --rdg 6,3' +
+                                ' --rfg 6,3' +
+                                ' -D 25 -R 3 -N 0 -L 20 -i S,1,0.25' +
+                                # ' -D 20 -R 3 -N 0 -L 20 -i S,1,0.50' +
+                                ' --met-file ' + mapped_output_dir_sample + f['name'] + '_bowtie2_metrics.tsv' +
+                                ' --met 1' +
+                                ' -x ' + index_path +
+                                ' -U ' + f['path'] +
+                                bowtie2_out_fasta_option + mapped_output_dir_sample + f['name'] + '.fasta' +
+                                ' -S ' + mapped_output_dir_sample + f['name'] + '.sam'), shell=True)
+
+                file_list = krio.parse_directory(mapped_output_dir_sample, '_')
+                # last_action = action
+
+            ###KRTEMPEND
+
+            # # Infer loci using a reference
+            # if groups_map_ref_loci_dict[args.group] == True:
+
+            #     msg = '\nInferring loci using a reference...\n'
+            #     print(msg)
+            #     write_log(msg, lfp)
+
+            #     ###KRTEMP
+            #     # last_action = 'accept'
+            #     # file_list = krio.parse_directory('/Users/karolis/Dropbox/prj/rad-test/out-05-400/05-binned-fasta/andy-2-bowtie2-accept', '_')
+            #     ###KRTEMPEND
+
+            #     if last_action != 'accept':
+
+            #         msg = "In order to infer loci using a reference, last reference mapping action should be 'accept' not 'reject'.\n"
+            #         print(msg)
+            #         write_log(msg, lfp)
+
+            #     else:
+
+            #         sample_alignments_output_dir_sample = sample_alignments_output_dir + args.group + ps
+            #         krio.prepare_directory(sample_alignments_output_dir_sample)
+
+            #         aln_program = config.get('Align Within Samples', 'program')
+            #         aln_program_exe = config.get('General', aln_program + '_executable')
+            #         aln_program_options = config.get('Align Within Samples', 'options')
+
+            #         processes = list()
+            #         queue = JoinableQueue()
+
+            #         def t(q):
+            #             while True:
+            #                 f = q.get()
+            #                 msg = krother.timestamp() + ' - Sample ' + f['split'][0]
+            #                 print(msg)
+            #                 write_log(msg, lfp)
+
+            #                 # WRITE ALIGNMENTS
+
+            #                 aln_output_file_path = (
+            #                     sample_alignments_output_dir_sample +
+            #                     f['name'] + '.alignment')
+            #                 counts_output_file_path = (
+            #                     sample_alignments_output_dir_sample +
+            #                     f['name'] + '.counts')
+
+            #                 cluster_depths = krnextgen.alignments_from_sam_file(
+            #                     min_seq_cluster=config.getint('General',
+            #                                                   'min_seq_cluster'),
+            #                     max_seq_cluster=config.getint('General',
+            #                                                   'max_seq_cluster'),
+            #                     sam_file_path=f['path'],
+            #                     aln_output_file_path=aln_output_file_path,
+            #                     counts_output_file_path=counts_output_file_path,
+            #                     program=aln_program,
+            #                     options=aln_program_options,
+            #                     program_executable=aln_program_exe)
+
+            #                 # This is the same as in "Produce sample alignments
+            #                 # and nucleotide counts per site"
+
+            #                 handle = open((analyzed_samples_output_dir +
+            #                                f['split'][0] +
+            #                                #  '_' + f['split'][1] +
+            #                                '.clusters'), 'wb')
+            #                 for c in cluster_depths:
+            #                     handle.write(str(c) + '\n')
+            #                 handle.close()
+
+            #                 ns = krnextgen.nt_site_counts(counts_output_file_path, 1, 0)
+            #                 coverage_list = [sum(x) for x in ns]
+            #                 handle = open((analyzed_samples_output_dir +
+            #                                f['split'][0] +
+            #                                #  '_' + f['split'][1] +
+            #                                '.coverage'), 'wb')
+            #                 for c in coverage_list:
+            #                     handle.write(str(c) + '\n')
+            #                 handle.close()
+
+            #                 msg = krother.timestamp() + ' - Sample ' + f['split'][0] + ' done.'
+            #                 print(msg)
+            #                 write_log(msg, lfp)
+
+            #                 q.task_done()
+
+            #                 ####################################################
+
+            #         for f in file_list:
+            #             ###KRTEMP
+            #             if f['ext'] == 'sam' and f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+            #             # if f['ext'] == 'sam' and f['name'] == '01.S.chilense.Timar_all_hq':
+            #             ###KRTEMPEND
+            #                 queue.put(f)
+
+            #         threads_local = cpu
+
+            #         for i in range(threads_local):
+            #             worker = Process(target=t, args=(queue,))
+            #             worker.start()
+            #             processes.append(worker)
+
+            #         queue.join()
+
+            #         for p in processes:
+            #             p.terminate()
+
+            print()
+            write_log('', lfp)
+
         # Cluster
         if commands and ('cluster_samples' in commands):
             if not args.group:
                 print('Sample group is required.')
+                sys.exit(1)
+
+            if groups_map_ref_loci_dict[args.group] == True:
+                print("Group '" + args.group + "' is set to infer loci using reference.")
                 sys.exit(1)
 
             # if not args.threads:
@@ -769,7 +991,16 @@ if __name__ == '__main__':
             #     sys.exit(1)
 
             clustered_output_dir_sample = clustered_output_dir + args.group + ps
-            binned_output_dir_sample = binned_output_dir + args.group + ps
+
+            folders_for_group = list()
+            folder_list = krio.parse_directory(
+                path=binned_output_dir,
+                file_name_sep='-',
+                sort='reverse')
+            for f in folder_list:
+                if f['split'][0] == args.group:
+                    folders_for_group.append(f)
+            binned_output_dir_sample = folders_for_group[0]['path'] + ps
 
             krio.prepare_directory(clustered_output_dir_sample)
             file_list = krio.parse_directory(binned_output_dir_sample, '_')
@@ -781,7 +1012,7 @@ if __name__ == '__main__':
             # Sort files, this will take memory, so we will not parallelize
             # this
             for f in file_list:
-                if f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                if f['ext'] == 'fasta' and f['split'][-1] == 'hq' and f['split'][-2] == 'all':
                     msg = krother.timestamp() + ' - Sample ' + f['split'][0]
                     print(msg)
                     write_log(msg, lfp)
@@ -929,6 +1160,10 @@ if __name__ == '__main__':
                 print('Sample group is required.')
                 sys.exit(1)
 
+            # if groups_map_ref_loci_dict[args.group] == True:
+            #     print("Group '" + args.group + "' is set to infer loci using reference.")
+            #     sys.exit(1)
+
             # if not args.min_seq_cluster:
             #     print('min_seq_cluster is required.')
             #     sys.exit(1)
@@ -941,15 +1176,43 @@ if __name__ == '__main__':
 
             clustered_output_dir_sample = clustered_output_dir + args.group + ps
             sample_alignments_output_dir_sample = sample_alignments_output_dir + args.group + ps
-            binned_output_dir_sample = binned_output_dir + args.group + ps
+
+            folders_for_group = list()
+            folder_list = krio.parse_directory(
+                path=binned_output_dir,
+                file_name_sep='-',
+                sort='reverse')
+            for f in folder_list:
+                if f['split'][0] == args.group:
+                    folders_for_group.append(f)
+            binned_output_dir_sample = folders_for_group[0]['path'] + ps
 
             krio.prepare_directory(sample_alignments_output_dir_sample)
-            file_list = krio.parse_directory(clustered_output_dir_sample, '_')
 
             msg = ('Producing sample alignments and\n'
                    'read counts per site...\n')
             print(msg)
             write_log(msg, lfp)
+
+            file_list = list()
+
+            # Infer loci using a reference
+            if groups_map_ref_loci_dict[args.group] == True:
+                msg = 'Inferring loci using a reference...\n'
+                print(msg)
+                write_log(msg, lfp)
+
+                last_action = binned_output_dir_sample.split('-')[-1].strip(ps)
+
+                if last_action != 'accept':
+                    msg = "In order to infer loci using a reference, last reference mapping action should be 'accept' not 'reject'.\n"
+                    print(msg)
+                    write_log(msg, lfp)
+                    sys.exit(1)
+
+                file_list = krio.parse_directory(binned_output_dir_sample, '_')
+            else:
+                file_list = krio.parse_directory(clustered_output_dir_sample, '_')
 
             processes = list()
             queue = JoinableQueue()
@@ -958,7 +1221,6 @@ if __name__ == '__main__':
             aln_program_exe = config.get('General', aln_program + '_executable')
             aln_program_options = config.get('Align Within Samples', 'options')
 
-            # def t(f):
             def t(q):
                 while True:
                     f = q.get()
@@ -974,20 +1236,40 @@ if __name__ == '__main__':
                     print(msg)
                     write_log(msg, lfp)
 
-                    cluster_depths = krnextgen.align_clusters(
-                        min_seq_cluster=config.getint('General',
-                                                      'min_seq_cluster'),
-                        max_seq_cluster=config.getint('General',
-                                                      'max_seq_cluster'),
-                        uc_file_path=f['path'],
-                        fasta_file_path=fasta_file_path,
-                        aln_output_file_path=aln_output_file_path,
-                        counts_output_file_path=counts_output_file_path,
-                        program=aln_program,
-                        options=aln_program_options,
-                        # options='--retree 1 --thread '+str(cpu)
-                        program_executable=aln_program_exe
-                    )
+                    cluster_depths = None
+
+                    if groups_map_ref_loci_dict[args.group] == False:
+
+                        cluster_depths = krnextgen.align_clusters(
+                            min_seq_cluster=config.getint('Align Within Samples',
+                                                          'min_seq_cluster'),
+                            max_seq_cluster=config.getint('Align Within Samples',
+                                                          'max_seq_cluster'),
+                            uc_file_path=f['path'],
+                            fasta_file_path=fasta_file_path,
+                            aln_output_file_path=aln_output_file_path,
+                            counts_output_file_path=counts_output_file_path,
+                            program=aln_program,
+                            options=aln_program_options,
+                            # options='--retree 1 --thread '+str(cpu)
+                            program_executable=aln_program_exe
+                        )
+
+                    else:
+
+                        cluster_depths = krnextgen.alignments_from_sam_file(
+                            min_seq_cluster=config.getint('Align Within Samples',
+                                                          'min_seq_cluster'),
+                            # max_seq_cluster=0,
+                            max_seq_cluster=config.getint('Align Within Samples',
+                                                          'max_seq_cluster'),
+                            sam_file_path=f['path'],
+                            aln_output_file_path=aln_output_file_path,
+                            counts_output_file_path=counts_output_file_path,
+                            program=aln_program,
+                            options=aln_program_options,
+                            program_executable=aln_program_exe
+                        )
 
                     handle = open((analyzed_samples_output_dir +
                                    f['split'][0] +
@@ -1014,12 +1296,12 @@ if __name__ == '__main__':
                     q.task_done()
 
             for f in file_list:
-                # if (f['split'][-1] == 'sorted' and
-                #     f['split'][-2] == 'hq' and
-                #         f['split'][-3] == 'all'):
-                if f['ext'] == 'uc':
-                    # t(f)
-                    queue.put(f)
+                if groups_map_ref_loci_dict[args.group] == False:
+                    if f['ext'] == 'uc':
+                        queue.put(f)
+                else:
+                    if f['ext'] == 'sam' and f['split'][-1] == 'hq' and f['split'][-2] == 'all':
+                        queue.put(f)
 
             threads_local = cpu
             # if aln_program == 'muscle':
@@ -1140,8 +1422,8 @@ if __name__ == '__main__':
                     # print(f['split'][0], p)
                     ns = krnextgen.nt_site_counts(
                         f['path'],
-                        config.getint('General', 'min_seq_cluster'),
-                        config.getint('General', 'max_seq_cluster'))
+                        config.getint('e and pi', 'min_seq_cluster'),
+                        config.getint('e and pi', 'max_seq_cluster'))
                     mle = krnextgen.mle_e_and_pi(
                         ns=ns,
                         p=p,
@@ -1376,7 +1658,8 @@ if __name__ == '__main__':
                         'Consensus', 'threshold_probability')
                     low_quality_residue = config.get(
                         'General', 'low_quality_residue')
-                    min_seq_cluster = config.getint('General', 'min_seq_cluster')
+                    min_seq_cluster = config.getint('Consensus', 'min_seq_cluster')
+                    max_seq_cluster = config.getint('Consensus', 'max_seq_cluster')
 
                     for k in ns.keys():
                         handle.write('>' + k + '\n')
@@ -1389,7 +1672,8 @@ if __name__ == '__main__':
                                 pi=heter,
                                 p=threshold_probability,
                                 low_quality_residue=low_quality_residue,
-                                min_total_per_site=min_seq_cluster)
+                                min_total_per_site=min_seq_cluster,
+                                max_total_per_site=max_seq_cluster)
                             # print(site, c)
                             sequence = sequence + c[3]
                         handle.write(sequence + '\n')
@@ -1703,8 +1987,8 @@ if __name__ == '__main__':
                     raxml_line_2 = '-s ' + cat_aln_output_file_path + ' \\\n'
                     f_raxml.write(raxml_line_2)
 
-                    raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
-                    f_raxml.write(raxml_line_3)
+                    # raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
+                    # f_raxml.write(raxml_line_3)
 
                     raxml_output_dir = between_sample_alignments_output_dir + f['split'][0] + '_raxml'
                     krio.prepare_directory(raxml_output_dir)

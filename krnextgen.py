@@ -660,6 +660,399 @@ def nucleotides_at_site(site):
     return([c_a, c_c, c_g, c_t])
 
 
+def decode_CIGAR(cigar):
+
+    import re
+
+    cigar_regex = re.compile("([0-9]*)([A-Za-z])")
+    cigar_decoded = cigar_regex.findall(cigar)
+
+    cigar_decoded_list = list()
+
+    for d in cigar_decoded:
+        count = d[0]
+        if count == '':
+            count = 1
+        else:
+            count = int(count)
+        letter = d[1].upper()
+
+        cigar_decoded_list.append([count, letter])
+
+    return(cigar_decoded_list)
+
+'''
+def encode_CIGAR(cigar):
+
+    encoded = ''
+
+    for c in cigar:
+        encoded = encoded + str(c[0]) + c[1]
+
+    return(encoded)
+
+
+def expand_CIGAR(cigar):
+
+    decoded = decode_CIGAR(cigar)
+
+    expanded = ''
+
+    for d in decoded:
+        expanded = expanded + d[1] * d[0]
+
+    return(expanded)
+'''
+
+def length_of_CIGAR(cigar):
+
+    decoded = decode_CIGAR(cigar)
+
+    length = 0
+
+    for d in decoded:
+        count = d[0]
+        letter = d[1]
+
+        if letter == 'M' or letter == 'D':
+            length = length + count
+
+    return(length)
+
+'''
+# rich_cigar, list of sequences should be sorted by their position.
+# will return a list of sequences in the same order with gaps included.
+# (pos, CIGAR, sequence)
+def alignment_from_CIGAR(rich_cigar_list):
+
+    # rich_cigar_list = sorted(rich_cigar_list, key=lambda x: (x[0]), reverse=False)
+
+    aln = list()
+    min_pos = rich_cigar_list[0][0]
+    max_pos = rich_cigar_list[0][0]
+
+    for rcl in rich_cigar_list:
+        min_pos = min(min_pos, rcl[0])
+        max_pos = max(max_pos, rcl[4])
+
+    cigar_list = list()
+    read_list = list()
+
+    for rcl in rich_cigar_list:
+        cigar_length = length_of_CIGAR(rcl[1])
+
+        offset = rcl[0] - min_pos
+        padding = max_pos - rcl[4]
+        rcl[2] = offset * '-' + rcl[2]
+        rcl[2] = rcl[2] + '-' * padding
+
+        decoded = decode_CIGAR(rcl[1])
+
+        if decoded[0][1] == 'M':
+            decoded[0][0] = decoded[0][0] + offset
+        else:
+            decoded.insert(0, [offset, 'M'])
+
+        if decoded[-1][1] == 'M':
+            decoded[-1][0] = decoded[-1][0] + padding
+        else:
+            decoded.append([padding, 'M'])
+
+        encoded = encode_CIGAR(decoded)
+        expanded = expand_CIGAR(encoded)
+
+        rcl[1] = expanded
+        cigar_length = length_of_CIGAR(rcl[1])
+
+        cigar_list.append(list(rcl[1]))
+        read_list.append(list(rcl[2]))
+
+    cigar_list_zipped = zip(*cigar_list)
+
+    for i, c in enumerate(cigar_list_zipped):
+        if 'I' in c:
+            for l, letter in enumerate(c):
+                if letter == 'M':
+                    cigar_list[l].insert(i, 'M')
+
+    cigar_list_zipped = zip(*cigar_list)
+    for i, c in enumerate(cigar_list_zipped):
+        if 'I' in c:
+            for l, letter in enumerate(c):
+                if letter == 'M':
+                    read_list[l].insert(i, '-')
+        if 'D' in c:
+            for l, letter in enumerate(c):
+                if letter == 'D':
+                    read_list[l].insert(i, '-')
+
+    read_list_zipped = zip(*read_list)
+    columns_to_remove = list()
+    for r in read_list_zipped:
+        if set(r) == set('-'):
+            columns_to_remove.append(r)
+
+    for r in columns_to_remove:
+        read_list_zipped.remove(r)
+
+    read_list = [list(x) for x in zip(*read_list_zipped)]
+
+    for r in read_list:
+        aln.append(''.join(r))
+
+    return(aln)
+'''
+
+def overlap(range1, range2):
+    if (range1[1] >= range2[0]) and (range2[1] >= range1[0]):
+        return(range1[1] - range2[0])
+    else:
+        return(False)
+
+
+def alignments_from_sam_file(min_seq_cluster, max_seq_cluster, sam_file_path,
+                             aln_output_file_path=None,
+                             counts_output_file_path=None,
+                             program='mafft', options='',
+                             program_executable='mafft'):
+
+    # from Bio import SeqIO
+    # from Bio import AlignIO
+
+    from Bio import Seq
+    from Bio import SeqRecord
+
+    import kralign
+    import krseq
+
+    handle_aln = None
+    if aln_output_file_path:
+        handle_aln = open(aln_output_file_path, 'w')
+
+    handle_counts = None
+    if counts_output_file_path:
+        handle_counts = open(counts_output_file_path, 'w')
+
+    cluster_depths = list()
+
+    ####
+
+    handle_sam = open(sam_file_path, 'r')
+
+    accept = dict()
+    reject = list()
+
+    for l in handle_sam:
+        if not l.startswith('@'):
+            record = l.strip('\n').split('\t')
+            if len(record) == 1:
+                continue
+            sam_flag = record[1]
+            # if sam_flag == '0' or sam_flag == '16':
+            if sam_flag != '4' and sam_flag != '8':
+                read_id = record[0]
+
+                if read_id in accept.keys():
+                    reject.append(read_id)
+                    accept.pop(read_id)
+                    # print('multiple matches reject', read_id)
+                    continue
+                elif read_id in reject:
+                    # print('                 reject', read_id)
+                    continue
+
+                reference_id = record[2]
+                reference_start = int(record[3])
+                cigar = record[5]
+                read_sequence = record[9]
+
+                reference_stop = reference_start + length_of_CIGAR(cigar) - 1
+
+                ###KRTEMP
+                # if reference_id == 'SL2.50ch11':
+                #     if reference_start >= 4417124 and reference_stop <= 4417391:
+                ###KRTEMPEND
+
+                accept[read_id] = [reference_id, reference_start, reference_stop, read_id, cigar, read_sequence]
+
+                # print(read_id, reference_id, reference_start, reference_stop)
+                # print(sam_flag, read_id, reference_id, reference_start, cigar, read_sequence)
+
+    # for a in accept.keys():
+    #     print(accept[a][1])
+
+    handle_sam.close()
+
+    accept = accept.values()
+    accept = sorted(accept, key=lambda x: (x[0], x[1], x[2], x[3]), reverse=False)
+
+    loci = list()
+
+    prev_ref = None
+    prev_ref_start = None
+    prev_ref_stop = None
+
+    current_locus = list()
+
+    for a in accept:
+
+        ref = a[0]
+        ref_start = a[1]
+        ref_stop = a[2]
+
+        if not prev_ref:
+            prev_ref = ref
+            prev_ref_start = ref_start
+            prev_ref_stop = ref_stop
+            current_locus.append(a)
+            continue
+
+        o = False
+        if prev_ref == ref:
+            o = overlap((prev_ref_start, prev_ref_stop), (ref_start, ref_stop))
+
+        prev_ref = ref
+        prev_ref_start = ref_start
+        prev_ref_stop = ref_stop
+
+        if o > 40:
+            current_locus.append(a)
+        else:
+            loci.append(current_locus)
+            current_locus = list()
+            current_locus.append(a)
+            # print('---------------')
+
+        # print(ref, ref_start, ref_stop)
+
+    loci.append(current_locus)
+
+    for l in loci:
+
+        rpc = len(l)
+        cluster_depths.append(rpc)
+
+        if rpc >= min_seq_cluster and (rpc <= max_seq_cluster or max_seq_cluster == 0):
+
+            min_pos = l[0][1]
+            max_pos = l[0][1]
+
+            for s in l:
+                min_pos = min(min_pos, s[1])
+                max_pos = max(max_pos, s[2])
+
+            cluster_name = 'CLUSTER_' + l[0][0] + '_' + str(min_pos) + ':' + str(max_pos)
+            # print(cluster_name)
+
+            if handle_aln:
+                handle_aln.write('>' + cluster_name + '\n')
+            if handle_counts:
+                handle_counts.write('>' + cluster_name + '\n')
+
+            if rpc > 1:
+
+                records = list()
+
+                for s in l:
+                    seq = Seq.Seq(s[5])
+                    seq_record = SeqRecord.SeqRecord(seq=seq, id=s[3], name='', description='')
+                    records.append(seq_record)
+
+                aln = kralign.align(
+                    records,
+                    program=program,
+                    options=options,
+                    program_executable=program_executable)
+
+                # for s in aln:
+                #     print(s.seq)
+
+                if handle_aln or handle_counts:
+                    for l in range(0, aln.get_alignment_length()):
+                        column = aln[:, l]
+                        column = column.upper()
+                        if handle_aln:
+                            handle_aln.write(column + '\n')
+                        counts = nucleotides_at_site(column)
+                        counts_str = (
+                            str(counts[0]) + '\t' +
+                            str(counts[1]) + '\t' +
+                            str(counts[2]) + '\t' +
+                            str(counts[3]) + '\n'
+                        )
+                        if handle_counts:
+                            handle_counts.write(counts_str)
+            else:
+                if handle_aln or handle_counts:
+                    record = l[0][5]
+                    for l in range(0, len(record)):
+                        column = record[l]
+                        column = column.upper()
+                        if handle_aln:
+                            handle_aln.write(column + '\n')
+                        counts = nucleotides_at_site(column)
+                        counts_str = (
+                            str(counts[0]) + '\t' +
+                            str(counts[1]) + '\t' +
+                            str(counts[2]) + '\t' +
+                            str(counts[3]) + '\n'
+                        )
+                        if handle_counts:
+                            handle_counts.write(counts_str)
+
+        # print('================================================================')
+
+        # locus_alignment = alignment_from_CIGAR(l)
+
+        # for s in locus_alignment:
+        #     print(s)
+
+        # alignment_breaks = list()
+        # running_start = None
+        # running_end = None
+        # for i, s in enumerate(locus_alignment):
+
+        #     # Find out where sequences starts and ends within an alignment
+        #     s = s.rstrip('-')
+        #     s_start = 0
+
+        #     start_found = False
+        #     for loc, nt in enumerate(s):
+        #         if not start_found and nt != '-':
+        #             s_start = loc
+        #             start_found = True
+        #     s_end = len(s)
+
+        #     # Find breaks in alignment
+        #     o = None
+        #     if (running_start is not None) and (running_end is not None):
+        #         o = overlap([running_start, running_end], [s_start, s_end])
+        #         if o >= 40:
+        #             running_end = s_end
+        #         else:
+        #             alignment_breaks.append(i)
+        #             running_start = s_start
+        #             running_end = s_end
+        #     else:
+        #         running_start = s_start
+        #         running_end = s_end
+
+        #     print(s, '|', running_start, running_end, '|', s_start, s_end, '|', o)
+
+        # print(alignment_breaks)
+
+        # print('****************************************************************')
+
+    ####
+
+    if handle_aln:
+        handle_aln.close()
+    if handle_counts:
+        handle_counts.close()
+
+    return(cluster_depths)
+
+
 def align_clusters(min_seq_cluster, max_seq_cluster, uc_file_path,
                    fasta_file_path, aln_clustal_phylip_file_path=None,
                    aln_output_file_path=None, counts_output_file_path=None,
@@ -1131,7 +1524,7 @@ def mle_e_and_pi(ns, p, e0, pi0):
     return(ret_value)
 
 
-def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site=4):
+def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site=4, max_total_per_site=1023):
 
     '''
         Given nucleotide counts (from multiple NextGen reads) at a site,
@@ -1182,11 +1575,13 @@ def consensus_base(s, e, pi, p=0.95, low_quality_residue='N', min_total_per_site
     k2 = s[common[1]]
     n = s[common[0]] + s[common[1]]
 
-    if n < min_total_per_site:
+    if (n < min_total_per_site) or (n > max_total_per_site):
         ret_value = (0, False, (low_quality_residue, low_quality_residue), low_quality_residue)
         return(ret_value)
 
     # print(k1, k2, n)
+    # TODO: ERROR WHEN
+    # 550 474 1024
 
     prob_het = special.binom(n, k1) / (2.0 ** n)
     prob_hom_1 = stats.binom.pmf(k1, n, e)
