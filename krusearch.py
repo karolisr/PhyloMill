@@ -16,7 +16,7 @@ def cluster_file(
 
     sorted_input=False,
     algorithm='fast',  # fast smallmem
-    strand='plus',  # plus both
+    strand='plus',  # plus both aa
     threads=1,
     quiet=True,
     program='usearch',
@@ -53,6 +53,11 @@ def cluster_file(
     else:
         threads = ''
 
+    if strand == 'aa':
+        strand = ''
+    else:
+        strand = ' -strand ' + strand
+
     if heuristics:
         heuristics = ''
     else:
@@ -83,7 +88,7 @@ def cluster_file(
         ' -query_cov ' + str(query_coverage) +
         ' -target_cov ' + str(target_coverage) +
         ' -cluster_' + algorithm + ' ' + input_file_path +
-        ' -strand ' + strand +
+        strand +
         ' -id ' + str(identity_threshold) +
         threads +
         ' -uc ' + output_file_path +
@@ -237,7 +242,7 @@ def cluster_records(
     temp_dir,
     sorted_input=False,
     algorithm='fast',  # fast smallmem
-    strand='plus',  # plus both
+    strand='plus',  # plus both aa
     threads=1,
     quiet=True,
     program='usearch',
@@ -246,7 +251,9 @@ def cluster_records(
     target_coverage=0.5,
     sizein=False,
     sizeout=False,
-    usersort=False
+    usersort=False,
+    seq_id='accession',
+    cluster_key='clust_number'  # clust_number centroid
 ):
 
     '''
@@ -261,7 +268,8 @@ def cluster_records(
     to_cluster_path = temp_dir + ps + 'to_cluster_temp.fasta'
     clustered_path = temp_dir + ps + 'clustered_temp.uc'
 
-    krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
+    # krbioio.write_sequence_file(records, to_cluster_path, 'fasta')
+    krbioio.export_records(records, file_format='fasta', file_path=to_cluster_path, seq_id=seq_id)
 
     cluster_file(
         input_file_path=to_cluster_path,
@@ -281,7 +289,7 @@ def cluster_records(
         usersort=usersort
     )
 
-    cluster_dict = parse_uc_file(clustered_path)
+    cluster_dict = parse_uc_file(uc_file_path=clustered_path, key=cluster_key)
 
     os.remove(to_cluster_path)
     os.remove(clustered_path)
