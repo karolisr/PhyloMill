@@ -1243,6 +1243,7 @@ def one_locus_per_organism(
     review_dir_base = output_dir + '-1-review' + ps
     review_new_dir_base = output_dir + '-2-review-updated' + ps
     reviewed_dir_base = output_dir + '-3-reviewed' + ps
+    final_dir_base = output_dir + '-99-final' + ps
 
     lengths_log_file = log_dir + ps + '04-flat-0-lengths.csv'
     lengths_log_handle = open(lengths_log_file, 'w')
@@ -1282,8 +1283,8 @@ def one_locus_per_organism(
     krio.prepare_directory(review_new_dir_base)
     krio.prepare_directory(reviewed_dir_base)
 
-    print('\n\tPreparing output directory "', output_dir, '"', sep='')
-    krio.prepare_directory(output_dir)
+    print('\n\tPreparing output directory "', final_dir_base, '"', sep='')
+    krio.prepare_directory(final_dir_base)
 
     print('\tPreparing temporary directory "', temp_dir, '"', sep='')
     krio.prepare_directory(temp_dir)
@@ -1360,7 +1361,7 @@ def one_locus_per_organism(
         log_handle = open(log_file, 'w')
 
         name1_results = list()
-        name1_results_file = output_dir + ps + name1 + '.fasta'
+        name1_results_file = final_dir_base + ps + name1 + '.fasta'
 
         name1_records = all_loci_dict[name1]
 
