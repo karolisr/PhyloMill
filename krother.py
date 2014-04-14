@@ -77,3 +77,16 @@ def parse_line(line, delimiter, quotechar, stripchar):
 def timestamp():
     import datetime
     return(str(datetime.datetime.now()).split('.')[0])
+
+
+def compare_strings(l_strings):
+    prev_s = None
+    match = True
+    for s in l_strings:
+        if prev_s == None:
+            prev_s = s
+            continue
+        if prev_s != s:
+            match = False
+            break
+    return match
