@@ -97,13 +97,16 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     if isinstance(uids, set):
         uids = list(uids)
 
+    if isinstance(uids, basestring):
+        uids = [uids]
+
     Entrez.email = entrez_email
     out_handle = open(file_path, 'w')
     uid_count = len(uids)
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 200
-    small_batch_size = 100
+    large_batch_size = 1000
+    small_batch_size = 500
 
     # Perhaps these may be function arguments?
     rettype = 'gb'
@@ -124,7 +127,8 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                 to_download_uids |= set(small_batch)
                 # ##
                 small_batch_count = len(small_batch)
-                epost = Entrez.read(Entrez.epost(db, id=','.join(small_batch)))
+                small_batch_text = ','.join(small_batch)
+                epost = Entrez.read(Entrez.epost(db, id=small_batch_text))
                 webenv = epost['WebEnv']
                 query_key = epost['QueryKey']
 
@@ -134,6 +138,9 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                     end = min(small_batch_count, start + small_batch_size)
                     print ('  Going to download record %i to %i of %i.'
                            % (start + 1, end, small_batch_count))
+
+                    # for i, j in enumerate(range(start, end)):
+                    #     print(i, small_batch[j])
 
                     fetch_handle = Entrez.efetch(
                         db=db, rettype=rettype, retmode=retmode,
@@ -151,6 +158,11 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                     downloaded_uids.add(krseq.get_annotation(x, 'gi'))
                 # ##
             except:
+                # print(rec_downloaded, n_rec_to_download)
+                # print(len(downloaded_uids), len(to_download_uids))
+                # print(downloaded_uids - to_download_uids)
+                # print(to_download_uids - downloaded_uids)
+
                 print('    HTTP problem, retrying...')
                 time.sleep(5)
                 continue
