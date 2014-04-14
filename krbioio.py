@@ -41,6 +41,22 @@ def write_sequence_file(records, file_path, file_format):
     handle.close()
     return count_written
 
+def export_records(records, file_format, file_path, seq_id=None):
+    import copy
+    if file_format == 'fasta':
+        records_copy = []
+        for rec in records:
+            records_copy.append(copy.copy(rec))
+        for record in records_copy:
+            if seq_id is None or seq_id == 'gi':
+                record.id = record.annotations['gi']
+            if seq_id == 'accession':
+                pass
+            record.description = ''
+        write_sequence_file(records_copy, file_path, file_format)
+    elif file_format == 'genbank':
+        write_sequence_file(records_copy, file_path, file_format)
+
 # ToDo: File formats should be listed for convenience.
 # https://github.com/biopython/biopython/blob/master/Bio/SeqIO/QualityIO.py
 
