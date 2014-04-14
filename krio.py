@@ -163,6 +163,18 @@ def read_table_file(
 
     return(return_value)
 
+
+def write_tsv_file(l_tsv_dict, l_tsv_file_path):
+    """
+
+    """
+    import csv
+    rows = l_tsv_dict.values()
+    rows.sort(key=lambda x: x[0], reverse=False)
+    with open(l_tsv_file_path, 'wb') as file:
+        writer = csv.writer(file, delimiter='\t')
+        writer.writerows(rows)
+
 if __name__ == '__main__':
 
     # Tests
