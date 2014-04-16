@@ -2,7 +2,12 @@ from __future__ import print_function
 # from __future__ import unicode_literals
 
 
-def read_sequence_data(handle, data_format, ret_type='list'):
+def read_sequence_data(
+    handle,
+    data_format,
+    ret_type='list',
+    key='accession'  # accession gi
+    ):
 
     '''
     Read sequence data from Entrez.efetch or file handle and return a list of
@@ -17,7 +22,15 @@ def read_sequence_data(handle, data_format, ret_type='list'):
     if ret_type == 'dict':
         records = dict()
         for record in records_generator:
-            records[record.id] = record
+
+            if key == 'accession':
+                key = record.id
+            elif key == 'gi':
+                key = record.annotations['gi']
+            else:
+                key = record.id
+
+            records[key] = record
     else:
         records = list()
         for record in records_generator:
@@ -27,9 +40,15 @@ def read_sequence_data(handle, data_format, ret_type='list'):
     return records
 
 
-def read_sequence_file(file_path, file_format, ret_type='list'):
+def read_sequence_file(
+    file_path,
+    file_format,
+    ret_type='list',
+    key='accession'  # accession gi
+    ):
+
     handle = open(file_path, 'rU')
-    return read_sequence_data(handle, file_format, ret_type)
+    return read_sequence_data(handle, file_format, ret_type, key)
 
 
 def write_sequence_file(records, file_path, file_format):
