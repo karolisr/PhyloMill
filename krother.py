@@ -90,3 +90,27 @@ def compare_strings(l_strings):
             match = False
             break
     return match
+
+
+def in_range(x,a,b,percent):
+    c = min(a,b)
+    d = max(a,b)
+    upper_limit = ((d-c)/(float(100)/float(percent)))+c
+    if c<=x<=upper_limit:
+        return True
+    else:
+        return False
+
+
+def overlap(l_seg_a,l_seg_b):
+    a1 = l_seg_a[0]
+    a2 = l_seg_a[1]
+    b1 = l_seg_b[0]
+    b2 = l_seg_b[1]
+    return_value = False
+    if in_range(a1,b1,b2,100) or\
+       in_range(a2,b1,b2,100) or\
+       in_range(b1,a1,a2,100) or\
+       in_range(b2,a1,a2,100):
+        return_value = True
+    return return_value
