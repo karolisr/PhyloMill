@@ -227,6 +227,93 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     return(ret_value)
 
 
+def determine_conserved_regions(alignment_file, matrix, window, min_length, cutoff):
+
+    import subprocess
+    import csv
+    import os
+
+    directory = os.path.split(alignment_file)[0]
+    cons_scores = directory + os.path.sep + 'conservation_scores.tsv'
+
+    subprocess.call('score_conservation.py -o '+cons_scores+' -m /usr/local/conservation_code/matrix/'+matrix+'.bla -w '+str(window)+' '+alignment_file, shell=True)
+
+    cons_csv = csv.reader(open(cons_scores, 'rb'), delimiter='\t')
+
+    regions = []
+    region = []
+
+    for row in cons_csv:
+        if row[0].startswith('#'):
+            continue
+
+        pos = int(row[0])+1
+        con = float(row[1])
+
+        if con >= float(cutoff):
+            region.append([pos,con])
+        else:
+            if len(region) >= min_length:
+                regions.append(region)
+            region = []
+
+    if len(region) >= min_length:
+        regions.append(region)
+
+    print('There are '+str(len(regions))+' conserved regions.')
+
+    for region in regions:
+        print('----------------')
+        print('There are '+str(len(region))+' residues in this region.')
+        for position in region:
+            print(position)
+
+    return regions
+
+
+def slice_out_conserved_regions(regions, alignment_file, name_prefix):
+
+    from Bio import AlignIO
+    from Bio.Align import MultipleSeqAlignment
+    import subprocess
+    import os
+
+    directory = os.path.split(alignment_file)[0]
+    alignment = AlignIO.read(open(alignment_file), "fasta")
+
+    for i in range(0,len(regions)):
+
+        region = regions[i]
+        start = region[0][0]-1
+        stop = region[-1][0]
+        name = name_prefix + str(i+1)
+        sliced_alignment = alignment[:,start:stop]
+        sliced_alignment_edited = MultipleSeqAlignment(None)
+
+        output_path = directory + os.path.sep + name + '.fasta'
+
+        for record in sliced_alignment:
+            if not "-" in str(record.seq):
+                sliced_alignment_edited.append(record)
+
+        AlignIO.write(sliced_alignment_edited, output_path, "fasta")
+        subprocess.call('usearch -quiet -minseqlength 1 -derep_fulllength '+output_path+' -output '+output_path, shell=True)
+
+        sliced_alignment_new = AlignIO.read(open(output_path), "fasta")
+
+        j=1
+
+        for record in sliced_alignment_new:
+            record.id = name+'_'+str(j)
+            record.description = ''
+            record.name = ''
+            j = j+1
+
+        AlignIO.write(sliced_alignment_new, output_path, "fasta")
+
+    return
+
+
 if __name__ == '__main__':
 
     # Tests
