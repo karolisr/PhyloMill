@@ -23,14 +23,16 @@ def read_sequence_data(
         records = dict()
         for record in records_generator:
 
-            if key == 'accession':
-                key = record.id
-            elif key == 'gi':
-                key = record.annotations['gi']
-            else:
-                key = record.id
+            key_value = None
 
-            records[key] = record
+            if key == 'accession':
+                key_value = record.id
+            elif key == 'gi':
+                key_value = record.annotations['gi']
+            else:
+                key_value = record.id
+
+            records[key_value] = record
     else:
         records = list()
         for record in records_generator:
