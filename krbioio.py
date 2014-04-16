@@ -60,7 +60,7 @@ def write_sequence_file(records, file_path, file_format):
     handle.close()
     return count_written
 
-def export_records(records, file_format, file_path, seq_id=None):
+def export_records(records, file_format, file_path, seq_id=None, seq_id_prefix=''):
     import copy
     if file_format == 'fasta':
         records_copy = []
@@ -68,9 +68,9 @@ def export_records(records, file_format, file_path, seq_id=None):
             records_copy.append(copy.copy(rec))
         for record in records_copy:
             if seq_id is None or seq_id == 'gi':
-                record.id = record.annotations['gi']
+                record.id = seq_id_prefix + record.annotations['gi']
             if seq_id == 'accession':
-                pass
+                record.id = seq_id_prefix + record.id
             record.description = ''
         write_sequence_file(records_copy, file_path, file_format)
     elif file_format == 'genbank':
