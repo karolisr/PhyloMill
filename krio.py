@@ -164,6 +164,21 @@ def read_table_file(
     return(return_value)
 
 
+# ToDo: read_tsv_file and write_tsv_file are special functions and may need to
+# be renamed to a less generic name
+
+def read_tsv_file(l_tsv_file_path, key_column):
+    """
+
+    """
+    import csv
+    csv_rows = csv.reader(open(l_tsv_file_path, 'rb'), delimiter='\t')
+    csv_dict = {}
+    for row in csv_rows:
+        csv_dict[row[key_column]] = row
+    return csv_dict
+
+
 def write_tsv_file(l_tsv_dict, l_tsv_file_path):
     """
 
