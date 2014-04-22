@@ -101,6 +101,9 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     organism_dict['cross'] = ''
     organism_dict['other'] = ''
 
+    if (len(name_list) == 3 and ((len(indexes) == 0))):
+        organism_dict['subspecies'] = name_list[2]
+
     number_of_indexes = len(indexes)
 
     if number_of_indexes:
