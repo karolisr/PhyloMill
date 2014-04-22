@@ -197,6 +197,7 @@ if __name__ == '__main__':
 
         # Group samples
         sample_groups_dict = dict()
+        # sample_groups_dict = datrie.Trie(string.printable)
         sample_groups = config.items('Sample Groups')
         for group in sample_groups:
             if group[0] != 'outgroup_samples':
@@ -210,7 +211,9 @@ if __name__ == '__main__':
 
         # Map to Reference options
         groups_map_ref_loci_dict = dict()
+        # groups_map_ref_loci_dict = datrie.Trie(string.printable)
         groups_map_to_ref_step_dict = dict()
+        # groups_map_to_ref_step_dict = datrie.Trie(string.printable)
         map_to_reference_options = config.items('Map to Reference')
         for mtro in map_to_reference_options:
             mtro_name = mtro[0].split('.')
@@ -841,7 +844,7 @@ if __name__ == '__main__':
                                 ' --no-sq' +
                                 ' -f' +
                                 ' --gbar 2' +
-                                ' -k 100' +
+                                ' -k 50' +
                                 ' --np 0' +
                                 ' --n-ceil L,0,0.5' +
                                 ' --end-to-end' +
@@ -1432,6 +1435,7 @@ if __name__ == '__main__':
                                             'heterozygosity_initial'))
 
                     results_dict = dict()
+                    # results_dict = datrie.Trie(string.printable)
 
                     results_dict['sample'] = str(f['split'][0])
                     # results_dict['barcode'] = str(f['split'][1])
@@ -1564,7 +1568,9 @@ if __name__ == '__main__':
 
             # Values are tuples: (e, pi)
             group_stats = dict()
+            # group_stats = datrie.Trie(string.printable)
             sample_stats = dict()
+            # sample_stats = datrie.Trie(string.printable)
 
 #             for group in sample_groups_dict.keys():
             group_samples = sample_groups_dict[group]
@@ -1934,6 +1940,7 @@ if __name__ == '__main__':
                             continue
                         for column in range(0, column_count):
                             counts = dict()
+                            # counts = datrie.Trie(string.printable)
                             for c in aln[:, column]:
                                 c = c.upper()
                                 if c in iupac_double_dna_set:

@@ -819,27 +819,32 @@ def alignments_from_sam_file(min_seq_cluster, max_seq_cluster, sam_file_path,
     # from Bio import SeqIO
     # from Bio import AlignIO
 
+    import os
+
+    import string
+
+    import datrie
+
     from Bio import Seq
     from Bio import SeqRecord
 
     import kralign
     import krseq
 
-    handle_aln = None
-    if aln_output_file_path:
-        handle_aln = open(aln_output_file_path, 'w')
-
-    handle_counts = None
-    if counts_output_file_path:
-        handle_counts = open(counts_output_file_path, 'w')
-
-    cluster_depths = list()
+    import krother
 
     ####
+
+    ps = os.path.sep
+
+    printable_sample_name = sam_file_path.split(ps)[-1]
+
+    print(krother.timestamp(), '-', 'Iterating over SAM file.', printable_sample_name)
 
     handle_sam = open(sam_file_path, 'r')
 
     accept = dict()
+    # accept = datrie.Trie(string.printable)
     reject = list()
 
     for l in handle_sam:
@@ -882,6 +887,8 @@ def alignments_from_sam_file(min_seq_cluster, max_seq_cluster, sam_file_path,
     #     print(accept[a][1])
 
     handle_sam.close()
+
+    print(krother.timestamp(), '-', 'Constructing loci.', printable_sample_name)
 
     accept = accept.values()
     accept = sorted(accept, key=lambda x: (x[0], x[1], x[2], x[3]), reverse=False)
@@ -926,6 +933,18 @@ def alignments_from_sam_file(min_seq_cluster, max_seq_cluster, sam_file_path,
         # print(ref, ref_start, ref_stop)
 
     loci.append(current_locus)
+
+    print(krother.timestamp(), '-', 'Aligning sequences within loci.', printable_sample_name)
+
+    handle_aln = None
+    if aln_output_file_path:
+        handle_aln = open(aln_output_file_path, 'w', 1)
+
+    handle_counts = None
+    if counts_output_file_path:
+        handle_counts = open(counts_output_file_path, 'w', 1)
+
+    cluster_depths = list()
 
     for l in loci:
 
