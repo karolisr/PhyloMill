@@ -13,7 +13,14 @@ def produce_edits(s1, s2):
         k = ''
         if oc[0] != b'equal':
             k = s2[oc[3]:oc[4]]
-        e.append((oc, k))
+
+        l = 1
+
+        if len(set(str(k))) == 1:
+            l = len(k)
+            k = k[0]
+
+        e.append((oc, str(k), l))
 
     return e
 
@@ -33,11 +40,11 @@ def apply_edits(e, s):
             stop = edit[0][4]
             s2 = s2 + (stop-start) * '.'
         else:
-            s2 = s2 + edit[1]
+            s2 = s2 + edit[1] * edit[2]
 
     # print(s2[0:150])
 
-    edited = Levenshtein.apply_edit(ocs, s, s2)
+    edited = Levenshtein.apply_edit(ocs, unicode(s), unicode(s2))
 
     # print(edited[0:150])
 
@@ -48,9 +55,11 @@ def edits_to_string(e):
     edits_string = ''
     for edit in e:
         ocs = edit[0]
-        s = edit[1]
-        edits_string = edits_string + ocs[0] + ',' + str(ocs[1]) + ',' + str(ocs[2]) + ',' + str(ocs[3]) + ',' + str(ocs[4]) + ',' + s + '|'
+        s = str(edit[1])
+        c = str(edit[2])
+        edits_string = edits_string + ocs[0] + ',' + str(ocs[1]) + ',' + str(ocs[2]) + ',' + str(ocs[3]) + ',' + str(ocs[4]) + ',' + s + ',' + c + '|'
     edits_string = edits_string.strip('|')
+    # print(edits_string)
     return edits_string
 
 
@@ -59,9 +68,12 @@ def string_to_edits(edits_string):
     edits_temp = edits_string.split('|')
     for et in edits_temp:
         et_split = et.split(',')
+        # print(et_split)
         e_ocs = (str(et_split[0]), int(et_split[1]), int(et_split[2]), int(et_split[3]), int(et_split[4]))
-        s = str(et_split[5:6][0])
-        edits.append((e_ocs, s))
+        s = str(et_split[5])
+        c = int(et_split[6])
+        edits.append((e_ocs, s, c))
+    # print(edits)
     return edits
 
 
