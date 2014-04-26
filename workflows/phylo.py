@@ -18,16 +18,17 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '-p',
-        '--prepare_project_dir',
+        '--project_dir',
         type=unicode,
-        help='Prepares clean project directory.')
+        help="Prepares clean project directory if it doesn't exist. Otherwise \
+              sets the project directory.")
 
     args = parser.parse_args()
 
     # Prepare clean project directory
-    if args.prepare_project_dir:
+    if args.project_dir:
 
-        prj_dir_path = args.prepare_project_dir.rstrip(ps)
+        prj_dir_path = args.project_dir.rstrip(ps)
 
         if os.path.exists(prj_dir_path):
             print('Directory at', prj_dir_path, 'already exists.')
@@ -37,14 +38,19 @@ if __name__ == '__main__':
 
         # Script filename
         script_file_path = inspect.getfile(inspect.currentframe())
+
         # Script directory path
-        script_dir_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        script_dir_path = os.path.dirname(os.path.abspath(script_file_path))
 
-        prj_template_dir_path = script_dir_path.strip('workflows') + 'data' + ps + 'phylo-prj-tempate'
+        prj_template_dir_path = script_dir_path.strip('workflows') + \
+            'data' + ps + 'phylo-prj-tempate'
 
-        shutil.copytree(prj_template_dir_path, prj_dir_path, symlinks=False, ignore=None)
+        shutil.copytree(prj_template_dir_path, prj_dir_path, symlinks=False,
+                        ignore=None)
+
         # wd = os.getcwd()
         # os.chdir(prj_dir_path+'03-name_resolution')
         # call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
         # os.chdir(wd)
+
         sys.exit(0)
