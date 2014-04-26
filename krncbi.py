@@ -212,3 +212,4 @@ if __name__ == '__main__':
     # esearch
     # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
     #      'test@test.com'))
+    # print(esearch('Solanaceae', 'taxonomy', 'test@test.com'))

@@ -1,0 +1,12 @@
+[General]
+
+# Contact email, so NCBI can inform the user if there are any problems
+email = temp@temp.com
+
+[Taxa]
+
+# Taxa can be NCBI "Taxonomy IDs" or a recognized taxonomic name.
+
+taxon1
+taxon2
+taxon3
