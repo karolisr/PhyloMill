@@ -546,6 +546,37 @@ class KRSequenceDatabase:
         return row_id
 
 
+    def in_blacklist(self,
+        record_reference,
+        record_reference_type='gi'  # gi version internal
+        ):
+
+        # id INTEGER PRIMARY KEY AUTOINCREMENT,
+        # ncbi_gi INTEGER,
+        # ncbi_version TEXT,
+        # internal_reference TEXT
+
+        where_dict_key = ''
+
+        if record_reference_type == 'gi':
+            where_dict_key = 'ncbi_gi'
+        elif record_reference_type == 'version':
+            where_dict_key = 'ncbi_version'
+        elif record_reference_type == 'internal':
+            where_dict_key = 'internal_reference'
+
+        where_dict = {where_dict_key: record_reference}
+
+        results = self._db_get_row_id(
+            table_name='blacklist',
+            values_dict=where_dict)
+
+        if not results:
+            return False
+        else:
+            return True
+
+
     def add_record(self,
         org,  # string or org_dict
         ncbi_gi,
@@ -694,7 +725,7 @@ class KRSequenceDatabase:
             where_dict = {'id': old_seq_rep_id}
             join_rules_str = None
 
-            results = seq_db._db_select(
+            results = self._db_select(
                 table_name_list=table_name_list,
                 column_list=column_list,
                 where_dict=where_dict,
@@ -824,7 +855,7 @@ class KRSequenceDatabase:
         where_dict = {'sequences.id': sequence_id}
         join_rules_str = 'sequences.seq_alpha_id=sequence_alphabets.id'
 
-        results = seq_db._db_select(
+        results = self._db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -847,7 +878,7 @@ class KRSequenceDatabase:
         where_dict = {'id': seq_rep_id}
         join_rules_str = None
 
-        results = seq_db._db_select(
+        results = self._db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -883,7 +914,7 @@ class KRSequenceDatabase:
         where_dict = {where_dict_key: record_reference}
         join_rules_str = None
 
-        results = seq_db._db_select(
+        results = self._db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
