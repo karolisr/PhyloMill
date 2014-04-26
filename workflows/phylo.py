@@ -13,6 +13,8 @@ if __name__ == '__main__':
     import shutil
     import ConfigParser
 
+    from krpy import KRSequenceDatabase
+
     from krpy import krncbi
 
     from krpy.workflow_functions import krphylowf as wf
@@ -46,6 +48,8 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    db = None
+
     prj_dir_path = None
 
     # Prepare clean project directory
@@ -58,6 +62,9 @@ if __name__ == '__main__':
             print('Using project directory at', prj_dir_path)
 
             prj_dir_path = prj_dir_path + ps
+
+            db = KRSequenceDatabase.KRSequenceDatabase(
+                prj_dir_path + 'db.sqlite3')
 
         else:
 
@@ -82,6 +89,8 @@ if __name__ == '__main__':
             # call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
             # os.chdir(wd)
 
+            KRSequenceDatabase.KRSequenceDatabase(prj_dir_path + 'db.sqlite3')
+
             sys.exit(0)
 
     ############################################################################
@@ -99,25 +108,19 @@ if __name__ == '__main__':
     config.read(config_file_path)
 
     email = config.get('General', 'email')
+    max_seq_length = config.getint('General', 'max_seq_length')
+    seq_type = config.get('General', 'seq_type')
 
     # Parse taxa
     tax_temp = config.items('Taxa')
     tax_temp = [x[0] for x in tax_temp]
-
     tax_ids = list()
-
     for tax in tax_temp:
         if tax.isalpha():
             tax_id = list(krncbi.esearch(tax, 'taxonomy', email))[0]
             tax_ids.append(str(tax_id))
         else:
             tax_ids.append(tax)
-
-    tax_ncbi_query_strings = list()
-    for t in tax_ids:
-        tnqs = 'txid' + str(t) + '[Organism]'
-        tax_ncbi_query_strings.append(tnqs)
-    taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
 
     # Parse loci
     loci_temp = config.items('Loci')
@@ -129,7 +132,24 @@ if __name__ == '__main__':
 
     # Search genbank
     if 'search' in commands:
-        wf.search_genbank()
+
+        ncbi_db = None
+
+        if seq_type == 'aa':
+            ncbi_db = 'protein'
+        elif seq_type == 'nt':
+            ncbi_db = 'nuccore'
+
+        for locus_name in loci.keys():
+            query_terms = loci[locus_name]
+            gis = wf.search_genbank(
+                ncbi_db=ncbi_db,
+                query_terms=query_terms,
+                ncbi_tax_ids=tax_ids,
+                max_seq_length=max_seq_length,
+                email=email)
+
+            print(len(gis))
 
     ############################################################################
     ############################################################################
