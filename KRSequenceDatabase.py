@@ -34,6 +34,13 @@ class KRSequenceDatabase:
         authority TEXT
         );
 
+    CREATE TABLE blacklist(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ncbi_gi INTEGER,
+        ncbi_version TEXT,
+        internal_reference TEXT
+        );
+
     CREATE TABLE records(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         org_id INTEGER NOT NULL REFERENCES organisms(id),
