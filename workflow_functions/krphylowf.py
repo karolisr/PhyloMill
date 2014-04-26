@@ -28,4 +28,11 @@ def search_genbank(ncbi_db, query_terms, ncbi_tax_ids, max_seq_length, email):
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
         email=krncbi)
 
-    return result_uids
+    uid_list = list()
+
+    for uid in result_uids:
+        gi = int(uid)
+        # print(gi, type(gi))
+        uid_list.append(gi)
+
+    return uid_list
