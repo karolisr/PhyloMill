@@ -1,5 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-										
-# LFY (LEAFY) nuclear
-LFY	1	X	no	LFY	50	gene	gene	strict	nuccore	LFY
-#LFY	1	X	no	LFY	50	intron	gene	strict	nuccore	LFY

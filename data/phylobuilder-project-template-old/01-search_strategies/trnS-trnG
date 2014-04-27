@@ -1,5 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-
-# trnS-trnG (trnS-trnG intergenic spacer) chloroplast
-trnS-trnG	01	X	no	trnS-trnG	100	misc_feature	note	loose	nuccore	trnS-trnG
-trnS-trnG	02	X	no	trnS$tRNA-Ser->trnG$tRNA-Gly	1	gene	gene	loose	nuccore	(trnS OR tRNA-Ser) AND (trnG OR tRNA-Gly)

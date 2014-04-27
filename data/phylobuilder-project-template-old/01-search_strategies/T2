@@ -1,4 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-
-# T2-type ribonuclease
-T2	01	X	no	ribonuclease T2	100	CDS	product	strict	nuccore	ribonuclease T2

@@ -1,6 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-
-# psbA-trnH (psbA-trnH intergenic spacer) chloroplast
-psbA-trnH	01	X	no	psbA-trnH	100	misc_feature	note	loose	nuccore	psbA-trnH
-psbA-trnH	02	X	yes	trnH-psbA	100	misc_feature	note	loose	nuccore	trnH-psbA
-psbA-trnH	03	X	no	psbA->trnH$tRNA-His	1	gene	gene	strict	nuccore	psbA AND (trnH OR tRNA-His)

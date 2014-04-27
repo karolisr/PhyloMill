@@ -1,4 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-										
-# RAG1 (recombination activating gene 1) nuclear
-RAG1	1	X	no	RAG-1	50	gene	gene	loose	nuccore	"RAG-1"

@@ -1,4 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-
-# atpB-rbcL (atpB-rbcL intergenic spacer) chloroplast
-atpB-rbcL	01	X	no	atpB-rbcL	50	misc_feature	note	loose	nuccore	atpB-rbcL

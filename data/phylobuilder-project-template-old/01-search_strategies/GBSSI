@@ -1,5 +1,0 @@
-name1	name2	locus_relative_position	force_rev_comp	locus	minlen	ncbi_feature_type	ncbi_qualifier_label	match_stringency	database	query
-
-# GBSSI (granule-bound starch synthase (waxy)) nuclear
-#GBSSI	01	X	no	GBSSI$waxy	100	gene	gene	strict	nuccore	waxy OR GBSSI
-GBSSI	01	X	no	GBSSI$waxy	100	gene	gene	strict	nuccore	(waxy[Gene Name] OR GBSSI[Gene Name])
