@@ -504,7 +504,7 @@ class KRSequenceDatabase:
         return row_id
 
 
-    def add_record_annotation(self, rec_id, type_str, annotation_str):
+    def _add_record_annotation(self, rec_id, type_str, annotation_str):
 
         # id INTEGER PRIMARY KEY AUTOINCREMENT,
         # rec_id INTEGER NOT NULL REFERENCES records(id),
@@ -528,6 +528,38 @@ class KRSequenceDatabase:
         row_id = self._db_insert('record_annotations', values_dict)
 
         return row_id
+
+
+    def add_record_annotation(
+        self,
+        record_reference,
+        type_str,
+        annotation_str,
+        record_reference_type='gi'  # gi version internal
+        ):
+
+        where_dict_key = ''
+
+        if record_reference_type == 'gi':
+            where_dict_key = 'ncbi_gi'
+        elif record_reference_type == 'version':
+            where_dict_key = 'ncbi_version'
+        elif record_reference_type == 'internal':
+            where_dict_key = 'internal_reference'
+
+        where_dict = {where_dict_key: record_reference}
+
+        rec_id = self._db_get_row_id(
+            table_name='records',
+            values_dict=where_dict)
+
+        row_id = self._add_record_annotation(
+            rec_id=rec_id,
+            type_str=type_str,
+            annotation_str=annotation_str)
+
+        return row_id
+
 
 
     def _add_record_action(self, rec_id, action_str):
@@ -985,6 +1017,77 @@ class KRSequenceDatabase:
 
         return seq_list
 
+
+    def get_record(
+        self,
+        record_reference,
+        record_reference_type='gi'  # gi version internal
+        ):
+
+        from Bio.SeqRecord import SeqRecord
+
+        # id INTEGER PRIMARY KEY AUTOINCREMENT,
+        # org_id INTEGER NOT NULL REFERENCES organisms(id),
+        # seq_rep_id INTEGER REFERENCES sequence_representations(id),
+        # aln_id INTEGER REFERENCES alignments(id),
+        # active INTEGER NOT NULL,
+        # ncbi_gi INTEGER,
+        # ncbi_version TEXT,
+        # internal_reference TEXT,
+        # description TEXT
+
+        where_dict_key = ''
+
+        if record_reference_type == 'gi':
+            where_dict_key = 'ncbi_gi'
+        elif record_reference_type == 'version':
+            where_dict_key = 'ncbi_version'
+        elif record_reference_type == 'internal':
+            where_dict_key = 'internal_reference'
+
+        where_dict = {where_dict_key: record_reference}
+
+        results = self._db_select(
+            table_name_list=['records'],
+            column_list=['ncbi_gi', 'ncbi_version', 'internal_reference',
+                         'description'],
+            where_dict=where_dict,
+            join_rules_str=None)[0]
+
+        seq_rep_id = self._get_seq_rep_id_for_record(
+            record_reference=record_reference,
+            record_reference_type=record_reference_type)
+
+        seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
+
+        record = SeqRecord(
+            seq=seq,
+            id=results[b'ncbi_version'],
+            name=results[b'ncbi_version'],
+            description=results[b'description'])
+
+        record.annotations[b'gi'] = str(results[b'ncbi_gi'])
+
+        return record
+
+
+    def get_records(
+        self,
+        record_reference_list,
+        record_reference_type='gi'  # gi version internal
+        ):
+
+        record_list = list()
+
+        for ref in record_reference_list:
+            record = self.get_record(
+                record_reference=ref,
+                record_reference_type=record_reference_type  # gi version internal
+                )
+
+            record_list.append(record)
+
+        return record_list
 
 
     ############################################################################
