@@ -114,3 +114,22 @@ def overlap(l_seg_a,l_seg_b):
        in_range(b2,a1,a2,100):
         return_value = True
     return return_value
+
+
+def write_log(msg, log_file_path, append=True,
+    newlines_before=0, newlines_after=0):
+
+    log_handle = None
+
+    if append:
+        log_handle = open(log_file_path, 'a')
+    else:
+        log_handle = open(log_file_path, 'wb')
+
+    message = newlines_before*'\n' + timestamp() + ' - ' + msg + newlines_after*'\n'
+
+    log_handle.write(message)
+    log_handle.write('\n')
+    log_handle.close()
+
+    print(message)

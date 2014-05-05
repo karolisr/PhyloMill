@@ -12,15 +12,17 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         authority
         variety
         subspecies
-        cross
+        hybrid
         other - eg.: Solanum sp. 112
     '''
 
     var_string = 'var.'
     form_string = 'f.'
     sub_string = 'subsp.'
-    cross_string = 'x'
-    other_string = 'sp.'
+    hybrid_string = 'x'
+
+    # other_string = 'sp.'
+    other_list = ['sp.', 'cf.', 'aff.']
 
     name_list = name.split(sep)
     name_list_lower = name.lower().split(sep)
@@ -28,13 +30,21 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     var_bool = bool(name_list_lower.count(var_string))
     form_bool = bool(name_list_lower.count(form_string))
     sub_bool = bool(name_list_lower.count(sub_string))
-    cross_bool = bool(name_list_lower.count(cross_string))
-    other_bool = bool(name_list_lower.count(other_string))
+    hybrid_bool = bool(name_list_lower.count(hybrid_string))
+
+    # other_bool = bool(name_list_lower.count(other_string))
+    other_bool = False
+    other_index = 0
+    for oi, o in enumerate(other_list):
+        if o in name_list_lower:
+            other_bool = True
+            other_index = oi
+            break
 
     var = None
     form = None
     sub = None
-    cross = None
+    hybrid = None
     other = None
 
     if var_bool:
@@ -43,15 +53,16 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         form = name_list_lower.index(form_string)
     if sub_bool:
         sub = name_list_lower.index(sub_string)
-    if cross_bool:
-        cross = name_list_lower.index(cross_string)
+    if hybrid_bool:
+        hybrid = name_list_lower.index(hybrid_string)
     if other_bool:
-        other = name_list_lower.index(other_string)
+        # other = name_list_lower.index(other_string)
+        other = name_list_lower.index(other_list[oi])
 
     var_dict = {'name': 'variety', 'index': var}
     form_dict = {'name': 'form', 'index': form}
     sub_dict = {'name': 'subspecies', 'index': sub}
-    cross_dict = {'name': 'cross', 'index': cross}
+    hybrid_dict = {'name': 'hybrid', 'index': hybrid}
     other_dict = {'name': 'other', 'index': other}
 
     indexes = []
@@ -61,8 +72,8 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
         indexes.append(form_dict)
     if sub is not None:
         indexes.append(sub_dict)
-    if cross is not None:
-        indexes.append(cross_dict)
+    if hybrid is not None:
+        indexes.append(hybrid_dict)
     if other is not None:
         indexes.append(other_dict)
 
@@ -76,7 +87,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
 
     # This is to prevent misidentifying hybrids. However, if a hybrid contains
     # authority information, this will not work well.
-    if cross_bool:
+    if hybrid_bool:
         ncbi_authority = False
 
     if ncbi_authority:
@@ -98,7 +109,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     organism_dict['variety'] = ''
     organism_dict['form'] = ''
     organism_dict['subspecies'] = ''
-    organism_dict['cross'] = ''
+    organism_dict['hybrid'] = ''
     organism_dict['other'] = ''
 
     if (len(name_list) == 3 and ((len(indexes) == 0))):
@@ -120,18 +131,18 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
             variety or subspecies designation there is no way to tell when this
             designation ends and the authority information begins. A heuristic
             I am using here is that var. and subsp. are usually a single word.
-            There is a problem however when the species named is a cross 'x',
+            There is a problem however when the species named is a hybrid 'x',
             e.g. 'Genus x specific' or 'Genus specific x Genus specific'.
             Sometimes x is followed by two words. Therefore, if we are
             expecting to see NCBI style appended authority information, we
-            should set ncbi_authority=True. However, some cross species will
+            should set ncbi_authority=True. However, some hybrid species will
             be parsed incorrectly. If no NCBI authority information is
             expected, ncbi_authority=False (default) should be used. In case
             there is NCBI authority information after all, it will be appended
             to the preceding field.
             '''
 
-            # Note: For our purposes crosses are bad anyways, right?!
+            # Note: For our purposes hybrids are bad anyways, right?!
             # So we don't much care.
 
             if ncbi_authority:
@@ -163,35 +174,35 @@ def flatten_organism_name(parsed_name, sep=' '):
     string.
     '''
 
-    genus_bool = 'genus' in parsed_name
-    species_bool = 'species' in parsed_name
-    var_bool = 'variety' in parsed_name
-    form_bool = 'form' in parsed_name
-    sub_bool = 'subspecies' in parsed_name
-    cross_bool = 'cross' in parsed_name
-    other_bool = 'other' in parsed_name
+    genus_bool = 'genus' in parsed_name.keys()
+    species_bool = 'species' in parsed_name.keys()
+    var_bool = 'variety' in parsed_name.keys()
+    form_bool = 'form' in parsed_name.keys()
+    sub_bool = 'subspecies' in parsed_name.keys()
+    hybrid_bool = 'hybrid' in parsed_name.keys()
+    other_bool = 'other' in parsed_name.keys()
 
     name = ''
 
     var_string = 'var.'
     form_string = 'f.'
     sub_string = 'subsp.'
-    cross_string = 'x'
+    hybrid_string = 'x'
     other_string = 'sp.'
 
-    if genus_bool and parsed_name['genus'] != '':
+    if genus_bool and parsed_name['genus'] and parsed_name['genus'] != '':
         name = name + parsed_name['genus']
-    if species_bool and parsed_name['species'] != '':
+    if species_bool and parsed_name['species'] and parsed_name['species'] != '':
         name = name + sep + parsed_name['species']
-    if cross_bool and parsed_name['cross'] != '':
-        name = name + sep + cross_string + sep + parsed_name['cross']
-    if other_bool and parsed_name['other'] != '':
+    if hybrid_bool and parsed_name['hybrid'] and parsed_name['hybrid'] != '':
+        name = name + sep + hybrid_string + sep + parsed_name['hybrid']
+    if other_bool and parsed_name['other'] and parsed_name['other'] != '':
         name = name + sep + other_string + sep + parsed_name['other']
-    if var_bool and parsed_name['variety'] != '':
+    if var_bool and parsed_name['variety'] and parsed_name['variety'] != '':
         name = name + sep + var_string + sep + parsed_name['variety']
-    if form_bool and parsed_name['form'] != '':
+    if form_bool and parsed_name['form'] and parsed_name['form'] != '':
         name = name + sep + form_string + sep + parsed_name['form']
-    if sub_bool and parsed_name['subspecies'] != '':
+    if sub_bool and parsed_name['subspecies'] and parsed_name['subspecies'] != '':
         name = name + sep + sub_string + sep + parsed_name['subspecies']
 
     # TODO: This solves an issue where sometimes names of type:
@@ -228,9 +239,11 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     accepted['subspecies'] = ''
     accepted['variety'] = ''
     accepted['status'] = ''
+    accepted['hybrid'] = ''
+    accepted['other'] = ''
     accepted['id'] = ''
 
-    if 'cross' in o and o['cross'] != '' and not resolve_hybrids:
+    if 'hybrid' in o and o['hybrid'] != '' and not resolve_hybrids:
         return((accepted, 0))
 
     matching_entries = list()
@@ -316,6 +329,9 @@ def names_for_ncbi_taxid(tax_id, ncbi_names_table, sorting='class'):
     Return all the names ("synonyms") associated with an NCBI taxid.
     '''
 
+    if not tax_id:
+        return None
+
     names = list()
     #sci_name = None
     #authority_name = None
@@ -399,11 +415,15 @@ def resolve_name(taxid_name_list, synonymy_table, auth_file):
 def resolve_taxid(tax_id, ncbi_names_table, synonymy_table, auth_file, sorting='authority'):
     # A list of organism names based on NCBI taxid. This is a
     #   sorted list with the most complete names at lower indexes.
+
+    if not tax_id:
+        return None
+
     taxid_name_list = names_for_ncbi_taxid(
         tax_id, ncbi_names_table, sorting=sorting)
 
     ret_value = resolve_name(taxid_name_list, synonymy_table, auth_file)
-    return(ret_value)
+    return ret_value
 
 if __name__ == '__main__':
 

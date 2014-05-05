@@ -1,0 +1,32 @@
+[General]
+
+# Contact email, so NCBI can inform the user if there are any problems.
+email = test@test.com
+
+# If sequence exceeds this length it will not be downloaded.
+max_seq_length = 10000
+
+usearch_executable = usearch
+mafft_executable = mafft
+muscle_executable = muscle
+clustalo_executable = clustalo
+
+[Hacks]
+
+tgrc = No
+
+[Taxa]
+
+# Taxa can be NCBI "Taxonomy IDs" or a recognized taxonomic name.
+
+[Organism Names]
+
+remove_nonspecific = Yes
+remove_hybrids = Yes
+# List of taxonomic groups to synonymize
+synonymize = 
+skip_previously_synonymized = Yes
+
+[Loci]
+
+# List of loci to use

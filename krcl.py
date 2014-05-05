@@ -1,6 +1,9 @@
 from __future__ import print_function
 #from __future__ import unicode_literals
 
+def clear_line():
+    print(chr(27) + "[2K", end='\r')
+
 
 def hide_cursor():
     import os
@@ -12,24 +15,32 @@ def show_cursor():
     os.system('setterm -cursor on')
 
 
-def print_progress(current, total, length, prefix):
+def print_progress(current, total, length, prefix, postfix, show_bar=True):
+    import sys
     #print(chr(27) + "[2K", end='\r')
     completed = int((float(current) / total) * length)
-    left = length - completed
+
+    bar = ''
+    if show_bar:
+        left = length - completed
+        bar = '|' + '='*completed + '.'*left + '| '
+
     print(
+        chr(27) + "[2K",
         prefix,
-        '|',
-        '=' * completed,
-        '.' * left,
-        '| ',
+        bar,
         current,
         '/',
         total,
         ' ',
         '%.2f' % round((float(current) / total) * 100, 2),
         '%',
+        postfix,
         sep='',
-        end='\r')
+        end='\r'
+        )
+
+    sys.stdout.flush()
 
 if __name__ == '__main__':
 

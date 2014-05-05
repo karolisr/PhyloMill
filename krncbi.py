@@ -195,21 +195,52 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     return
 
 
-def get_ncbi_tax_id(record):
+def get_ncbi_tax_id_for_record(record):
     import krseq
     feature_index = krseq.get_features_with_qualifier(
         record, 'db_xref', 'taxon', feature_type=None, loose=True)[0]
     # ToDo: search for taxon key as we now assume that it will always be the
     # last in the list
-    return record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1]
+    return int(record.features[feature_index].qualifiers['db_xref'][-1].split('taxon:')[1])
+
+
+def get_ncbi_tax_id_for_tax_term(email, tax_term):
+
+    taxid_list = list(esearch(tax_term, 'taxonomy', email))
+    taxid = None
+    if len(taxid_list) > 0:
+        taxid = int(taxid_list[0])
+
+    return taxid
+
+
+def get_lineage(email, tax_term):
+
+    from Bio import Entrez
+
+    taxid = get_ncbi_tax_id_for_tax_term(email, tax_term)
+
+    lineage_list = None
+    if taxid:
+        Entrez.email = email
+        handle = Entrez.efetch('taxonomy', id=str(taxid), retmode="xml")
+        record = Entrez.read(handle)[0]
+        lineage_string = record['Lineage']
+        lineage_string = lineage_string.replace(' ', '')
+        lineage_list = lineage_string.split(';')
+        lineage_list = lineage_list[1:]
+        lineage_list.append(tax_term)
+
+    return lineage_list
+
 
 if __name__ == '__main__':
 
     # Tests
 
-    import os
+    # import os
 
-    PS = os.path.sep
+    # PS = os.path.sep
 
     # entrez_db_list
     # print(entrez_db_list('test@test.com'))
@@ -217,4 +248,9 @@ if __name__ == '__main__':
     # esearch
     # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
     #      'test@test.com'))
-    # print(esearch('Solanaceae', 'taxonomy', 'test@test.com'))
+
+    # lineage = get_lineage(email='test@test.com', tax_term='Schraderanthus')
+    # print(lineage)
+
+    # lineage = get_lineage(email='test@test.com', tax_term='Solanum')
+    # print(lineage)
