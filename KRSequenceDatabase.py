@@ -1259,7 +1259,9 @@ class KRSequenceDatabase:
         ):
 
         from Bio.SeqRecord import SeqRecord
+        from Bio.SeqFeature import SeqFeature
         from krpy import krbionames
+        from krpy import krseq
 
         where_dict_key = ''
 
@@ -1273,7 +1275,7 @@ class KRSequenceDatabase:
         where_dict = {where_dict_key: record_reference}
         results = self._db_select(
             table_name_list=['records'],
-            column_list=['org_id', 'ncbi_gi', 'ncbi_version', 'internal_reference',
+            column_list=['id', 'org_id', 'ncbi_gi', 'ncbi_version', 'internal_reference',
                          'description'],
             where_dict=where_dict,
             join_rules_str=None)[0]
@@ -1290,11 +1292,46 @@ class KRSequenceDatabase:
 
         seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
 
+        features_temp = self._db_select(
+            table_name_list=['record_features', 'record_feature_types'],
+            column_list=['record_features.id', 'location', 'type'],
+            where_dict={'rec_id': results[b'id']},
+            join_rules_str='record_features.rec_feat_type_id=record_feature_types.id',
+            order_by_column_list=None)
+
+        features = list()
+
+        for feat_raw in features_temp:
+
+            location_string = feat_raw[b'location']
+            location = krseq.location_from_string(
+                location_string=location_string)
+
+            qualifiers_temp = self._db_select(
+                table_name_list=['record_feature_qualifiers', 'record_feature_qualifier_types'],
+                column_list=['qualifier', 'type'],
+                where_dict={'rec_feat_id': feat_raw[b'id']},
+                join_rules_str='record_feature_qualifiers.rec_feat_qual_type_id=record_feature_qualifier_types.id',
+                order_by_column_list=None)
+
+            qualifiers = dict()
+            for qualifier in qualifiers_temp:
+                qualifiers[qualifier[b'type']] = qualifier[b'qualifier']
+
+            feat = SeqFeature(
+                location=location,
+                type=feat_raw[b'type'],
+                qualifiers=qualifiers
+                )
+
+            features.append(feat)
+
         record = SeqRecord(
             seq=seq,
             id=results[b'ncbi_version'],
             name=results[b'ncbi_version'],
-            description=results[b'description'])
+            description=results[b'description'],
+            features=features)
 
         record.annotations[b'gi'] = str(results[b'ncbi_gi'])
         record.annotations[b'organism'] = str(org_flat)
