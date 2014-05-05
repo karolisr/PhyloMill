@@ -88,3 +88,67 @@ def resolve_ambiguities(sequence):
             rand = numpy.random.randint(0, len(k))
             sequence = sequence.replace(kriupac.IUPAC_AMBIGUOUS_DNA_DICT[k], k[rand], 1)
     return(sequence)
+
+
+def location_from_string(location_string):
+
+    from Bio.SeqFeature import CompoundLocation
+    from Bio.SeqFeature import FeatureLocation
+    from Bio.SeqFeature import BeforePosition, AfterPosition, ExactPosition
+
+    operator_parts = location_string.split('{')
+    location_strings = None
+    operator = None
+    if len(operator_parts) > 1:
+        operator = operator_parts[0]
+        location_strings = operator_parts[1].strip('}').split(', ')
+    else:
+        location_strings = operator_parts
+
+    locations = list()
+
+    for loc_str in location_strings:
+
+        loc_str_split = loc_str.split('(')
+
+        strand = int(loc_str_split[1].strip(')') + '1')
+
+        bounds_list = loc_str_split[0].strip('[').strip(']').split(':')
+        l_bound = bounds_list[0].split('<')
+        r_bound = bounds_list[1].split('>')
+
+        start = None
+        end = None
+
+        if len(l_bound) == 2:
+            start = BeforePosition(int(l_bound[1]))
+        else:
+            start = ExactPosition(int(l_bound[0]))
+
+        if len(r_bound) == 2:
+            end = AfterPosition(int(r_bound[1]))
+        else:
+            end = ExactPosition(int(r_bound[0]))
+
+        loc = FeatureLocation(start=start, end=end, strand=strand)
+
+        locations.append(loc)
+
+
+    location = None
+    if len(locations) > 1:
+        location = CompoundLocation(parts=locations, operator=operator)
+    else:
+        location = locations[0]
+
+    return location
+
+
+# if __name__ == '__main__':
+
+#     # Tests
+
+#     pass
+
+#     location_from_string('join{[<109:199](+), [294:358](+), [444:545](+), [635:745](+), [829:>886](+)}')
+#     location_from_string('[294:358](+)')
