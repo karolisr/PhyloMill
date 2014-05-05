@@ -110,30 +110,34 @@ def location_from_string(location_string):
     for loc_str in location_strings:
 
         loc_str_split = loc_str.split('(')
-
         strand = int(loc_str_split[1].strip(')') + '1')
-
         bounds_list = loc_str_split[0].strip('[').strip(']').split(':')
+
         l_bound = bounds_list[0].split('<')
-        r_bound = bounds_list[1].split('>')
-
         start = None
-        end = None
-
         if len(l_bound) == 2:
             start = BeforePosition(int(l_bound[1]))
         else:
-            start = ExactPosition(int(l_bound[0]))
+            l_bound = bounds_list[0].split('>')
+            if len(l_bound) == 2:
+                start = AfterPosition(int(l_bound[1]))
+            else:
+                start = ExactPosition(int(l_bound[0]))
 
+        r_bound = bounds_list[1].split('>')
+        end = None
         if len(r_bound) == 2:
             end = AfterPosition(int(r_bound[1]))
         else:
-            end = ExactPosition(int(r_bound[0]))
+            r_bound = bounds_list[1].split('<')
+            if len(r_bound) == 2:
+                end = BeforePosition(int(r_bound[1]))
+            else:
+                end = ExactPosition(int(r_bound[0]))
 
         loc = FeatureLocation(start=start, end=end, strand=strand)
 
         locations.append(loc)
-
 
     location = None
     if len(locations) > 1:
