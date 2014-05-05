@@ -1205,6 +1205,8 @@ class KRSequenceDatabase:
             where_dict_key = 'ncbi_version'
         elif record_reference_type == 'internal':
             where_dict_key = 'internal_reference'
+        elif record_reference_type == 'raw':
+            where_dict_key = 'id'
 
         table_name = 'records'
         where_dict = {where_dict_key: record_reference}
@@ -1255,7 +1257,7 @@ class KRSequenceDatabase:
     def get_record(
         self,
         record_reference,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
         from Bio.SeqRecord import SeqRecord
@@ -1271,6 +1273,8 @@ class KRSequenceDatabase:
             where_dict_key = 'ncbi_version'
         elif record_reference_type == 'internal':
             where_dict_key = 'internal_reference'
+        elif record_reference_type == 'raw':
+            where_dict_key = 'id'
 
         where_dict = {where_dict_key: record_reference}
         results = self._db_select(
@@ -1342,7 +1346,7 @@ class KRSequenceDatabase:
     def get_records(
         self,
         record_reference_list,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
         record_list = list()
@@ -1356,6 +1360,37 @@ class KRSequenceDatabase:
             record_list.append(record)
 
         return record_list
+
+    def get_records_with_annotations(self, annotation_type, annotation):
+
+        sql_string = '''
+            SELECT rec_id
+            FROM record_annotations
+            LEFT OUTER JOIN record_annotation_types ON record_annotation_types.id=rec_ann_type_id
+            LEFT OUTER JOIN record_annotation_values ON record_annotation_values.id=rec_ann_value_id
+            WHERE type IS ? AND value IS ?;
+            '''
+
+        try:
+            self._DB_CURSOR.execute(sql_string, [annotation_type, annotation])
+        except sqlite3.Error as error:
+            print(error, file=sys.stderr)
+            self._DB_CONN.rollback()
+            raise
+
+        results = self._DB_CURSOR.fetchall()
+
+        rec_id_list = list()
+
+        for result in results:
+            rec_id_list.append(result[b'rec_id'])
+
+        records = self.get_records(
+            record_reference_list=rec_id_list,
+            record_reference_type='raw'  # gi version internal raw
+            )
+
+        return records
 
 
     ############################################################################
