@@ -1320,7 +1320,7 @@ class KRSequenceDatabase:
 
             qualifiers = dict()
             for qualifier in qualifiers_temp:
-                qualifiers[qualifier[b'type']] = qualifier[b'qualifier']
+                qualifiers[qualifier[b'type']] = [qualifier[b'qualifier']]
 
             feat = SeqFeature(
                 location=location,
@@ -1339,6 +1339,7 @@ class KRSequenceDatabase:
 
         record.annotations[b'gi'] = str(results[b'ncbi_gi'])
         record.annotations[b'organism'] = str(org_flat)
+        record.annotations[b'kr_seq_db_id'] = str(results[b'id'])
 
         return record
 
@@ -1354,12 +1355,31 @@ class KRSequenceDatabase:
         for ref in record_reference_list:
             record = self.get_record(
                 record_reference=ref,
-                record_reference_type=record_reference_type  # gi version internal
+                record_reference_type=record_reference_type  # gi version internal raw
                 )
 
             record_list.append(record)
 
         return record_list
+
+
+    def get_all_records(self):
+
+        record_reference_list = self._db_select(
+            table_name_list=['records'],
+            column_list=['id'],
+            where_dict=None,
+            join_rules_str=None,
+            order_by_column_list=None)
+
+        record_reference_list = [x[b'id'] for x in record_reference_list]
+
+        records = self.get_records(
+            record_reference_list=record_reference_list,
+            record_reference_type='raw')
+
+        return records
+
 
     def get_records_with_annotations(self, annotation_type, annotation):
 
