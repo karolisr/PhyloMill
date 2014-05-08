@@ -192,12 +192,16 @@ if __name__ == '__main__':
             l_dict = dict()
             l_strategies = list()
 
+            l_dict['name'] = l
+
             for l_sec in locus_cfg.sections():
                 if l_sec == l:
                     l_db = locus_cfg.get(l, 'database')
                     l_query = locus_cfg.get(l, 'query')
+                    # l_short_name = locus_cfg.get(l, 'short_name')
                     l_dict['database'] = l_db
                     l_dict['query'] = l_query
+                    # l_dict['short_name'] = l_short_name
                 else:
                     l_lrp = locus_cfg.getint(l_sec, 'locus_relative_position')
                     l_ft = locus_cfg.get(l_sec, 'feature_type')
@@ -475,6 +479,58 @@ if __name__ == '__main__':
         krcl.clear_line()
         msg = 'Organism name check: done.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+    ############################################################################
+
+    # Extract loci
+
+    if 'extract_loci' in COMMANDS:
+
+        msg = 'Extracting loci.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+        for locus_name in LOCI.keys():
+
+            msg = locus_name
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+            locus_dict = LOCI[locus_name]
+
+            records = DB.get_records_with_annotations(
+                annotation_type='locus',
+                annotation=locus_name)
+
+            acc_rej_gi_list = wf.extract_loci(
+                locus_dict=locus_dict,
+                records=records,
+                log_file_path=LFP,
+                kr_seq_db_object=DB,
+                temp_dir=TEMP_DIR_PATH)
+
+            rej_gi_list = acc_rej_gi_list['reject']
+
+            print()
+
+            for rej_gi in rej_gi_list:
+
+                rej_gi = int(rej_gi[1])
+
+                delete_note = 'failed sequence similarity test'
+
+                msg = 'deleting:' + \
+                ' gi:' + str(rej_gi) + ' note:' + delete_note
+
+                write_log(msg, LFP)
+
+                where_dict = {'ncbi_gi': rej_gi}
+                blacklist_notes = delete_note
+                DB.delete_records(
+                    where_dict=where_dict, blacklist=True,
+                    blacklist_notes=blacklist_notes)
+
+                DB.delete_orphaned_organisms()
+                DB.delete_orphaned_taxonomies()
+                DB.save()
 
     ############################################################################
 
