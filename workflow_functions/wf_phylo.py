@@ -345,6 +345,366 @@ def rename_organisms_using_taxids(
     kr_seq_db_object.save()
 
 
+def accept_records_by_similarity(
+    records, temp_dir, min_clust_size=10, strand='both', program='usearch'):
+
+    from krpy import krusearch
+
+    accept = list()
+    reject = list()
+
+    if len(records) < 5:
+        pass
+    else:
+
+        clusters = krusearch.cluster_records(
+            records=records,
+            identity_threshold=0.80,
+            temp_dir=temp_dir,
+            sorted_input=False,
+            algorithm='smallmem',  # fast smallmem
+            strand=strand,  # plus both aa
+            threads=1,
+            quiet=True,
+            program=program,
+            heuristics=True,
+            query_coverage=0.25,
+            target_coverage=0.25,
+            sizein=False,
+            sizeout=False,
+            usersort=False,
+            seq_id='gi',
+            cluster_key='centroid'  # clust_number centroid
+            )
+
+        for key in clusters.keys():
+
+            clust_size = len(clusters[key])
+
+            if clust_size >= min_clust_size:
+                accept = accept + clusters[key]
+            else:
+                reject = reject + clusters[key]
+
+            # print(clusters[key])
+
+            # if clust_size < 10:
+            #     print(key, clusters[key])
+            # else:
+            #     print(key, clust_size)
+
+    return {'accept': accept, 'reject': reject}
+
+
+def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
+    match_stringency='strict'):
+
+    from krpy import krseq
+
+    feature_indexes = list()
+    loose_matching = False
+    if match_stringency.lower() == 'loose':
+        loose_matching = True
+    for l in locus_name_list:
+        fi = krseq.get_features_with_qualifier(
+            record=record, qualifier_label=qualifier_label,
+            qualifier=l.strip(), feature_type=feature_type,
+            loose=loose_matching)
+        feature_indexes = feature_indexes + fi
+
+    feature_indexes = list(set(feature_indexes))
+    feature_indexes.sort()
+    feature = None
+    log_message = ''
+
+    if len(feature_indexes) == 0:
+        log_message = 'No locus annotation.'
+    elif len(feature_indexes) > 1:
+        # Let user pick which of the indexes to use
+        print("\n\n\tFound more than one annotation for "+str(locus_name_list)+" please pick the correct index:")
+
+        for fi in feature_indexes:
+
+            # print("\n\t\tIndex: "+str(fi))
+            print("\n\t\t"+str(record.id))
+            print()
+
+            rng = range(1, 6)
+            rng.reverse()
+            for n in rng:
+                if fi-n >= 0:
+                    f = record.features[fi-n]
+                    if f.type == feature_type:
+                        for fq in f.qualifiers.keys():
+                            if fq == qualifier_label:
+                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+
+            f = record.features[fi]
+            for fq in f.qualifiers.keys():
+                if fq == qualifier_label:
+                    print("\t\t" + str(fi) + " > " + fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+
+            rng.reverse()
+            for n in rng:
+                if fi+n < len(record.features):
+                    f = record.features[fi+n]
+                    if f.type == feature_type:
+                        for fq in f.qualifiers.keys():
+                            if fq == qualifier_label:
+                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+            print('\n\t\t==== ==== ==== ==== ==== ==== ==== ==== ==== ==== ====')
+
+        class BadChoiceException(Exception):
+            pass
+
+        while True:
+            picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
+            try:
+                if str(picked_fi).lower().startswith('exclude'):
+                    print()
+                    log_message = 'More than one locus annotation. User excluded.'
+                    break
+                else:
+                    try:
+                        int(picked_fi)
+                    except ValueError:
+                        print("\n\tBad choice.")
+                        continue
+                    if int(picked_fi) in feature_indexes:
+                        feature = record.features[int(picked_fi)]
+                        print()
+                        break
+                    else:
+                        raise(BadChoiceException)
+            except BadChoiceException:
+                print("\n\tBad choice.")
+    else:
+        feature = record.features[feature_indexes[0]]
+
+    return((feature, log_message))
+
+
+def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir):
+
+    from krpy import krcl
+    from krpy import krother
+    from krpy.krother import write_log
+
+    # msg = 'msg'
+    # write_log(msg, log_file_path)
+
+    strategies = locus_dict['strategies']
+    locus_name = locus_dict['name']
+    # locus_short_name = locus_dict['short_name']
+
+    trimmed_records = list()
+
+    records_count = len(records)
+
+    for i, record in enumerate(records):
+
+        krcl.print_progress(
+            current=i+1, total=records_count, length=0,
+            prefix=krother.timestamp() + ' - ',
+            postfix='',
+            show_bar=False)
+
+        rec_id = int(record.annotations['kr_seq_db_id'])
+
+        location_list = list()
+
+        for strategy in strategies:
+
+            locus_relative_position = strategy['locus_relative_position']
+            feature_type = strategy['feature_type']
+            qualifier_label = strategy['qualifier_label']
+            qualifier_value = strategy['qualifier_value']
+            l_re = strategy['regex']
+            strict_value_match = strategy['strict_value_match']
+            l_ml = strategy['min_length']
+            l_el = strategy['extra_length']
+
+            match_stringency = 'loose'
+            if strict_value_match:
+                match_stringency = 'strict'
+
+            start = None
+            end = None
+            strand = None
+
+            if '->' in qualifier_value:
+
+                locus_name_list = qualifier_value.split('->')
+                locus_A = locus_name_list[0]
+                locus_B = locus_name_list[1]
+
+                # Locus may have different names
+                locus_name_list_A = locus_A.split('|')
+                locus_name_list_B = locus_B.split('|')
+
+                feature_tuple_A = feature_for_locus(
+                    record, feature_type, qualifier_label, locus_name_list_A,
+                    match_stringency)
+                feature_A = feature_tuple_A[0]
+
+                feature_tuple_B = feature_for_locus(
+                    record, feature_type, qualifier_label, locus_name_list_B,
+                    match_stringency)
+                feature_B = feature_tuple_B[0]
+
+                if feature_A and feature_B:
+
+                    start_A = int(feature_A.location.start)
+                    end_A = int(feature_A.location.end)
+                    strand_A = int(feature_A.location.strand)
+
+                    start_B = int(feature_B.location.start)
+                    end_B = int(feature_B.location.end)
+                    strand_B = int(feature_B.location.strand)
+
+                    d1 = abs(start_A - start_B)
+                    d2 = abs(end_A - start_B)
+                    d3 = abs(start_A - end_B)
+                    d4 = abs(end_A - end_B)
+
+                    distances = (d1, d2, d3, d4)
+
+                    min_distance = min(distances)
+                    min_index = distances.index(min_distance)
+
+                    if min_index == 0:
+                        if start_B < start_A:
+                            strand = -1
+                        start = min(start_A, start_B)
+                        end = max(start_A, start_B)
+                    elif min_index == 1:
+                        if start_B < end_A:
+                            strand = -1
+                        start = min(end_A, start_B)
+                        end = max(end_A, start_B)
+                    elif min_index == 2:
+                        if end_B < start_A:
+                            strand = -1
+                        start = min(start_A, end_B)
+                        end = max(start_A, end_B)
+                    elif min_index == 3:
+                        if end_B < end_A:
+                            strand = -1
+                        start = min(end_A, end_B)
+                        end = max(end_A, end_B)
+
+                    location_list.append((start, end, locus_relative_position, strand))
+
+            else:
+                # Locus may have different names
+                locus_name_list = qualifier_value.split('|')
+
+                feature_tuple = feature_for_locus(
+                    record=record,
+                    feature_type=feature_type,
+                    qualifier_label=qualifier_label,
+                    locus_name_list=locus_name_list,
+                    match_stringency=match_stringency)
+
+                feature = feature_tuple[0]
+
+                if feature:
+
+                    # There should be only one matching index.
+                    start = int(feature.location.start)
+                    end = int(feature.location.end)
+                    strand = int(feature.location.strand)
+
+                    location_list.append((start, end, locus_relative_position, strand))
+
+        location_list = sorted(location_list, key=lambda x: (x[2], x[0]), reverse=False)
+
+        location_list_deduplicated = list()
+
+        prev_lrp = None
+        prev_loc_start = None
+        prev_loc_end = None
+
+        for loc in location_list:
+
+            lrp = loc[2]
+            loc_start = loc[0]
+            loc_end = loc[1]
+            strand = loc[3]
+
+            if not prev_lrp:
+                prev_lrp = lrp
+                prev_loc_start = loc_start
+                prev_loc_end = loc_end
+                prev_strand = strand
+                continue
+
+            if prev_lrp == lrp:
+                prev_loc_end = loc_end
+            else:
+                location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
+                prev_lrp = lrp
+                prev_loc_start = loc_start
+                prev_loc_end = loc_end
+                prev_strand = strand
+
+        location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
+
+        if location_list_deduplicated[0][2] != 0:
+            location_list_deduplicated.append((location_list_deduplicated[0][0], location_list_deduplicated[-1][1], 0, location_list_deduplicated[0][3]))
+            location_list_deduplicated = sorted(location_list_deduplicated, key=lambda x: (x[2], x[0]), reverse=False)
+
+        for loc in location_list_deduplicated:
+
+            strand = ''
+            if loc[3] == 1:
+                strand = '(+)'
+            elif loc[3] == -1:
+                strand = '(-)'
+
+            location_str = '[' + str(loc[0]) + ':' + str(loc[1]) + ']' + strand
+
+            feat_type_str = 'pwf' + str(loc[2])
+
+            feat_id = kr_seq_db_object.add_record_feature(
+                rec_id=rec_id, type_str=feat_type_str,
+                location_str=location_str)[0]
+
+            qual_type_str = 'note'
+            qual_str = locus_name + '|' + str(loc[2])
+
+            kr_seq_db_object.add_record_feature_qualifier(
+                rec_feat_id=feat_id,
+                type_str=qual_type_str,
+                qualifier_str=qual_str)
+
+        kr_seq_db_object.save()
+
+        trimmed_rec = record[loc[0]:loc[1]]
+        trimmed_rec.annotations['gi'] = record.annotations['gi']
+        trimmed_records.append(trimmed_rec)
+
+    min_clust_size = records_count * 0.05
+
+    # print(min_clust_size)
+
+    acc_rej_gi_list = accept_records_by_similarity(
+        records=trimmed_records,
+        temp_dir=temp_dir,
+        min_clust_size=min_clust_size,
+        strand='both',
+        program='usearch')
+
+    # acc_rej_gi_list {'accept': accept, 'reject': reject}
+
+    return acc_rej_gi_list
+
+
 # Hacks! -----------------------------------------------------------------------
 
 
