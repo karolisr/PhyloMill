@@ -110,7 +110,9 @@ def location_from_string(location_string):
     for loc_str in location_strings:
 
         loc_str_split = loc_str.split('(')
-        strand = int(loc_str_split[1].strip(')') + '1')
+        strand = None
+        if len(loc_str_split) > 1:
+            strand = int(loc_str_split[1].strip(')') + '1')
         bounds_list = loc_str_split[0].strip('[').strip(']').split(':')
 
         l_bound = bounds_list[0].split('<')
