@@ -32,19 +32,19 @@ tgrc = Yes
 # 4107
 
 # Petunia
-# 4101
+4101
 
 # Lycianthes
-# 52871
+52871
 
 # Capsicum
-# 4071
+4071
 
 # Lycium
-# 24646
+24646
 
 # Physalis
-# 24663
+24663
 
 # Jaltomata
 
@@ -52,25 +52,23 @@ tgrc = Yes
 
 remove_nonspecific = Yes
 remove_hybrids = Yes
-synonymize = Solanaceae
+# synonymize = Solanaceae
 skip_previously_synonymized = Yes
 
 [Loci]
 
 # GBSSI
 # matK
-# ndhF
+ndhF
 # trnS-trnG
 # ITS1-5.8S-ITS2
 
-# [Flatten]
+[Flatten]
 
-# ref_align_program = mafft
-# ref_align_program_options = --auto --thread 2
-# #ref_align_program_options = --localpair --maxiterate 1000 --nuc --reorder --thread 2 --op 1.53 --lop -2.0 --jtt 100
+align_program = mafft
+align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
 
-# locus_align_program = mafft
-# locus_align_program_options = --localpair --maxiterate 1000 --nuc --reorder --thread 2 --op 1.53 --lop -2.0 --jtt 100
+resolve_ambiguities = No
 
 # [Align]
 
