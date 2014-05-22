@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     DNLD_DIR_PATH = PRJ_DIR_PATH + 'downloaded_files' + PS
     OUT_DIR_PATH = PRJ_DIR_PATH + 'output' + PS
-    ORG_LOC_DIR_PATH = OUT_DIR_PATH + 'one_locus_per_org' + PS
+    ORG_LOC_DIR_PATH = OUT_DIR_PATH + 'flatten' + PS
     SRCH_DIR_PATH = PRJ_DIR_PATH + 'search_strategies' + PS
     ORGN_DIR_PATH = PRJ_DIR_PATH + 'organism_name_files' + PS
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
@@ -171,6 +171,11 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    # Constants
+    FLAT_ID = 0.97
+
+    ############################################################################
+
     # Get configuration information
     CFG = ConfigParser.SafeConfigParser(allow_no_value=True)
     CFG.optionxform=str
@@ -178,6 +183,12 @@ if __name__ == '__main__':
 
     EMAIL = CFG.get('General', 'email')
     MAX_SEQ_LENGTH = CFG.getint('General', 'max_seq_length')
+
+    # Flatten options
+    FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
+    FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
+    FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
+    FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
 
     # Hacks
     hacks_items = CFG.items('Hacks')
@@ -211,7 +222,9 @@ if __name__ == '__main__':
 
     # Organism name resolution
     SYN = list()
-    syn_temp = CFG.get('Organism Names', 'synonymize')
+    syn_temp = None
+    if CFG.has_option('Organism Names', 'synonymize'):
+        syn_temp = CFG.get('Organism Names', 'synonymize')
     if syn_temp:
         SYN = syn_temp.split(',')
         SYN = [x.strip().lower() for x in SYN]
@@ -637,6 +650,10 @@ if __name__ == '__main__':
                 annotation=LOCUS,
                 active=True,
                 inactive=False)
+
+            for rec in records:
+                rec.description = rec.annotations['organism']
+
             gb_file_name = 'active_records' + '_' + 'locus_flat' + '_' + LOCUS + '_' + timestamp + '.gb'
 
         elif LOCUS and RAW:
@@ -700,7 +717,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Whitelist gi
-
     if 'whitelist_gi' in COMMANDS:
 
         if not GI:
@@ -729,7 +745,7 @@ if __name__ == '__main__':
     ############################################################################
 
     # Produce one locus per organism
-    if 'one_locus_per_org' in COMMANDS:
+    if 'flatten' in COMMANDS:
 
         msg = 'Producing one locus per organism.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
@@ -1001,7 +1017,11 @@ if __name__ == '__main__':
                                 reference_records=reference_records,
                                 locus_dict=locus_dict,
                                 log_file_path=LFP,
-                                already_trimmed=True)
+                                already_trimmed=True,
+                                aln_program=FLAT_ALN_PROG,
+                                aln_program_executable=FLAT_ALN_PROG_EXE,
+                                aln_options=FLAT_ALN_PROG_OPTIONS,
+                                min_locus_sequence_identity=FLAT_ID)
 
                         wf.update_record_alignment(
                             rec_id=flat_rec_id,
@@ -1013,7 +1033,7 @@ if __name__ == '__main__':
                             alignment=new_aln,
                             threshold=0.4,
                             unknown='',
-                            resolve_ambiguities=True)
+                            resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                         new_seq_str = str(consensus[0]).upper()
 
@@ -1130,7 +1150,11 @@ if __name__ == '__main__':
                             records=org_records,
                             reference_records=reference_records,
                             locus_dict=locus_dict,
-                            log_file_path=LFP)
+                            log_file_path=LFP,
+                            aln_program=FLAT_ALN_PROG,
+                            aln_program_executable=FLAT_ALN_PROG_EXE,
+                            aln_options=FLAT_ALN_PROG_OPTIONS,
+                            min_locus_sequence_identity=FLAT_ID)
 
                         if aln:
                             flat_locus_produced = True
@@ -1175,7 +1199,7 @@ if __name__ == '__main__':
                                 alignment=aln,
                                 threshold=0.4,
                                 unknown='',
-                                resolve_ambiguities=True)
+                                resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                             new_seq_str = str(consensus[0])
 

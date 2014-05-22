@@ -816,7 +816,14 @@ def trim_record_to_locus(record, locus_name):
     return rec_trimmed
 
 
-def improve_alignment_using_reference_records(records, reference_records, locus_name):
+def improve_alignment_using_reference_records(
+    records,
+    reference_records,
+    locus_name,
+    aln_program='mafft',
+    aln_program_executable='mafft',
+    aln_options='--auto',
+    min_locus_sequence_identity=0.97):
 
     from Bio.Align import MultipleSeqAlignment
 
@@ -830,22 +837,20 @@ def improve_alignment_using_reference_records(records, reference_records, locus_
     for ref_rec in reference_records:
         ref_rec_trimmed = trim_record_to_locus(
             record=ref_rec, locus_name=locus_name)
-        ref_rec_trimmed.id = str(krother.random_id(10))
+        ref_rec_trimmed.id = str(krother.random_id(20))
         ref_loc_records = records + [ref_rec_trimmed]
 
         ref_aln = kralign.align(
             records=ref_loc_records,
-            program='mafft',
+            program=aln_program,
             # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
-            options='--auto --nuc --reorder --thread 4',
-            program_executable='mafft'
-            # program=locus_aln_program,
-            # options=locus_aln_program_options,
-            # program_executable=locus_aln_program_exe
+            # options='--auto --nuc --reorder --thread 4',
+            options=aln_options,
+            program_executable=aln_program_executable
             )
 
         ref_cons = kralign.consensus(ref_aln, threshold=0.4, unknown='N',
-            resolve_ambiguities=True)
+            resolve_ambiguities=False)
         prop_id = ref_cons[5]
 
         # print('id:', prop_id, 'cov:', ref_cons[3]/len(ref_aln), 'seqs:', len(ref_aln))
@@ -856,7 +861,7 @@ def improve_alignment_using_reference_records(records, reference_records, locus_
                 ref_aln_record_list.append(r)
         ref_aln = MultipleSeqAlignment(ref_aln_record_list)
 
-        if prop_id < 0.985:
+        if prop_id < min_locus_sequence_identity:
 
             ref_alignments.append([prop_id, ref_aln])
 
@@ -874,7 +879,7 @@ def improve_alignment_using_reference_records(records, reference_records, locus_
         ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
         new_aln = ref_alignments[0][1]
 
-        prop_id = ref_alignments[0][0]
+        # prop_id = ref_alignments[0][0]
 
         # print('could not find good aln:', prop_id)
         # print(new_aln.format('fasta'))
@@ -882,7 +887,16 @@ def improve_alignment_using_reference_records(records, reference_records, locus_
     return new_aln
 
 
-def flatten_locus(records, reference_records, locus_dict, log_file_path, already_trimmed=False):
+def flatten_locus(
+    records,
+    reference_records,
+    locus_dict,
+    log_file_path,
+    already_trimmed=False,
+    aln_program='mafft',
+    aln_program_executable='mafft',
+    aln_options='--auto',
+    min_locus_sequence_identity=0.97):
 
     from krpy.krother import write_log
     from krpy import kralign
@@ -910,31 +924,32 @@ def flatten_locus(records, reference_records, locus_dict, log_file_path, already
 
         aln = kralign.align(
             records=records_trimmed,
-            program='mafft',
+            program=aln_program,
             # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
-            options='--auto --nuc --reorder --thread 4',
-            program_executable='mafft'
-            # program=locus_aln_program,
-            # options=locus_aln_program_options,
-            # program_executable=locus_aln_program_exe
+            # options='--auto --nuc --reorder --thread 4',
+            options=aln_options,
+            program_executable=aln_program_executable
             )
 
         # consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical
-        consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
-
+        consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=False)
         prop_id = consensus[5]
 
-        if prop_id < 0.985:
+        if prop_id < min_locus_sequence_identity:
 
             # print('id:', prop_id, 'cov:', consensus[3]/len(aln), 'seqs:', len(aln))
 
             new_aln = improve_alignment_using_reference_records(
                 records=records_trimmed,
                 reference_records=reference_records,
-                locus_name=locus_name)
+                locus_name=locus_name,
+                aln_program=aln_program,
+                aln_program_executable=aln_program_executable,
+                aln_options=aln_options,
+                min_locus_sequence_identity=min_locus_sequence_identity)
 
-            new_cons = kralign.consensus(
-                new_aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
+            # new_cons = kralign.consensus(
+            #     new_aln, threshold=0.4, unknown='N', resolve_ambiguities=False)
 
             aln = new_aln
 
