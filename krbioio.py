@@ -97,6 +97,18 @@ def read_alignment_file(file_path, file_format):
 
 def write_alignment_file(alignment, file_path, file_format):
 
+    # clustal
+    # emboss
+    # fasta
+    # fasta-m10
+    # ig
+    # maf
+    # nexus
+    # phylip
+    # phylip-sequential
+    # phylip-relaxed
+    # stockholm
+
     from Bio import AlignIO
     handle = open(file_path, 'w')
     count_written = None
