@@ -18,7 +18,7 @@ qualifier_label = gene
 
 # GBSSI, waxy, granule bound starch synthase
 # Alternative values can be separated by a vertical bar '|'
-qualifier_value = GBSSI|GBSS|waxy
+qualifier_value = GBSSI|GBSS|waxy|waxy (Wx)
 
 # Yes or No
 #   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
@@ -36,13 +36,24 @@ min_length = 400
 # extract more to the left and to the right of the feature
 extra_length = 0
 
-# [2]
+[2]
 
-# locus_relative_position =
-# feature_type =
-# qualifier_label =
-# qualifier_value =
-# regex =
-# strict_value_match =
-# min_length =
-# extra_length =
+locus_relative_position = 0
+feature_type = CDS
+qualifier_label = product
+qualifier_value = waxy
+regex = No
+strict_value_match = Yes
+min_length = 400
+extra_length = 0
+
+[3]
+
+locus_relative_position = 0
+feature_type = gene
+qualifier_label = gene_synonym
+qualifier_value = GBSSI|GBSS|waxy
+regex = No
+strict_value_match = Yes
+min_length = 400
+extra_length = 0

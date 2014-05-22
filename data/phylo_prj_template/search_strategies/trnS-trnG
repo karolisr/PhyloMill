@@ -1,4 +1,6 @@
 # trnS-trnG (trnS-trnG intergenic spacer) chloroplast
+# tRNA-Ser codon recognized: AGC
+# tRNA-Gly codon recognized: GGA
 
 [trnS-trnG]
 
