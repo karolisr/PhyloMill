@@ -711,36 +711,6 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
             feat_dict = {'rec_id': rec_id, 'gi': gi, 'loc_list': location_list_deduplicated}
             prelim_record_feat_loc_list.append(feat_dict)
 
-            ###
-
-            # for loc in location_list_deduplicated:
-
-            #     strand = ''
-            #     if loc[3] == 1:
-            #         strand = '(+)'
-            #     elif loc[3] == -1:
-            #         strand = '(-)'
-
-            #     location_str = '[' + str(loc[0]) + ':' + str(loc[1]) + ']' + strand
-
-            #     feat_type_str = 'pwf' + str(loc[2])
-
-            #     feat_id = kr_seq_db_object.add_record_feature(
-            #         rec_id=rec_id, type_str=feat_type_str,
-            #         location_str=location_str)[0]
-
-            #     qual_type_str = 'note'
-            #     qual_str = locus_name + '|' + str(loc[2])
-
-            #     kr_seq_db_object.add_record_feature_qualifier(
-            #         rec_feat_id=feat_id,
-            #         type_str=qual_type_str,
-            #         qualifier_str=qual_str)
-
-            # kr_seq_db_object.save()
-
-            ###
-
             loc = location_list_deduplicated[-1]
             trimmed_rec = record[loc[0]:loc[1]]
             # print(trimmed_rec.seq)
@@ -808,41 +778,6 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
                 qualifier_str=qual_str)
 
         kr_seq_db_object.save()
-
-    ###
-
-    # acc_gi_list = acc_rej_gi_dict['accept']
-    # acc_gi_list = [int(x[1]) for x in acc_gi_list]
-    # good_records = list()
-    # for ar in trimmed_records:
-    #     if int(ar.annotations['gi']) in acc_gi_list:
-    #         ar.id = ar.annotations['gi']
-    #         good_records.append(ar)
-    #         print(ar.annotations['gi'])
-
-    # ref_aln = kralign.align(
-    # records=good_records,
-    # program='mafft',
-    # # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
-    # options='--auto --nuc --reorder --thread 4 --adjustdirection',
-    # program_executable='mafft'
-    # # program=locus_aln_program,
-    # # options=locus_aln_program_options,
-    # # program_executable=locus_aln_program_exe
-    # )
-
-    # import krbioio
-    # krbioio.write_alignment_file(
-    #     alignment=ref_aln,
-    #     file_path='/Users/karolis/Desktop/aln.phy',
-    #     file_format='phylip-relaxed')
-
-    # print('===== =====')
-
-    # for a in ref_aln:
-    #     print(a.id)
-
-    ###
 
     return acc_rej_gi_dict
 
@@ -953,17 +888,10 @@ def flatten_locus(records, reference_records, locus_dict, log_file_path, already
     from krpy import kralign
 
     locus_name = locus_dict['name']
-    # strategies = locus_dict['strategies']
-
-    # lrp_list = [x['locus_relative_position'] for x in strategies]
-    # lrp_list = list(set(lrp_list))
-    # lrp_list = sorted(lrp_list, key=lambda x: x, reverse=False)
 
     # print('--- --- --- --- --- --- ---')
 
     records_trimmed = list()
-
-    # list_of_lrp_lists = list()
 
     if already_trimmed:
         records_trimmed = records
@@ -971,46 +899,10 @@ def flatten_locus(records, reference_records, locus_dict, log_file_path, already
     else:
         for record in records:
 
-            # record_lrp_list = list()
-
-            # for lrp in lrp_list:
-
-            #     feat = feature_for_locus(
-            #         record=record,
-            #         feature_type='pwf' + str(lrp),
-            #         qualifier_label='note',
-            #         locus_name_list=[locus_name + '|' + str(lrp)],
-            #         match_stringency='strict')
-
-            #     if feat[0]:
-            #         record_lrp_list.append(lrp)
-            #         # print(record.id, lrp, feat)
-
-            # list_of_lrp_lists.append(record_lrp_list)
-
             rec_trimmed = trim_record_to_locus(record, locus_name)
 
             if rec_trimmed:
                 records_trimmed.append(rec_trimmed)
-
-    # list_of_lrp_lists.sort(reverse=True)
-    # running_list = set()
-    # lrp_overlap = True
-    # for lrp_list in list_of_lrp_lists:
-    #     if len(running_list) == 0:
-    #         running_list = set(lrp_list)
-    #         continue
-    #     o = False
-    #     for lrp in lrp_list:
-    #         if (lrp in running_list) or (lrp == 0):
-    #             o = True
-    #             running_list |= set(lrp_list)
-    #             break
-    #     if not o:
-    #         lrp_overlap = False
-    #         break
-
-    # if lrp_overlap:
 
     aln = None
 

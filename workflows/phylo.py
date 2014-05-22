@@ -51,27 +51,21 @@ if __name__ == '__main__':
         help='Commands to run.')
 
     PARSER.add_argument(
-        # '-c',
         '--gi',
         type=int,
         help='NCBI record GI.')
 
     PARSER.add_argument(
-        # '-c',
         '--flat',
-        # type=bool,
         action='store_true',
         help='')
 
     PARSER.add_argument(
-        # '-c',
         '--raw',
-        # type=bool,
         action='store_true',
         help='')
 
     PARSER.add_argument(
-        # '-c',
         '--locus',
         type=unicode,
         help='')
@@ -161,7 +155,7 @@ if __name__ == '__main__':
 
     DNLD_DIR_PATH = PRJ_DIR_PATH + 'downloaded_files' + PS
     OUT_DIR_PATH = PRJ_DIR_PATH + 'output' + PS
-    ORG_LOC_DIR_PATH = OUT_DIR_PATH + '01_one_locus_per_org' + PS
+    ORG_LOC_DIR_PATH = OUT_DIR_PATH + 'one_locus_per_org' + PS
     SRCH_DIR_PATH = PRJ_DIR_PATH + 'search_strategies' + PS
     ORGN_DIR_PATH = PRJ_DIR_PATH + 'organism_name_files' + PS
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
@@ -283,7 +277,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Search genbank
-
     if 'search' in COMMANDS:
 
         for locus_name in LOCI.keys():
@@ -401,7 +394,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Resolve organism names
-
     if 'resolve_org_names' in COMMANDS:
 
         ########################################################################
@@ -531,7 +523,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Extract loci
-
     if 'extract_loci' in COMMANDS:
 
         msg = 'Extracting loci.'
@@ -623,7 +614,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Export active records
-
     if 'export_active_records' in COMMANDS:
 
         msg = 'Exporting active records.'
@@ -667,7 +657,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Blacklist gi
-
     if 'blacklist_gi' in COMMANDS:
 
         if not GI:
@@ -675,17 +664,12 @@ if __name__ == '__main__':
                 newlines_after=0)
             sys.exit(0)
 
-        # msg = 'Blacklisting GI: ' + str(GI)
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
-
         record = DB.get_record(
             record_reference=GI,
             record_reference_type='gi'  # gi version internal raw
             )
 
         del_rec_id = int(record.annotations['kr_seq_db_id'])
-
-        #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
 
         blacklist_notes = 'user_deleted'
 
@@ -713,8 +697,6 @@ if __name__ == '__main__':
 
         DB.save()
 
-        ####
-
     ############################################################################
 
     # Whitelist gi
@@ -725,16 +707,6 @@ if __name__ == '__main__':
             write_log('No GI given.', LFP, newlines_before=1,
                 newlines_after=0)
             sys.exit(0)
-
-        # msg = 'Blacklisting GI: ' + str(GI)
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
-
-        # record = DB.get_record(
-        #     record_reference=GI,
-        #     record_reference_type='gi'  # gi version internal raw
-        #     )
-
-        # del_rec_id = int(record.annotations['kr_seq_db_id'])
 
         whitelist_notes = 'user_activated'
 
@@ -748,12 +720,6 @@ if __name__ == '__main__':
             table_name='records',
             where_dict=where_dict)
 
-        # DB.add_record_to_blacklist(
-        #     ncbi_gi=GI,
-        #     ncbi_version=record.id,
-        #     internal_reference=record.annotations['internal_reference'],
-        #     notes=blacklist_notes)
-
         DB.db_delete(
             table_name='blacklist',
             where_dict=where_dict)
@@ -763,7 +729,6 @@ if __name__ == '__main__':
     ############################################################################
 
     # Produce one locus per organism
-
     if 'one_locus_per_org' in COMMANDS:
 
         msg = 'Producing one locus per organism.'
@@ -1130,18 +1095,6 @@ if __name__ == '__main__':
                             seq_id=seq_id,
                             repr_list=repr_list)[0]
 
-                    # if (len(org_records) > 0) and ((not os.path.exists(seq_file_path)) or (not os.path.exists(aln_file_path))):
-                    #     if db_aln:
-                    #         krbioio.write_alignment_file(
-                    #             alignment=db_aln,
-                    #             file_path=aln_file_path,
-                    #             file_format='phylip-relaxed')
-                    #     else:
-                    #         krbioio.write_sequence_file(
-                    #             records=org_records,
-                    #             file_path=seq_file_path,
-                    #             file_format='fasta')
-
                     if len(org_records) == 0:
 
                         if seq_file_exists:
@@ -1217,14 +1170,6 @@ if __name__ == '__main__':
                                     aln_id=None)[0]
 
                                 seq_rep_id_list.append(seq_rep_id)
-
-                            # consensus = kralign.consensus(
-                            #     aln,
-                            #     threshold=0.4,
-                            #     unknown='N',
-                            #     resolve_ambiguities=True)
-
-                            # print(consensus[0])
 
                             consensus = kralign.consensus(
                                 alignment=aln,
