@@ -29,6 +29,7 @@ class KRSequenceDatabase:
 
     CREATE TABLE organisms(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        active INTEGER NOT NULL,
         taxonomy_id INTEGER REFERENCES taxonomies(id) ON DELETE RESTRICT,
         genus TEXT NOT NULL,
         species TEXT,
@@ -151,12 +152,12 @@ class KRSequenceDatabase:
         pass
 
 
-    def _produce_seq_edits(self, s1, s2):
+    def produce_seq_edits(self, s1, s2):
         from krpy import krstring
         return self._KRSeqEdits(krstring.produce_edits(s1, s2))
 
 
-    def _apply_seq_edits(self, e, s):
+    def apply_seq_edits(self, e, s):
         from krpy import krstring
         return krstring.apply_edits(e, s)
 
@@ -267,24 +268,29 @@ class KRSequenceDatabase:
         return results
 
 
-    def _db_get_row_id(self, table_name, values_dict):
+    def db_get_row_ids(self, table_name, where_dict=None):
 
         results = self._db_select(
             table_name_list=[table_name],
             column_list=['id'],
-            where_dict=values_dict)
+            where_dict=where_dict)
 
-        row_id = None
+        # row_id = None
 
-        if len(results) == 1:
-            row_id = results[0][b'id']
-        elif len(results) > 1:
-            row_id = -1
+        # if len(results) == 1:
+        #     row_id = results[0][b'id']
+        # elif len(results) > 1:
+        #     row_id = -1
 
-        return row_id
+        row_ids = None
+
+        if len(results) > 0:
+            row_ids = [x[b'id'] for x in results]
+
+        return row_ids
 
 
-    def _db_insert(self, table_name, values_dict, check_exists=True):
+    def db_insert(self, table_name, values_dict, check_exists=True):
 
         import sys
         import sqlite3
@@ -297,10 +303,10 @@ class KRSequenceDatabase:
 
         exists = False
         if check_exists:
-            exists = self._db_get_row_id(table_name, values_dict)
+            exists = self.db_get_row_ids(table_name, values_dict)
 
         if check_exists and exists:
-            row_id = exists
+            row_id = exists[0]
             already_in_db = True
 
         else:
@@ -355,8 +361,10 @@ class KRSequenceDatabase:
             self._DB_CONN.rollback()
             raise
 
+        return self._DB_CURSOR.lastrowid
 
-    def _db_delete(self, table_name, where_dict=None):
+
+    def db_delete(self, table_name, where_dict=None):
 
         import sys
         import sqlite3
@@ -398,7 +406,7 @@ class KRSequenceDatabase:
     ############################################################################
 
 
-    def _bio_alphabet_to_string(self, bio_alphabet):
+    def bio_alphabet_to_string(self, bio_alphabet):
 
         import Bio
 
@@ -424,7 +432,7 @@ class KRSequenceDatabase:
         return sequence_alphabet_str
 
 
-    def _string_to_bio_alphabet(self, str_alphabet):
+    def string_to_bio_alphabet(self, str_alphabet):
 
         import Bio
 
@@ -443,13 +451,30 @@ class KRSequenceDatabase:
     def _sequence_alphabet(self, bio_seq_object):
 
         alphabet = bio_seq_object.alphabet
-        return self._bio_alphabet_to_string(bio_alphabet=alphabet)
+        return self.bio_alphabet_to_string(bio_alphabet=alphabet)
 
 
     ############################################################################
 
 
-    def add_organism(self, organism_dict, taxonomy_list=None, ncbi_tax_id_list=None, synonymy_check_done=False):
+    def set_active(self, table_name, where_dict):
+
+        self._db_update(
+            table_name=table_name,
+            values_dict={'active': 1},
+            where_dict=where_dict)
+
+
+    def set_inactive(self, table_name, where_dict):
+
+        self._db_update(
+            table_name=table_name,
+            values_dict={'active': 0},
+            where_dict=where_dict)
+
+
+    def add_organism(self, organism_dict, taxonomy_list=None,
+        ncbi_tax_id_list=None, synonymy_check_done=False, active=True):
 
         taxonomy_id = None
         taxonomy_str = None
@@ -457,7 +482,7 @@ class KRSequenceDatabase:
         if taxonomy_list:
             taxonomy_str = ','.join(taxonomy_list)
             values_dict = {'taxonomy': taxonomy_str}
-            taxonomy_id = self._db_insert('taxonomies', values_dict)[0]
+            taxonomy_id = self.db_insert('taxonomies', values_dict)[0]
 
         for key in organism_dict.keys():
             if str(organism_dict[key]) == b'':
@@ -467,6 +492,11 @@ class KRSequenceDatabase:
             synonymy_check_done = 1
         else:
             synonymy_check_done = 0
+
+        if active:
+            active = 1
+        else:
+            active = 0
 
         where_dict = {
             # 'taxonomy_id': taxonomy_id,
@@ -481,6 +511,7 @@ class KRSequenceDatabase:
         }
 
         values_dict = {
+            'active': active,
             'taxonomy_id': taxonomy_id,
             'genus': organism_dict['genus'],
             'species': organism_dict['species'],
@@ -494,9 +525,12 @@ class KRSequenceDatabase:
 
         already_in_db = False
 
-        org_id = self._db_get_row_id('organisms', values_dict=where_dict)
+        org_id = None
+        org_ids = self.db_get_row_ids('organisms', where_dict=where_dict)
 
-        if org_id and org_id >= 0:
+        if org_ids and len(org_ids) == 1:
+
+            org_id = org_ids[0]
 
             org_dict = self._db_select(
                 table_name_list=['organisms'],
@@ -518,7 +552,7 @@ class KRSequenceDatabase:
             already_in_db = True
 
         else:
-            org_id = self._db_insert('organisms', values_dict)[0]
+            org_id = self.db_insert('organisms', values_dict)[0]
 
         if ncbi_tax_id_list:
             for ncbi_tax_id in ncbi_tax_id_list:
@@ -533,74 +567,16 @@ class KRSequenceDatabase:
                     'ncbi_tax_id': ncbi_tax_id
                     }
 
-                self._db_insert('ncbi_tax_ids', values_dict)
+                self.db_insert('ncbi_tax_ids', values_dict)
 
         return (org_id, already_in_db)
-
-
-    # def update_organism(self, where_dict, organism_dict, taxonomy_list=None, ncbi_tax_id_list=None, synonymy_check_done=False):
-
-    #     taxonomy_id = None
-    #     taxonomy_str = None
-
-    #     if taxonomy_list:
-
-    #         taxonomy_str = ','.join(taxonomy_list)
-    #         values_dict = {'taxonomy': taxonomy_str}
-    #         taxonomy_id = self._db_insert('taxonomies', values_dict)[0]
-
-    #     for key in organism_dict.keys():
-    #         if str(organism_dict[key]) == b'':
-    #             organism_dict[key] = None
-
-    #     if synonymy_check_done:
-    #         synonymy_check_done = 1
-    #     else:
-    #         synonymy_check_done = 0
-
-    #     values_dict = {
-    #         'taxonomy_id': taxonomy_id,
-    #         # 'ncbi_tax_id': ncbi_tax_id,
-    #         'genus': organism_dict['genus'],
-    #         'species': organism_dict['species'],
-    #         'subspecies': organism_dict['subspecies'],
-    #         'variety': organism_dict['variety'],
-    #         'hybrid': organism_dict['hybrid'],
-    #         'other': organism_dict['other'],
-    #         'authority': organism_dict['authority'],
-    #         'synonymy_check_done': synonymy_check_done
-    #     }
-
-    #     org_id = self._db_get_row_id(
-    #         table_name='organisms', values_dict=where_dict)
-
-    #     self._db_update(
-    #         table_name='organisms',
-    #         values_dict=values_dict,
-    #         where_dict=where_dict)
-
-    #     if ncbi_tax_id_list:
-
-    #         for ncbi_tax_id in ncbi_tax_id_list:
-
-    #             # CREATE TABLE ncbi_tax_ids(
-    #             #     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #             #     org_id INTEGER NOT NULL REFERENCES organisms(id) ON DELETE CASCADE,
-    #             #     ncbi_tax_id INTEGER NOT NULL
-
-    #             values_dict = {
-    #                 'org_id': org_id,
-    #                 'ncbi_tax_id': ncbi_tax_id
-    #                 }
-
-    #             self._db_insert('ncbi_tax_ids', values_dict)
 
 
     def delete_organisms(self, where_dict):
 
         table_name = 'organisms'
 
-        self._db_delete(
+        self.db_delete(
             table_name=table_name,
             where_dict=where_dict)
 
@@ -673,14 +649,14 @@ class KRSequenceDatabase:
         return results
 
 
-    def _add_sequence(self, rec_id, sequence_str, sequence_alphabet_str):
+    def add_sequence(self, rec_id, sequence_str, sequence_alphabet_str):
 
         sequence_str = sequence_str.upper()
         sequence_alphabet_str = sequence_alphabet_str.upper()
 
         values_dict = {'alphabet': sequence_alphabet_str}
-        seq_alpha_id = self._db_get_row_id('sequence_alphabets',
-            values_dict)
+        seq_alpha_id = self.db_get_row_ids('sequence_alphabets',
+            values_dict)[0]
 
         values_dict = {
             'rec_id': rec_id,
@@ -688,12 +664,13 @@ class KRSequenceDatabase:
             'sequence': sequence_str
         }
 
-        row_id = self._db_insert('sequences', values_dict)
+        row_id = self.db_insert('sequences', values_dict)
 
         return row_id
 
 
-    def _add_sequence_representation(self, seq_id, repr_list, rec_id=None, aln_id=None):
+    def add_sequence_representation(
+        self, seq_id, repr_list, rec_id=None, aln_id=None):
 
         values_dict = {
             'aln_id': aln_id,
@@ -702,7 +679,7 @@ class KRSequenceDatabase:
             'representation': repr_list
         }
 
-        row_id = self._db_insert('sequence_representations', values_dict,
+        row_id = self.db_insert('sequence_representations', values_dict,
             check_exists=False)
 
         return row_id
@@ -711,7 +688,7 @@ class KRSequenceDatabase:
     def add_record_feature(self, rec_id, type_str, location_str):
 
         values_dict = {'type': type_str}
-        rec_feat_type_id = self._db_insert('record_feature_types',
+        rec_feat_type_id = self.db_insert('record_feature_types',
             values_dict)[0]
 
         values_dict = {
@@ -720,7 +697,7 @@ class KRSequenceDatabase:
             'location': location_str
         }
 
-        row_id = self._db_insert('record_features', values_dict)
+        row_id = self.db_insert('record_features', values_dict)
 
         return row_id
 
@@ -728,7 +705,7 @@ class KRSequenceDatabase:
     def add_record_feature_qualifier(self, rec_feat_id, type_str, qualifier_str):
 
         values_dict = {'type': type_str}
-        rec_feat_qual_type_id = self._db_insert(
+        rec_feat_qual_type_id = self.db_insert(
             'record_feature_qualifier_types',
             values_dict)[0]
 
@@ -738,7 +715,7 @@ class KRSequenceDatabase:
             'qualifier': qualifier_str
         }
 
-        row_id = self._db_insert('record_feature_qualifiers', values_dict)
+        row_id = self.db_insert('record_feature_qualifiers', values_dict)
 
         return row_id
 
@@ -746,11 +723,11 @@ class KRSequenceDatabase:
     def _add_record_annotation(self, rec_id, type_str, annotation_str):
 
         values_dict = {'type': type_str}
-        rec_ann_type_id = self._db_insert('record_annotation_types',
+        rec_ann_type_id = self.db_insert('record_annotation_types',
             values_dict)[0]
 
         values_dict = {'value': annotation_str}
-        rec_ann_value_id = self._db_insert('record_annotation_values',
+        rec_ann_value_id = self.db_insert('record_annotation_values',
             values_dict)[0]
 
         values_dict = {
@@ -759,7 +736,7 @@ class KRSequenceDatabase:
             'rec_ann_value_id': rec_ann_value_id
         }
 
-        row_id = self._db_insert('record_annotations', values_dict)
+        row_id = self.db_insert('record_annotations', values_dict)
 
         return row_id
 
@@ -769,7 +746,7 @@ class KRSequenceDatabase:
         record_reference,
         type_str,
         annotation_str,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
         where_dict_key = ''
@@ -780,12 +757,14 @@ class KRSequenceDatabase:
             where_dict_key = 'ncbi_version'
         elif record_reference_type == 'internal':
             where_dict_key = 'internal_reference'
+        elif record_reference_type == 'raw':
+            where_dict_key = 'id'
 
         where_dict = {where_dict_key: record_reference}
 
-        rec_id = self._db_get_row_id(
+        rec_id = self.db_get_row_ids(
             table_name='records',
-            values_dict=where_dict)
+            where_dict=where_dict)[0]
 
         row_id = self._add_record_annotation(
             rec_id=rec_id,
@@ -803,7 +782,7 @@ class KRSequenceDatabase:
             'action': action_str
         }
 
-        row_id = self._db_insert('record_action_history', values_dict)
+        row_id = self.db_insert('record_action_history', values_dict)
 
         return row_id
 
@@ -824,9 +803,9 @@ class KRSequenceDatabase:
 
         where_dict = {where_dict_key: record_reference}
 
-        results = self._db_get_row_id(
+        results = self.db_get_row_ids(
             table_name='records',
-            values_dict=where_dict)
+            where_dict=where_dict)
 
         if not results:
             return False
@@ -850,35 +829,14 @@ class KRSequenceDatabase:
 
         where_dict = {where_dict_key: record_reference}
 
-        results = self._db_get_row_id(
+        results = self.db_get_row_ids(
             table_name='blacklist',
-            values_dict=where_dict)
+            where_dict=where_dict)
 
         if not results:
             return False
         else:
             return True
-
-
-    # def add_record(self,
-    #     org,  # string or org_dict
-    #     ncbi_gi,
-    #     ncbi_version,
-    #     internal_reference,
-    #     description,
-    #     sequence_str,
-    #     # seq_rep_id=None,
-    #     # aln_id=None,
-    #     taxonomy_list=None,
-    #     ncbi_tax_id=None,
-    #     action_str='New record'):
-
-    #     from krpy import krbionames
-
-    #     if isinstance(org, basestring):
-    #         org = krbionames.parse_organism_name(org, sep=' ', ncbi_authority=False)
-
-    #     pass
 
 
     def add_record_to_blacklist(self, ncbi_gi=None, ncbi_version=None,
@@ -895,7 +853,7 @@ class KRSequenceDatabase:
                 'notes': notes
             }
 
-            row_id = self._db_insert('blacklist', values_dict)
+            row_id = self.db_insert('blacklist', values_dict)
 
         return row_id
 
@@ -911,7 +869,7 @@ class KRSequenceDatabase:
             where_dict=where_dict,
             join_rules_str=None)
 
-        self._db_delete(
+        self.db_delete(
             table_name=table_name,
             where_dict=where_dict)
 
@@ -953,6 +911,96 @@ class KRSequenceDatabase:
             where_dict=where_dict)
 
 
+    # def add_record(self,
+    #     org,  # string or org_dict
+    #     ncbi_gi,
+    #     ncbi_version,
+    #     internal_reference,
+    #     description,
+    #     sequence_str,
+    #     # seq_rep_id=None,
+    #     # aln_id=None,
+    #     taxonomy_list=None,
+    #     ncbi_tax_id=None,
+    #     action_str='New record'):
+
+    #     from krpy import krbionames
+
+    #     if isinstance(org, basestring):
+    #         org = krbionames.parse_organism_name(org, sep=' ', ncbi_authority=False)
+
+    #     pass
+
+
+    def add_record(self, org_id, ncbi_gi, ncbi_version, internal_reference,
+        description, sequence_str, sequence_alphabet_str,
+        parent_rec_id_list=None, active=True, action_str='New record'):
+
+        # id INTEGER PRIMARY KEY AUTOINCREMENT,
+        # org_id INTEGER NOT NULL REFERENCES organisms(id) ON DELETE CASCADE,
+        # active INTEGER NOT NULL,
+        # ncbi_gi INTEGER,
+        # ncbi_version TEXT,
+        # internal_reference TEXT,
+        # description TEXT
+
+
+        # Record
+
+        if active:
+            active = 1
+        else:
+            active = 0
+
+        values_dict = {
+            'org_id': org_id,
+            'active': active,
+            'ncbi_gi': ncbi_gi,
+            'ncbi_version': ncbi_version,
+            'internal_reference': internal_reference,
+            'description': description
+        }
+
+        rec_id = self.db_insert('records', values_dict)[0]
+
+        self._add_record_action(
+            rec_id=rec_id,
+            action_str=action_str)
+
+        # Sequence
+
+        seq_id = self.add_sequence(
+            rec_id=rec_id,
+            sequence_str=sequence_str,
+            sequence_alphabet_str=sequence_alphabet_str)[0]
+
+        repr_list = self.produce_seq_edits(sequence_str, sequence_str)
+
+        seq_rep_id = self.add_sequence_representation(
+            rec_id=rec_id,
+            seq_id=seq_id,
+            repr_list=repr_list)[0]
+
+        # Ancestral records
+
+        if parent_rec_id_list:
+
+            # id INTEGER PRIMARY KEY AUTOINCREMENT,
+            # rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+            # parent_rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE RESTRICT
+
+            for parent_rec_id in parent_rec_id_list:
+
+                values_dict = {
+                    'rec_id': rec_id,
+                    'parent_rec_id': parent_rec_id
+                    }
+
+                self.db_insert('record_ancestry', values_dict)
+
+        return rec_id
+
+
     def add_genbank_record(self, record, action_str='Genbank record'):
 
         from krpy import krbionames
@@ -989,7 +1037,7 @@ class KRSequenceDatabase:
             'description': description
         }
 
-        row_id = self._db_insert('records', values_dict)
+        row_id = self.db_insert('records', values_dict)
 
         self._add_record_action(
             rec_id=row_id[0],
@@ -1000,14 +1048,14 @@ class KRSequenceDatabase:
         sequence_str = str(record.seq)
         sequence_alphabet_str = self._sequence_alphabet(record.seq)
 
-        seq_id = self._add_sequence(
+        seq_id = self.add_sequence(
             rec_id=row_id[0],
             sequence_str=sequence_str,
             sequence_alphabet_str=sequence_alphabet_str)[0]
 
-        repr_list = self._produce_seq_edits(sequence_str, sequence_str)
+        repr_list = self.produce_seq_edits(sequence_str, sequence_str)
 
-        seq_rep_id = self._add_sequence_representation(
+        seq_rep_id = self.add_sequence_representation(
             rec_id=row_id[0],
             seq_id=seq_id,
             repr_list=repr_list)[0]
@@ -1033,55 +1081,55 @@ class KRSequenceDatabase:
         return row_id
 
 
-    def _align_sequence_reps(self, seq_rep_id_list, program, options='', program_executable=''):
+    # def _align_sequence_reps(self, seq_rep_id_list, program, options='', program_executable=''):
 
-        from Bio import SeqRecord
-        from krpy import kralign
+    #     from Bio import SeqRecord
+    #     from krpy import kralign
 
-        temp_records = list()
+    #     temp_records = list()
 
-        for seq_rep_id in seq_rep_id_list:
-            seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
-            seq_record = SeqRecord.SeqRecord(seq, id=str(seq_rep_id), name='', description='')
-            temp_records.append(seq_record)
+    #     for seq_rep_id in seq_rep_id_list:
+    #         seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
+    #         seq_record = SeqRecord.SeqRecord(seq, id=str(seq_rep_id), name='', description='')
+    #         temp_records.append(seq_record)
 
-        aln = kralign.align(
-            records=temp_records,
-            program=program,
-            options='',
-            program_executable='')
+    #     aln = kralign.align(
+    #         records=temp_records,
+    #         program=program,
+    #         options='',
+    #         program_executable='')
 
-        result_seq_rep_id_list = list()
+    #     result_seq_rep_id_list = list()
 
-        for s in aln:
-            old_seq_rep_id = int(s.id)
+    #     for s in aln:
+    #         old_seq_rep_id = int(s.id)
 
-            table_name_list = ['sequence_representations']
-            column_list = ['seq_id']
-            where_dict = {'id': old_seq_rep_id}
-            join_rules_str = None
+    #         table_name_list = ['sequence_representations']
+    #         column_list = ['seq_id']
+    #         where_dict = {'id': old_seq_rep_id}
+    #         join_rules_str = None
 
-            results = self._db_select(
-                table_name_list=table_name_list,
-                column_list=column_list,
-                where_dict=where_dict,
-                join_rules_str=join_rules_str)[0]
+    #         results = self._db_select(
+    #             table_name_list=table_name_list,
+    #             column_list=column_list,
+    #             where_dict=where_dict,
+    #             join_rules_str=join_rules_str)[0]
 
-            seq_id = results[b'seq_id']
-            seq = self._get_sequence(sequence_id=seq_id)
-            aln_seq = str(s.seq).upper()
+    #         seq_id = results[b'seq_id']
+    #         seq = self._get_sequence(sequence_id=seq_id)
+    #         aln_seq = str(s.seq).upper()
 
-            repr_list = self._produce_seq_edits(str(seq), aln_seq)
+    #         repr_list = self.produce_seq_edits(str(seq), aln_seq)
 
-            new_seq_rep_id = self._add_sequence_representation(
-                seq_id=seq_id, repr_list=repr_list)[0]
+    #         new_seq_rep_id = self.add_sequence_representation(
+    #             seq_id=seq_id, repr_list=repr_list)[0]
 
-            result_seq_rep_id_list.append(new_seq_rep_id)
+    #         result_seq_rep_id_list.append(new_seq_rep_id)
 
-        return result_seq_rep_id_list
+    #     return result_seq_rep_id_list
 
 
-    def _add_alignment(self, name, seq_rep_id_list, description=None, rec_id=None):
+    def add_alignment(self, name, seq_rep_id_list, description=None,rec_id=None):
 
         values_dict = {
             'rec_id': rec_id,
@@ -1089,12 +1137,13 @@ class KRSequenceDatabase:
             'description': description
         }
 
-        row_id = self._db_insert('alignments', values_dict, check_exists=False)
+        row_id = self.db_insert(
+            'alignments', values_dict, check_exists=False)[0]
 
         for seq_rep_id in seq_rep_id_list:
 
             values_dict = {
-                'aln_id': row_id[0]
+                'aln_id': row_id
             }
 
             where_dict = {
@@ -1107,37 +1156,107 @@ class KRSequenceDatabase:
                 where_dict=where_dict)
 
 
-    def align_records(
-        self,
-        record_reference_list,
-        program,
-        aln_name,
-        options='',
-        program_executable='',
-        record_reference_type='gi',  # gi version internal
-        description=None
-        ):
+    def get_alignment(self, alignment_id):
 
-        seq_rep_id_list = list()
+        # CREATE TABLE sequence_representations(
+        #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+        #     seq_id INTEGER NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
+        #     rec_id INTEGER UNIQUE REFERENCES records(id) ON DELETE SET NULL,
+        #     aln_id INTEGER REFERENCES alignments(id) ON DELETE CASCADE,
+        #     representation SEQREP NOT NULL
+        #     );
 
-        for r in record_reference_list:
-            seq_rep_id = self._get_seq_rep_id_for_record(
-                record_reference=r,
-                record_reference_type=record_reference_type)
-            seq_rep_id_list.append(seq_rep_id)
+        # CREATE TABLE alignments(
+        #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+        #     name TEXT NOT NULL,
+        #     rec_id INTEGER UNIQUE REFERENCES records(id) ON DELETE CASCADE,
+        #     description TEXT
+        #     );
 
-        aln_seq_rep_id_list = self._align_sequence_reps(
-            seq_rep_id_list=seq_rep_id_list,
-            program=program,
-            options=options,
-            program_executable=program_executable)
+        from Bio.Align import MultipleSeqAlignment
+        from Bio import Seq
+        from Bio.SeqRecord import SeqRecord
 
-        row_id = self._add_alignment(
-            name=aln_name,
-            seq_rep_id_list=aln_seq_rep_id_list,
-            description=description)
+        aln = None
 
-        return row_id
+        # table_name_list = ['alignments']
+        # column_list = ['name', 'rec_id', 'description']
+        # where_dict = {'id': alignment_id}
+        # alignment_field_list = self._db_select(
+        #     table_name_list=table_name_list,
+        #     column_list=column_list,
+        #     where_dict=where_dict,
+        #     join_rules_str=None)[0]
+
+        table_name_list = ['sequence_representations']
+        column_list = ['id', 'seq_id', 'rec_id', 'aln_id', 'representation']
+        where_dict = {'aln_id': alignment_id}
+        seq_reps = self._db_select(
+            table_name_list=table_name_list,
+            column_list=column_list,
+            where_dict=where_dict,
+            join_rules_str=None)
+
+        seq_record_list = list()
+
+        for seq_rep in seq_reps:
+
+            rec_id = self._db_select(
+                table_name_list=['sequences'],
+                column_list=['rec_id'],
+                where_dict={'id': seq_rep[b'seq_id']},
+                join_rules_str=None,
+                order_by_column_list=None)[0][b'rec_id']
+
+            seq_rep_id = seq_rep[b'id']
+            seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
+
+            seq_record = SeqRecord(
+                seq=seq,
+                id=str(rec_id),
+                name='',
+                description='')
+
+            seq_record_list.append(seq_record)
+
+            # print(seq_record)
+
+        aln = MultipleSeqAlignment(seq_record_list)
+
+        return aln
+
+
+    # def align_records(
+    #     self,
+    #     record_reference_list,
+    #     program,
+    #     aln_name,
+    #     options='',
+    #     program_executable='',
+    #     record_reference_type='gi',  # gi version internal
+    #     description=None
+    #     ):
+
+    #     seq_rep_id_list = list()
+
+    #     for r in record_reference_list:
+    #         seq_rep_id = self.get_seq_rep_id_for_record(
+    #             record_reference=r,
+    #             record_reference_type=record_reference_type)
+    #         seq_rep_id_list.append(seq_rep_id)
+
+    #     aln_seq_rep_id_list = self._align_sequence_reps(
+    #         seq_rep_id_list=seq_rep_id_list,
+    #         program=program,
+    #         options=options,
+    #         program_executable=program_executable)
+
+    #     row_id = self.add_alignment(
+    #         name=aln_name,
+    #         seq_rep_id_list=aln_seq_rep_id_list,
+    #         description=description)
+
+    #     return row_id
 
 
     ############################################################################
@@ -1159,7 +1278,7 @@ class KRSequenceDatabase:
             join_rules_str=join_rules_str)[0]
 
         seq_str = results[b'sequence']
-        seq_alphabet = self._string_to_bio_alphabet(str_alphabet=results[b'alphabet'])
+        seq_alphabet = self.string_to_bio_alphabet(str_alphabet=results[b'alphabet'])
 
         seq = Seq.Seq(data=seq_str, alphabet=seq_alphabet)
 
@@ -1186,15 +1305,15 @@ class KRSequenceDatabase:
 
         sequence_edits = results[b'representation']
 
-        new_seq_str = self._apply_seq_edits(e=sequence_edits, s=str(seq))
+        new_seq_str = self.apply_seq_edits(e=sequence_edits, s=str(seq))
         new_seq = Seq.Seq(data=new_seq_str, alphabet=seq.alphabet)
 
-        return(new_seq)
+        return new_seq
 
 
-    def _get_seq_rep_id_for_record(self,
+    def get_seq_rep_id_for_record(self,
         record_reference,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
         where_dict_key = ''
@@ -1210,36 +1329,36 @@ class KRSequenceDatabase:
 
         table_name = 'records'
         where_dict = {where_dict_key: record_reference}
-        rec_id = self._db_get_row_id(
+        rec_id = self.db_get_row_ids(
             table_name=table_name,
-            values_dict=where_dict)
+            where_dict=where_dict)[0]
 
         table_name = 'sequence_representations'
         where_dict = {'rec_id': rec_id}
-        seq_rep_id = self._db_get_row_id(
+        seq_rep_id = self.db_get_row_ids(
             table_name=table_name,
-            values_dict=where_dict)
+            where_dict=where_dict)[0]
 
         return seq_rep_id
 
 
     def get_sequence_for_record(self,
         record_reference,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
-        seq_rep_id = self._get_seq_rep_id_for_record(
+        seq_rep_id = self.get_seq_rep_id_for_record(
             record_reference=record_reference,
             record_reference_type=record_reference_type)
 
         seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
 
-        return(seq)
+        return seq
 
 
     def get_sequences_for_records(self,
         record_reference_list,
-        record_reference_type='gi'  # gi version internal
+        record_reference_type='gi'  # gi version internal raw
         ):
 
         seq_list = list()
@@ -1279,7 +1398,7 @@ class KRSequenceDatabase:
         where_dict = {where_dict_key: record_reference}
         results = self._db_select(
             table_name_list=['records'],
-            column_list=['id', 'org_id', 'ncbi_gi', 'ncbi_version', 'internal_reference',
+            column_list=['active', 'id', 'org_id', 'ncbi_gi', 'ncbi_version', 'internal_reference',
                          'description'],
             where_dict=where_dict,
             join_rules_str=None)[0]
@@ -1290,7 +1409,7 @@ class KRSequenceDatabase:
         org_flat = krbionames.flatten_organism_name(
                 parsed_name=org_dict, sep=' ')
 
-        seq_rep_id = self._get_seq_rep_id_for_record(
+        seq_rep_id = self.get_seq_rep_id_for_record(
             record_reference=record_reference,
             record_reference_type=record_reference_type)
 
@@ -1330,16 +1449,31 @@ class KRSequenceDatabase:
 
             features.append(feat)
 
+        rec_id = results[b'ncbi_version']
+        if not rec_id:
+            rec_id = ''
+
+        rec_name = results[b'ncbi_version']
+        if not rec_name:
+            rec_name = ''
+
+        rec_description = results[b'description']
+        if not rec_description:
+            rec_description = ''
+
         record = SeqRecord(
             seq=seq,
-            id=results[b'ncbi_version'],
-            name=results[b'ncbi_version'],
-            description=results[b'description'],
+            id=rec_id,
+            name=rec_name,
+            description=rec_description,
             features=features)
 
         record.annotations[b'gi'] = str(results[b'ncbi_gi'])
         record.annotations[b'organism'] = str(org_flat)
+        record.annotations[b'internal_reference'] = str(results[b'internal_reference'])
+        record.annotations[b'kr_seq_db_org_id'] = str(results[b'org_id'])
         record.annotations[b'kr_seq_db_id'] = str(results[b'id'])
+        record.annotations[b'kr_seq_db_active'] = str(results[b'active'])
 
         return record
 
@@ -1347,8 +1481,13 @@ class KRSequenceDatabase:
     def get_records(
         self,
         record_reference_list,
-        record_reference_type='gi'  # gi version internal raw
+        record_reference_type='gi',  # gi version internal raw
+        active=True,
+        inactive=False
         ):
+
+        if (not active) and (not inactive):
+            return None
 
         record_list = list()
 
@@ -1358,30 +1497,48 @@ class KRSequenceDatabase:
                 record_reference_type=record_reference_type  # gi version internal raw
                 )
 
-            record_list.append(record)
+            active_state = int(record.annotations[b'kr_seq_db_active'])
+
+            accept = False
+
+            if active and inactive:
+                accept = True
+            elif active and active_state==1:
+                accept = True
+            elif inactive and active_state==0:
+                accept = True
+
+            if accept:
+                record_list.append(record)
 
         return record_list
 
 
-    def get_all_records(self):
+    def get_all_records(self, active=True, inactive=False):
 
-        record_reference_list = self._db_select(
-            table_name_list=['records'],
-            column_list=['id'],
-            where_dict=None,
-            join_rules_str=None,
-            order_by_column_list=None)
+        # record_reference_list = self._db_select(
+        #     table_name_list=['records'],
+        #     column_list=['id'],
+        #     where_dict=None,
+        #     join_rules_str=None,
+        #     order_by_column_list=None)
 
-        record_reference_list = [x[b'id'] for x in record_reference_list]
+        # record_reference_list = [x[b'id'] for x in record_reference_list]
+
+        record_reference_list = self.db_get_row_ids(
+            table_name = 'records',
+            where_dict = None)
 
         records = self.get_records(
             record_reference_list=record_reference_list,
-            record_reference_type='raw')
+            record_reference_type='raw',
+            active=active,
+            inactive=inactive)
 
         return records
 
 
-    def get_records_with_annotations(self, annotation_type, annotation):
+    def get_records_with_annotations(self, annotation_type, annotation, active=True, inactive=False):
 
         sql_string = '''
             SELECT rec_id
@@ -1412,34 +1569,68 @@ class KRSequenceDatabase:
 
         return records
 
+    def get_parent_rec_ids(self, rec_id):
+
+        # CREATE TABLE record_ancestry(
+        #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+        #     rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+        #     parent_rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE RESTRICT
+        #     );
+
+        results = self._db_select(
+            table_name_list=['record_ancestry'],
+            column_list=['parent_rec_id'],
+            where_dict={'rec_id': rec_id},
+            join_rules_str=None,
+            order_by_column_list=['parent_rec_id'])
+
+        parent_rec_ids = None
+
+        if len(results) > 0:
+            parent_rec_ids = [x[b'parent_rec_id'] for x in results]
+
+        return parent_rec_ids
+
 
     ############################################################################
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    import os
-    from krpy import krbioio
+#     pass
 
-    db_file = 'sqlite3_database'
+#     import os
+#     from krpy import krbioio
 
-    if os.path.exists(db_file):
-        os.remove(db_file)
+#     # db_file = 'sqlite3_database'
+#     db_file = '/Users/karolis/Desktop/phylo-prj/db.sqlite3'
 
-    seq_db = KRSequenceDatabase(db_file)
+#     # if os.path.exists(db_file):
+#     #     os.remove(db_file)
 
-    ############################################################################
+#     seq_db = KRSequenceDatabase(db_file)
 
-    # gb_file = 'records_NADH2.gb'
+#     ##########################################################################
 
-    # gb_records = krbioio.read_sequence_file(
-    #     file_path=gb_file,
-    #     file_format='gb',
-    #     ret_type='dict',
-    #     key='gi'
-    # )
+#     x = seq_db._db_update(
+#         table_name='organisms',
+#         values_dict={'subspecies': 'karolis'},
+#         where_dict={'genus': 'Solanum'})
 
-    ############################################################################
+#     print(x)
 
-    seq_db.save()
-    seq_db.close()
+#     ##########################################################################
+
+#     # gb_file = 'records_NADH2.gb'
+
+#     # gb_records = krbioio.read_sequence_file(
+#     #     file_path=gb_file,
+#     #     file_format='gb',
+#     #     ret_type='dict',
+#     #     key='gi'
+#     # )
+
+#     ##########################################################################
+
+#     # seq_db.save()
+#     # seq_db.close()

@@ -166,7 +166,7 @@ def rename_organisms_using_taxids(
     from krpy import krother
     from krpy.krother import write_log
 
-    organisms = kr_seq_db_object.get_organisms()
+    organisms = kr_seq_db_object.get_organisms(where_dict={'active': 1})
     organism_count = len(organisms)
 
     for i, org_dict in enumerate(organisms):
@@ -320,23 +320,51 @@ def rename_organisms_using_taxids(
 
         elif deleted:
 
-            msg = 'tax_id:' + str(tax_id) + ', status:deleting : ' + org_flat
+            # msg = 'tax_id:' + str(tax_id) + ', status:inactivating : ' + org_flat
 
-            msg = 'deleting: ' + org_flat + \
+            msg = 'inactivating: ' + org_flat + \
             ' tax_id:' + str(tax_id) + ' note:' + delete_note
-
             write_log(msg, log_file_path)
 
             where_dict = {'org_id': org_id}
+
+            rec_ids = kr_seq_db_object.db_get_row_ids(
+                'records', where_dict=where_dict)
+
             blacklist_notes = delete_note + ' ' + org_flat
-            kr_seq_db_object.delete_records(
-                where_dict=where_dict, blacklist=True,
-                blacklist_notes=blacklist_notes)
+
+            # kr_seq_db_object.delete_records(
+            #     where_dict=where_dict, blacklist=True,
+            #     blacklist_notes=blacklist_notes)
+
+            kr_seq_db_object.set_inactive(
+                table_name='records',
+                where_dict=where_dict)
+
+            if rec_ids:
+
+                for rec_id in rec_ids:
+
+                    rec = kr_seq_db_object.get_record(
+                        record_reference=rec_id,
+                        record_reference_type='raw'
+                        )
+
+                    kr_seq_db_object.add_record_to_blacklist(
+                        ncbi_gi=int(rec.annotations['gi']),
+                        ncbi_version=rec.id,
+                        internal_reference=rec.annotations['internal_reference'],
+                        notes=blacklist_notes)
 
             where_dict = {'id': org_id}
-            kr_seq_db_object.delete_organisms(where_dict=where_dict)
 
-            kr_seq_db_object.delete_orphaned_taxonomies()
+            # kr_seq_db_object.delete_organisms(where_dict=where_dict)
+
+            kr_seq_db_object.set_inactive(
+                table_name='organisms',
+                where_dict=where_dict)
+
+            # kr_seq_db_object.delete_orphaned_taxonomies()
 
         kr_seq_db_object.save()
 
@@ -346,7 +374,7 @@ def rename_organisms_using_taxids(
 
 
 def accept_records_by_similarity(
-    records, temp_dir, min_clust_size=10, strand='both', program='usearch'):
+    records, temp_dir, min_clust_size=10, strand='both', program='usearch', identity_threshold=0.80):
 
     from krpy import krusearch
 
@@ -359,7 +387,7 @@ def accept_records_by_similarity(
 
         clusters = krusearch.cluster_records(
             records=records,
-            identity_threshold=0.80,
+            identity_threshold=identity_threshold,
             temp_dir=temp_dir,
             sorted_input=False,
             algorithm='smallmem',  # fast smallmem
@@ -368,7 +396,7 @@ def accept_records_by_similarity(
             quiet=True,
             program=program,
             heuristics=True,
-            query_coverage=0.25,
+            query_coverage=0.5,
             target_coverage=0.25,
             sizein=False,
             sizeout=False,
@@ -386,12 +414,13 @@ def accept_records_by_similarity(
             else:
                 reject = reject + clusters[key]
 
-            # print(clusters[key])
+            # print(key, clust_size)
+            # print()
 
-            # if clust_size < 10:
-            #     print(key, clusters[key])
-            # else:
-            #     print(key, clust_size)
+            # for cluster in clusters[key]:
+            #     print(cluster)
+
+            # print('=== === === === ===')
 
     return {'accept': accept, 'reject': reject}
 
@@ -464,6 +493,7 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
 
         while True:
             picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
+            # picked_fi = 1
             try:
                 if str(picked_fi).lower().startswith('exclude'):
                     print()
@@ -493,6 +523,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
     from krpy import krcl
     from krpy import krother
+    from krpy import kralign
     from krpy.krother import write_log
 
     # msg = 'msg'
@@ -502,9 +533,15 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
     locus_name = locus_dict['name']
     # locus_short_name = locus_dict['short_name']
 
+    acc_rej_gi_dict = dict()
+
     trimmed_records = list()
 
+    no_feature_record_gi_list = list()
+
     records_count = len(records)
+
+    prelim_record_feat_loc_list = list()
 
     for i, record in enumerate(records):
 
@@ -515,8 +552,11 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
             show_bar=False)
 
         rec_id = int(record.annotations['kr_seq_db_id'])
+        gi = int(record.annotations['gi'])
 
         location_list = list()
+
+        feature_found = False
 
         for strategy in strategies:
 
@@ -558,6 +598,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
                 feature_B = feature_tuple_B[0]
 
                 if feature_A and feature_B:
+
+                    feature_found = True
 
                     start_A = int(feature_A.location.start)
                     end_A = int(feature_A.location.end)
@@ -615,6 +657,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
                 if feature:
 
+                    feature_found = True
+
                     # There should be only one matching index.
                     start = int(feature.location.start)
                     end = int(feature.location.end)
@@ -622,49 +666,129 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
                     location_list.append((start, end, locus_relative_position, strand))
 
-        location_list = sorted(location_list, key=lambda x: (x[2], x[0]), reverse=False)
 
-        location_list_deduplicated = list()
+        if not feature_found:
+            no_feature_record_gi_list.append(gi)
 
-        prev_lrp = None
-        prev_loc_start = None
-        prev_loc_end = None
+        else:
 
-        for loc in location_list:
+            location_list = sorted(location_list, key=lambda x: (x[2], x[0]), reverse=False)
 
-            lrp = loc[2]
-            loc_start = loc[0]
-            loc_end = loc[1]
-            strand = loc[3]
+            location_list_deduplicated = list()
 
-            if not prev_lrp:
-                prev_lrp = lrp
-                prev_loc_start = loc_start
-                prev_loc_end = loc_end
-                prev_strand = strand
-                continue
+            prev_lrp = None
+            prev_loc_start = None
+            prev_loc_end = None
 
-            if prev_lrp == lrp:
-                prev_loc_end = loc_end
-            else:
-                location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
-                prev_lrp = lrp
-                prev_loc_start = loc_start
-                prev_loc_end = loc_end
-                prev_strand = strand
+            for loc in location_list:
 
-        location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
+                lrp = loc[2]
+                loc_start = loc[0]
+                loc_end = loc[1]
+                strand = loc[3]
 
-        if location_list_deduplicated[0][2] != 0:
-            location_list_deduplicated.append((location_list_deduplicated[0][0], location_list_deduplicated[-1][1], 0, location_list_deduplicated[0][3]))
+                if not prev_lrp:
+                    prev_lrp = lrp
+                    prev_loc_start = loc_start
+                    prev_loc_end = loc_end
+                    prev_strand = strand
+                    continue
+
+                if prev_lrp == lrp:
+                    prev_loc_end = loc_end
+                else:
+                    location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
+                    prev_lrp = lrp
+                    prev_loc_start = loc_start
+                    prev_loc_end = loc_end
+                    prev_strand = strand
+
+            location_list_deduplicated.append((prev_loc_start, prev_loc_end, prev_lrp, prev_strand))
+
+            location_list_deduplicated.append((location_list_deduplicated[0][0], location_list_deduplicated[-1][1], 'x', location_list_deduplicated[0][3]))
             location_list_deduplicated = sorted(location_list_deduplicated, key=lambda x: (x[2], x[0]), reverse=False)
+
+            feat_dict = {'rec_id': rec_id, 'gi': gi, 'loc_list': location_list_deduplicated}
+            prelim_record_feat_loc_list.append(feat_dict)
+
+            ###
+
+            # for loc in location_list_deduplicated:
+
+            #     strand = ''
+            #     if loc[3] == 1:
+            #         strand = '(+)'
+            #     elif loc[3] == -1:
+            #         strand = '(-)'
+
+            #     location_str = '[' + str(loc[0]) + ':' + str(loc[1]) + ']' + strand
+
+            #     feat_type_str = 'pwf' + str(loc[2])
+
+            #     feat_id = kr_seq_db_object.add_record_feature(
+            #         rec_id=rec_id, type_str=feat_type_str,
+            #         location_str=location_str)[0]
+
+            #     qual_type_str = 'note'
+            #     qual_str = locus_name + '|' + str(loc[2])
+
+            #     kr_seq_db_object.add_record_feature_qualifier(
+            #         rec_feat_id=feat_id,
+            #         type_str=qual_type_str,
+            #         qualifier_str=qual_str)
+
+            # kr_seq_db_object.save()
+
+            ###
+
+            loc = location_list_deduplicated[-1]
+            trimmed_rec = record[loc[0]:loc[1]]
+            # print(trimmed_rec.seq)
+            if loc[3] and loc[3] < 0:
+                trimmed_rec = trimmed_rec.reverse_complement()
+            # print(loc)
+            # print(trimmed_rec.seq)
+            # print('---')
+
+            trimmed_rec.annotations['gi'] = record.annotations['gi']
+            trimmed_records.append(trimmed_rec)
+
+    min_clust_size = min((records_count * 0.05), 25)
+
+    acc_rej_gi_dict = accept_records_by_similarity(
+        records=trimmed_records,
+        temp_dir=temp_dir,
+        min_clust_size=min_clust_size,
+        strand='both',
+        program='usearch')
+
+    acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
+
+    # Fix sequence direction based on majority of good sequences
+
+    acc_gi_list = acc_rej_gi_dict['accept']
+    rev_comp_gi_list = list()
+    for acc in acc_gi_list:
+        if acc[0] == '-':
+            rev_comp_gi_list.append(int(acc[1]))
+            # print(acc)
+
+    for r in prelim_record_feat_loc_list:
+
+        location_list_deduplicated = r['loc_list']
+        rec_id = r['rec_id']
+        gi = r['gi']
 
         for loc in location_list_deduplicated:
 
+            strand_int = 1
+            if gi in rev_comp_gi_list:
+                strand_int = -1
+
             strand = ''
-            if loc[3] == 1:
+            if loc[3] and loc[3] * strand_int == 1:
                 strand = '(+)'
-            elif loc[3] == -1:
+            elif loc[3] and loc[3] * strand_int == -1:
                 strand = '(-)'
 
             location_str = '[' + str(loc[0]) + ':' + str(loc[1]) + ']' + strand
@@ -685,24 +809,286 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
         kr_seq_db_object.save()
 
-        trimmed_rec = record[loc[0]:loc[1]]
-        trimmed_rec.annotations['gi'] = record.annotations['gi']
-        trimmed_records.append(trimmed_rec)
+    ###
 
-    min_clust_size = records_count * 0.05
+    # acc_gi_list = acc_rej_gi_dict['accept']
+    # acc_gi_list = [int(x[1]) for x in acc_gi_list]
+    # good_records = list()
+    # for ar in trimmed_records:
+    #     if int(ar.annotations['gi']) in acc_gi_list:
+    #         ar.id = ar.annotations['gi']
+    #         good_records.append(ar)
+    #         print(ar.annotations['gi'])
 
-    # print(min_clust_size)
+    # ref_aln = kralign.align(
+    # records=good_records,
+    # program='mafft',
+    # # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
+    # options='--auto --nuc --reorder --thread 4 --adjustdirection',
+    # program_executable='mafft'
+    # # program=locus_aln_program,
+    # # options=locus_aln_program_options,
+    # # program_executable=locus_aln_program_exe
+    # )
 
-    acc_rej_gi_list = accept_records_by_similarity(
-        records=trimmed_records,
-        temp_dir=temp_dir,
-        min_clust_size=min_clust_size,
-        strand='both',
-        program='usearch')
+    # import krbioio
+    # krbioio.write_alignment_file(
+    #     alignment=ref_aln,
+    #     file_path='/Users/karolis/Desktop/aln.phy',
+    #     file_format='phylip-relaxed')
 
-    # acc_rej_gi_list {'accept': accept, 'reject': reject}
+    # print('===== =====')
 
-    return acc_rej_gi_list
+    # for a in ref_aln:
+    #     print(a.id)
+
+    ###
+
+    return acc_rej_gi_dict
+
+
+def trim_record_to_locus(record, locus_name):
+
+    feat = feature_for_locus(
+        record=record,
+        feature_type='pwfx',
+        qualifier_label='note',
+        locus_name_list=[locus_name + '|x'],
+        match_stringency='strict')[0]
+
+    rec_trimmed = None
+
+    if feat:
+
+        start = feat.location.start
+        end = feat.location.end
+        strand = feat.location.strand
+
+        rec_trimmed = record[start:end]
+
+        if strand and (int(strand) < 0):
+            rec_trimmed = rec_trimmed.reverse_complement()
+
+        rec_trimmed.id = record.annotations[b'gi']
+        rec_trimmed.name = ''
+        rec_trimmed.description = ''
+
+        # rec_trimmed.annotations[b'gi'] = record.annotations[b'gi']
+        # rec_trimmed.annotations[b'organism'] = record.annotations[b'organism']
+        # rec_trimmed.annotations[b'kr_seq_db_org_id'] = record.annotations[b'kr_seq_db_org_id']
+        # rec_trimmed.annotations[b'kr_seq_db_id'] = record.annotations[b'kr_seq_db_id']
+
+    return rec_trimmed
+
+
+def improve_alignment_using_reference_records(records, reference_records, locus_name):
+
+    from Bio.Align import MultipleSeqAlignment
+
+    from krpy import kralign
+    from krpy import krother
+
+    new_aln = None
+
+    ref_alignments = list()
+
+    for ref_rec in reference_records:
+        ref_rec_trimmed = trim_record_to_locus(
+            record=ref_rec, locus_name=locus_name)
+        ref_rec_trimmed.id = str(krother.random_id(10))
+        ref_loc_records = records + [ref_rec_trimmed]
+
+        ref_aln = kralign.align(
+            records=ref_loc_records,
+            program='mafft',
+            # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
+            options='--auto --nuc --reorder --thread 4',
+            program_executable='mafft'
+            # program=locus_aln_program,
+            # options=locus_aln_program_options,
+            # program_executable=locus_aln_program_exe
+            )
+
+        ref_cons = kralign.consensus(ref_aln, threshold=0.4, unknown='N',
+            resolve_ambiguities=True)
+        prop_id = ref_cons[5]
+
+        # print('id:', prop_id, 'cov:', ref_cons[3]/len(ref_aln), 'seqs:', len(ref_aln))
+
+        ref_aln_record_list = list()
+        for r in ref_aln:
+            if r.id != ref_rec_trimmed.id:
+                ref_aln_record_list.append(r)
+        ref_aln = MultipleSeqAlignment(ref_aln_record_list)
+
+        if prop_id < 0.985:
+
+            ref_alignments.append([prop_id, ref_aln])
+
+        else:
+
+            new_aln = ref_aln
+
+            # print('found good aln:', prop_id)
+            # print(new_aln.format('fasta'))
+
+            break
+
+    if not new_aln:
+
+        ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
+        new_aln = ref_alignments[0][1]
+
+        prop_id = ref_alignments[0][0]
+
+        # print('could not find good aln:', prop_id)
+        # print(new_aln.format('fasta'))
+
+    return new_aln
+
+
+def flatten_locus(records, reference_records, locus_dict, log_file_path, already_trimmed=False):
+
+    from krpy.krother import write_log
+    from krpy import kralign
+
+    locus_name = locus_dict['name']
+    # strategies = locus_dict['strategies']
+
+    # lrp_list = [x['locus_relative_position'] for x in strategies]
+    # lrp_list = list(set(lrp_list))
+    # lrp_list = sorted(lrp_list, key=lambda x: x, reverse=False)
+
+    # print('--- --- --- --- --- --- ---')
+
+    records_trimmed = list()
+
+    # list_of_lrp_lists = list()
+
+    if already_trimmed:
+        records_trimmed = records
+
+    else:
+        for record in records:
+
+            # record_lrp_list = list()
+
+            # for lrp in lrp_list:
+
+            #     feat = feature_for_locus(
+            #         record=record,
+            #         feature_type='pwf' + str(lrp),
+            #         qualifier_label='note',
+            #         locus_name_list=[locus_name + '|' + str(lrp)],
+            #         match_stringency='strict')
+
+            #     if feat[0]:
+            #         record_lrp_list.append(lrp)
+            #         # print(record.id, lrp, feat)
+
+            # list_of_lrp_lists.append(record_lrp_list)
+
+            rec_trimmed = trim_record_to_locus(record, locus_name)
+
+            if rec_trimmed:
+                records_trimmed.append(rec_trimmed)
+
+    # list_of_lrp_lists.sort(reverse=True)
+    # running_list = set()
+    # lrp_overlap = True
+    # for lrp_list in list_of_lrp_lists:
+    #     if len(running_list) == 0:
+    #         running_list = set(lrp_list)
+    #         continue
+    #     o = False
+    #     for lrp in lrp_list:
+    #         if (lrp in running_list) or (lrp == 0):
+    #             o = True
+    #             running_list |= set(lrp_list)
+    #             break
+    #     if not o:
+    #         lrp_overlap = False
+    #         break
+
+    # if lrp_overlap:
+
+    aln = None
+
+    if len(records_trimmed) > 1:
+
+        aln = kralign.align(
+            records=records_trimmed,
+            program='mafft',
+            # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
+            options='--auto --nuc --reorder --thread 4',
+            program_executable='mafft'
+            # program=locus_aln_program,
+            # options=locus_aln_program_options,
+            # program_executable=locus_aln_program_exe
+            )
+
+        # consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical
+        consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
+
+        prop_id = consensus[5]
+
+        if prop_id < 0.985:
+
+            # print('id:', prop_id, 'cov:', consensus[3]/len(aln), 'seqs:', len(aln))
+
+            new_aln = improve_alignment_using_reference_records(
+                records=records_trimmed,
+                reference_records=reference_records,
+                locus_name=locus_name)
+
+            new_cons = kralign.consensus(
+                new_aln, threshold=0.4, unknown='N', resolve_ambiguities=True)
+
+            aln = new_aln
+
+    return aln
+
+
+def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
+
+    kr_seq_db_object.db_delete(
+        table_name='alignments',
+        where_dict={'rec_id': rec_id})
+
+    seq_rep_id_list = list()
+
+    for ar in new_aln:
+
+        seq = kr_seq_db_object.get_sequence_for_record(
+            record_reference=int(ar.id),
+            record_reference_type='gi'
+            )
+
+        seq_rep_list = kr_seq_db_object.produce_seq_edits(
+            s1=str(seq).upper(),
+            s2=str(ar.seq).upper())
+
+        ar_id = kr_seq_db_object.db_get_row_ids(
+            table_name='records',
+            where_dict={'ncbi_gi': int(ar.id)})[0]
+
+        seq_id = kr_seq_db_object.db_get_row_ids(
+            table_name='sequences',
+            where_dict={'rec_id': ar_id})[0]
+
+        seq_rep_id = kr_seq_db_object.add_sequence_representation(
+            seq_id=seq_id,
+            repr_list=seq_rep_list,
+            rec_id=None,
+            aln_id=None)[0]
+
+        seq_rep_id_list.append(seq_rep_id)
+
+    kr_seq_db_object.add_alignment(
+        name=aln_name,
+        seq_rep_id_list=seq_rep_id_list,
+        description=None,
+        rec_id=rec_id)
 
 
 # Hacks! -----------------------------------------------------------------------
