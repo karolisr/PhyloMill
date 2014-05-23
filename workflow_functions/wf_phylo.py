@@ -158,6 +158,10 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
     DB.save()
 
 
+def blast_search():
+    pass
+
+
 def rename_organisms_with_record_taxon_mappings(
     kr_seq_db_object, record_taxon_mappings_dict, taxonomy_cache, log_file_path,
     email):

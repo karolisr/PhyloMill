@@ -296,9 +296,11 @@ if __name__ == '__main__':
 
             ln_split = locus_name.split('_')
             if len(ln_split) > 1 and ln_split[1] == 'blast':
-                pass
+
+                wf.blast_search()
 
             else:
+
                 wf.regular_search(
                     kr_seq_db_object=DB,
                     log_file_path=LFP,
