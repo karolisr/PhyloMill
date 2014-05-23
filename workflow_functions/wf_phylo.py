@@ -32,6 +32,132 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email)
     return uid_list
 
 
+def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncbi_tax_ids, max_seq_length, dnld_dir_path):
+
+    from krpy import krother
+    from krpy import krncbi
+    from krpy import krbioio
+    from krpy.krother import write_log
+
+    LOCI = loci
+    LFP = log_file_path
+    DB = kr_seq_db_object
+    TAX_IDS = ncbi_tax_ids
+    MAX_SEQ_LENGTH = max_seq_length
+    EMAIL = email
+    DNLD_DIR_PATH = dnld_dir_path
+
+    ncbi_db = LOCI[locus_name]['database']
+    query_term_str = LOCI[locus_name]['query']
+
+    msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
+          locus_name + '.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+    gis = search_genbank(
+        ncbi_db=ncbi_db,
+        query_term_str=query_term_str,
+        ncbi_tax_ids=TAX_IDS,
+        max_seq_length=MAX_SEQ_LENGTH,
+        email=EMAIL)
+
+    msg = 'Found ' + str(len(gis)) + ' records.'
+    write_log(msg, LFP)
+
+    gis_in_blacklist = list()
+    gis_good = list()
+
+    for gi in gis:
+
+        in_blacklist = DB.in_blacklist(
+            record_reference = gi,
+            record_reference_type='gi')
+
+        if in_blacklist:
+            gis_in_blacklist.append(gi)
+        else:
+            gis_good.append(gi)
+
+    msg = 'There are ' + str(len(gis_in_blacklist)) + \
+          ' blacklisted records.'
+    write_log(msg, LFP)
+
+    gis_in_db = list()
+    gis_new = list()
+
+    for gi in gis_good:
+
+        in_db = DB.in_db(
+            record_reference = gi,
+            record_reference_type='gi')
+
+        if in_db:
+            gis_in_db.append(gi)
+        else:
+            gis_new.append(gi)
+
+    msg = 'There are ' + str(len(gis_new)) + \
+          ' new records.'
+    write_log(msg, LFP)
+
+    if len(gis_new) > 0:
+
+        msg = 'Downloading new records.'
+        write_log(msg, LFP)
+
+        print('')
+
+        timestamp = krother.timestamp()
+        timestamp = timestamp.replace('-', '_')
+        timestamp = timestamp.replace(':', '_')
+        timestamp = timestamp.replace(' ', '_')
+
+        gb_file_name = locus_name + '_' + timestamp + '.gb'
+        gb_file_path = DNLD_DIR_PATH + gb_file_name
+
+        krncbi.download_sequence_records(
+            file_path=gb_file_path,
+            uids=gis_new,
+            db=ncbi_db,
+            entrez_email=EMAIL)
+
+        print('')
+
+        records_new = krbioio.read_sequence_file(
+            file_path=gb_file_path,
+            file_format='gb',
+            ret_type='list',
+            key='gi')
+
+        records_to_add = records_new
+
+        if len(records_to_add) > 0:
+
+            msg = 'Adding downloaded records to database.'
+            write_log(msg, LFP)
+
+            for record in records_to_add:
+                DB.add_genbank_record(
+                    record=record,
+                    action_str='Genbank search result.')
+
+                gi = int(record.annotations['gi'])
+
+                DB.add_record_annotation(
+                    record_reference=gi,
+                    type_str='locus',
+                    annotation_str=locus_name,
+                    record_reference_type='gi')
+
+                DB.add_record_annotation(
+                    record_reference=gi,
+                    type_str='source_file',
+                    annotation_str=gb_file_name,
+                    record_reference_type='gi')
+
+    DB.save()
+
+
 def rename_organisms_with_record_taxon_mappings(
     kr_seq_db_object, record_taxon_mappings_dict, taxonomy_cache, log_file_path,
     email):
