@@ -1139,6 +1139,9 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
         raw_voucher = tgrc['qualifier']
         voucher = clean_tgrc_voucher(raw_voucher)
 
+        if not voucher:
+            continue
+
         krcl.print_progress(
             current=i+1, total=tgrc_count, length=0,
             prefix=krother.timestamp() + ' - ',
