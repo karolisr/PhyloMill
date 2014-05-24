@@ -61,13 +61,18 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         max_seq_length=MAX_SEQ_LENGTH,
         email=EMAIL)
 
-    msg = 'Found ' + str(len(gis)) + ' records.'
+    gis_clean = list()
+    for gi in gis:
+        if gi not in LOCI[locus_name]['bad_gis']:
+            gis_clean.append(gi)
+
+    msg = 'Found ' + str(len(gis_clean)) + ' records.'
     write_log(msg, LFP)
 
     gis_in_blacklist = list()
     gis_good = list()
 
-    for gi in gis:
+    for gi in gis_clean:
 
         in_blacklist = DB.in_blacklist(
             record_reference = gi,
@@ -158,9 +163,169 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
     DB.save()
 
 
-def blast_search():
-    pass
+# def blast_search(kr_seq_db_object, loci, locus_name, ncbi_tax_ids, max_seq_length, email, log_file_path, dnld_dir_path, temp_dir):
 
+#     from krpy import krother
+#     from krpy import krncbi
+#     from krpy import krbioio
+#     from krpy import krusearch
+#     from krpy import krblast
+#     from krpy.krother import write_log
+
+#     LOCI = loci
+#     LFP = log_file_path
+#     DB = kr_seq_db_object
+#     TAX_IDS = ncbi_tax_ids
+#     MAX_SEQ_LENGTH = max_seq_length
+#     EMAIL = email
+#     DNLD_DIR_PATH = dnld_dir_path
+
+#     ncbi_db = LOCI[locus_name]['database']
+#     query_term_str = LOCI[locus_name]['query']
+#     min_length = LOCI[locus_name]['min_length']
+#     max_length = LOCI[locus_name]['max_length']
+#     blast_dbs = LOCI[locus_name]['blast_dbs']
+
+#     ln_base = locus_name.split('_blast')[0]
+
+#     msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
+#           ln_base + '. These sequences will be used as queries in blast search.'
+#     write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+#     blast_queries_file = temp_dir + 'blast_queries.fasta'
+
+#     # gis = search_genbank(
+#     #     ncbi_db=ncbi_db,
+#     #     query_term_str=query_term_str,
+#     #     ncbi_tax_ids=TAX_IDS,
+#     #     max_seq_length=MAX_SEQ_LENGTH,
+#     #     email=EMAIL)
+
+#     # gis_clean = list()
+#     # for gi in gis:
+#     #     if gi not in LOCI[locus_name]['bad_gis']:
+#     #         gis_clean.append(gi)
+
+#     # msg = 'Found ' + str(len(gis_clean)) + ' records.'
+#     # write_log(msg, LFP)
+
+#     # gis_in_blacklist = list()
+#     # gis_good = list()
+
+#     # for gi in gis_clean:
+
+#     #     in_blacklist = DB.in_blacklist(
+#     #         record_reference = gi,
+#     #         record_reference_type='gi')
+
+#     #     if in_blacklist:
+#     #         gis_in_blacklist.append(gi)
+#     #     else:
+#     #         gis_good.append(gi)
+
+#     # msg = 'There are ' + str(len(gis_in_blacklist)) + \
+#     #       ' blacklisted records.'
+#     # write_log(msg, LFP)
+
+#     # if len(gis_good) > 0:
+
+#     #     msg = 'Downloading records.'
+#     #     write_log(msg, LFP)
+
+#     #     print('')
+
+#     #     timestamp = krother.timestamp()
+#     #     timestamp = timestamp.replace('-', '_')
+#     #     timestamp = timestamp.replace(':', '_')
+#     #     timestamp = timestamp.replace(' ', '_')
+
+#     #     gb_file_name = locus_name + '_' + timestamp + '.gb'
+#     #     gb_file_path = DNLD_DIR_PATH + gb_file_name
+
+#     #     krncbi.download_sequence_records(
+#     #         file_path=gb_file_path,
+#     #         uids=gis_good,
+#     #         db=ncbi_db,
+#     #         entrez_email=EMAIL)
+
+#     #     print('')
+
+#     #     records_prelim = krbioio.read_sequence_file(
+#     #         file_path=gb_file_path,
+#     #         file_format='gb',
+#     #         ret_type='list',
+#     #         key='gi')
+
+#     #     records = list()
+#     #     for r in records_prelim:
+#     #         if (len(r.seq) >= min_length) and (len(r.seq) <= max_length):
+#     #             records.append(r)
+
+#     #     if len(records) < 5:
+#     #         pass
+#     #     else:
+
+#     #         clusters = krusearch.cluster_records(
+#     #             records=records,
+#     #             identity_threshold=0.50,
+#     #             temp_dir=temp_dir,
+#     #             sorted_input=False,
+#     #             algorithm='smallmem',  # fast smallmem
+#     #             strand='aa',  # plus both aa
+#     #             threads=1,
+#     #             quiet=True,
+#     #             program='usearch',
+#     #             heuristics=True,
+#     #             query_coverage=0.3,
+#     #             target_coverage=0.3,
+#     #             sizein=False,
+#     #             sizeout=False,
+#     #             usersort=False,
+#     #             seq_id='gi',
+#     #             cluster_key='centroid'  # clust_number centroid
+#     #             )
+
+#     #         blast_query_records = list()
+#     #         for r in records:
+#     #             if r.annotations['gi'] in clusters.keys():
+#     #                 r.name = ''
+#     #                 r.description = ''
+#     #                 r.id = r.annotations['gi']
+#     #                 blast_query_records.append(r)
+
+#     #         krbioio.write_sequence_file(
+#     #             records=blast_query_records,
+#     #             file_path=blast_queries_file,
+#     #             file_format='fasta')
+
+#             # for key in clusters.keys():
+#             #     clust_size = len(clusters[key])
+#             #     print(key, clust_size)
+#             #     # print()
+#             #     # for cluster in clusters[key]:
+#             #     #     print(cluster)
+#             #     # print('=== === === === ===')
+
+#     for bdb in blast_dbs:
+#         # krblast.search(
+#         #     program='tblastn',
+#         #     db=bdb,
+#         #     query_fasta_file=blast_queries_file,
+#         #     output_directory=temp_dir,
+#         #     evalue='1e-20',
+#         #     threads=4,
+#         #     output_prefix='')
+
+#         blast_gis = krblast.gis_from_blast_results(
+#             file_name=temp_dir+'tblastn_'+bdb+'.xml',
+#             min_sequence_length=-1,
+#             max_sequence_length=-1)
+
+#         krncbi.download_sequence_records(
+#             file_path=temp_dir+'tblastn_'+bdb+'.gb',
+#             uids=blast_gis,
+#             db='nuccore',
+#             entrez_email=EMAIL)
 
 def rename_organisms_with_record_taxon_mappings(
     kr_seq_db_object, record_taxon_mappings_dict, taxonomy_cache, log_file_path,

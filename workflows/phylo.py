@@ -257,6 +257,21 @@ if __name__ == '__main__':
                     l_dict['database'] = l_db
                     l_dict['query'] = l_query
                     # l_dict['short_name'] = l_short_name
+                    # l_bad_gis = locus_cfg.get(l_sec, 'bad_gis')
+                    # l_bad_gis = l_bad_gis.split(',')
+                    # l_bad_gis = [int(x.strip()) for x in l_bad_gis]
+                    # l_dict['bad_gis'] = l_bad_gis
+                    # l_dict['min_length'] = 0
+                    # if locus_cfg.has_option(section=l_sec, option='min_length'):
+                    #     l_dict['min_length'] = locus_cfg.getint(l_sec, 'min_length')
+                    # l_dict['max_length'] = 0
+                    # if locus_cfg.has_option(section=l_sec, option='max_length'):
+                    #     l_dict['max_length'] = locus_cfg.getint(l_sec, 'max_length')
+                # elif l_sec == 'blast':
+                #     l_blast_dbs = locus_cfg.get(l_sec, 'databases')
+                #     l_blast_dbs = l_blast_dbs.split(',')
+                #     l_blast_dbs = [x.strip() for x in l_blast_dbs]
+                #     l_dict['blast_dbs'] = l_blast_dbs
                 else:
                     l_lrp = locus_cfg.getint(l_sec, 'locus_relative_position')
                     l_ft = locus_cfg.get(l_sec, 'feature_type')
@@ -294,22 +309,31 @@ if __name__ == '__main__':
 
         for locus_name in LOCI.keys():
 
-            ln_split = locus_name.split('_')
-            if len(ln_split) > 1 and ln_split[1] == 'blast':
+            # ln_split = locus_name.split('_')
+            # if len(ln_split) > 1 and ln_split[1] == 'blast':
 
-                wf.blast_search()
+            #     wf.blast_search(
+            #         kr_seq_db_object=DB,
+            #         loci=LOCI,
+            #         locus_name=locus_name,
+            #         ncbi_tax_ids=TAX_IDS,
+            #         max_seq_length=MAX_SEQ_LENGTH,
+            #         email=EMAIL,
+            #         log_file_path=LFP,
+            #         dnld_dir_path=DNLD_DIR_PATH,
+            #         temp_dir=TEMP_DIR_PATH)
 
-            else:
+            # else:
 
-                wf.regular_search(
-                    kr_seq_db_object=DB,
-                    log_file_path=LFP,
-                    email=EMAIL,
-                    loci=LOCI,
-                    locus_name=locus_name,
-                    ncbi_tax_ids=TAX_IDS,
-                    max_seq_length=MAX_SEQ_LENGTH,
-                    dnld_dir_path=DNLD_DIR_PATH)
+            wf.regular_search(
+                kr_seq_db_object=DB,
+                log_file_path=LFP,
+                email=EMAIL,
+                loci=LOCI,
+                locus_name=locus_name,
+                ncbi_tax_ids=TAX_IDS,
+                max_seq_length=MAX_SEQ_LENGTH,
+                dnld_dir_path=DNLD_DIR_PATH)
 
     ############################################################################
 
