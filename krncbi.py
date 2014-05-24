@@ -110,7 +110,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     uids = fixed_uids
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 1000
+    large_batch_size = 2000
     small_batch_size = 500
 
     # Perhaps these may be function arguments?
@@ -118,10 +118,12 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     retmode = 'text'
 
     for uid_start in range(0, uid_count, large_batch_size):
+        # if uid_start < 1:
+        #     continue
         while True:
             # ##
-            downloaded_uids = set()
-            to_download_uids = set()
+            # downloaded_uids = set()
+            # to_download_uids = set()
             # ##
             try:
                 uid_end = min(uid_count, uid_start + large_batch_size)
@@ -129,7 +131,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                       % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
                 # ##
-                to_download_uids |= set(small_batch)
+                # to_download_uids |= set(small_batch)
                 # ##
                 small_batch_count = len(small_batch)
                 small_batch_text = ','.join(small_batch)
@@ -158,9 +160,9 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                 n_rec_to_download = uid_end - uid_start
                 rec_downloaded = len(temp_records)
                 # ##
-                import krseq
-                for x in temp_records:
-                    downloaded_uids.add(krseq.get_annotation(x, 'gi'))
+                # import krseq
+                # for x in temp_records:
+                #     downloaded_uids.add(krseq.get_annotation(x, 'gi'))
                 # ##
             except Exception as err:
                 # print(rec_downloaded, n_rec_to_download)
