@@ -262,23 +262,24 @@ def determine_conserved_regions(alignment_file, matrix, window, min_length, cuto
 
     print('There are '+str(len(regions))+' conserved regions.')
 
-    for region in regions:
-        print('----------------')
-        print('There are '+str(len(region))+' residues in this region.')
-        for position in region:
-            print(position)
+    # for region in regions:
+    #     print('----------------')
+    #     print('There are '+str(len(region))+' residues in this region.')
+    #     for position in region:
+    #         print(position)
 
     return regions
 
 
-def slice_out_conserved_regions(regions, alignment_file, name_prefix):
+def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir_path):
 
     from Bio import AlignIO
     from Bio.Align import MultipleSeqAlignment
     import subprocess
     import os
 
-    directory = os.path.split(alignment_file)[0]
+    # directory = os.path.split(alignment_file)[0]
+    directory = output_dir_path.strip(os.path.sep)
     alignment = AlignIO.read(open(alignment_file), "fasta")
 
     for i in range(0,len(regions)):

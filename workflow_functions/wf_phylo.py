@@ -21,7 +21,7 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email)
                 seq_length_str
 
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
-        email=krncbi)
+        email=email)
 
     uid_list = list()
 
