@@ -44,6 +44,8 @@ IUPAC_DNA_CHARACTERS = set(
      'H',
      'V'])
 
+IUPAC_DNA_GAPS_STRING = '.-'
+
 IUPAC_DNA_GAPS = set(
     ['.',
      '-'])
