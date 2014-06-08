@@ -6,7 +6,8 @@ def read_sequence_data(
     handle,
     data_format,
     ret_type='list',
-    key='accession'  # accession gi
+    key='accession',  # accession gi description
+    alphabet=None
     ):
 
     '''
@@ -15,7 +16,7 @@ def read_sequence_data(
     '''
 
     from Bio import SeqIO
-    records_generator = SeqIO.parse(handle, data_format)
+    records_generator = SeqIO.parse(handle, data_format, alphabet)
 
     records = None
 
@@ -29,6 +30,8 @@ def read_sequence_data(
                 key_value = record.id
             elif key == 'gi':
                 key_value = record.annotations['gi']
+            elif key == 'description':
+                key_value = record.description
             else:
                 key_value = record.id
 
@@ -46,11 +49,12 @@ def read_sequence_file(
     file_path,
     file_format,
     ret_type='list',
-    key='accession'  # accession gi
+    key='accession',  # accession gi description
+    alphabet=None
     ):
 
     handle = open(file_path, 'rU')
-    return read_sequence_data(handle, file_format, ret_type, key)
+    return read_sequence_data(handle, file_format, ret_type, key, alphabet)
 
 
 def write_sequence_file(records, file_path, file_format):
