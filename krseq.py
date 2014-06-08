@@ -150,11 +150,76 @@ def location_from_string(location_string):
     return location
 
 
+def translate_cds(record, table):
+
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+    from Bio.Alphabet import generic_protein
+
+    # Translation tables
+    # http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+
+    # Extract CDS
+    feature_list = list()
+
+    for f in record.features:
+        if f.type.lower() == 'cds':
+            feature_list.append(f)
+
+    extraction_list = list()
+
+    for f in feature_list:
+        e = f.extract(record)
+        start = int(f.qualifiers['codon_start'][0])
+        if start > 1:
+            e = e[start-1:len(e)]
+        extraction_list.append(e)
+
+    translation_list = list()
+
+    for e in extraction_list:
+        t = e.seq.translate(table=table)
+        translation_list.append(t)
+
+    seq = ''
+
+    for t in translation_list:
+        seq = seq + str(t)
+
+    seq = Seq(seq, generic_protein)
+    rec = SeqRecord(seq)
+
+    rec.name = record.id.split('.')[0]
+    rec.description = record.description
+    rec.annotations['gi'] = record.annotations['gi']
+    rec.annotations['organism'] = record.annotations['organism']
+    rec.annotations['taxonomy'] = record.annotations['taxonomy']
+    rec.id = record.id
+
+    return rec
+
+
 # if __name__ == '__main__':
 
-#     # Tests
+    # Tests
 
-#     pass
+    # pass
 
-#     location_from_string('join{[<109:199](+), [294:358](+), [444:545](+), [635:745](+), [829:>886](+)}')
-#     location_from_string('[294:358](+)')
+    # from krpy import krbioio
+
+    # records = krbioio.read_sequence_file(
+    #     file_path='/Users/karolis/Desktop/p_virginiana.gb',
+    #     file_format='genbank',
+    #     ret_type='list')
+
+    # record = records[0]
+    # table = 1
+    # extraction_list = translate_cds(record, table)
+
+    # krbioio.write_sequence_file(
+    #     records=extraction_list,
+    #     file_path='/Users/karolis/Desktop/p_virginiana_e.gb',
+    #     file_format='genbank')
+
+    # location_from_string('join{[<109:199](+), [294:358](+), [444:545](+), [635:745](+), [829:>886](+)}')
+    # location_from_string('[294:358](+)')
