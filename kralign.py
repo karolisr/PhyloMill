@@ -139,7 +139,7 @@ def align(records, program, options='', program_executable=''):
     return alignment
 
 
-def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
+def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, gap_mismatch=False):
     from Bio import Seq
     import kriupac
     import krseq
@@ -149,6 +149,7 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     identities = list()
     column_count = alignment.get_alignment_length()
     for column in range(0, column_count):
+        # print(alignment[:, column])
         # Count individual characters in the column
         counts = dict()
         raw_count = 0
@@ -157,7 +158,10 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
             c.replace('U', 'T')
             if c in kriupac.IUPAC_DNA_CHARACTERS:
                 counts[c] = counts.get(c, 0) + 1
-                if (c not in kriupac.IUPAC_DNA_GAPS) and (c not in kriupac.IUPAC_DNA_UNKNOWN):
+                # if (c not in kriupac.IUPAC_DNA_GAPS) and (c not in kriupac.IUPAC_DNA_UNKNOWN):
+                if (gap_mismatch or
+                (((not gap_mismatch) and (c not in kriupac.IUPAC_DNA_GAPS)) and
+                (c not in kriupac.IUPAC_DNA_UNKNOWN))):
                     raw_count = raw_count + 1
         raw_counts_at_sites.append(raw_count)
         # print(counts)
@@ -173,11 +177,16 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
         # TO DO: should N, and gaps be excluded?
         total = 0
         for k in counts_expanded.keys():
-            if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
+            # if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
+            if (gap_mismatch or
+            (((not gap_mismatch) and (k not in kriupac.IUPAC_DNA_GAPS)) and
+            (k not in kriupac.IUPAC_DNA_UNKNOWN))):
                 total = total + counts_expanded[k]
         proportions = dict()
         for k in counts_expanded.keys():
-            if (k not in kriupac.IUPAC_DNA_GAPS) and (k not in kriupac.IUPAC_DNA_UNKNOWN):
+            if (gap_mismatch or
+            (((not gap_mismatch) and (k not in kriupac.IUPAC_DNA_GAPS)) and
+            (k not in kriupac.IUPAC_DNA_UNKNOWN))):
                 proportions[k] = float(counts_expanded[k]) / float(total)
         # print(proportions)
         # print('*** *** *** *** ***')
@@ -196,18 +205,27 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
         if len(site_set) == 0:
             site_set.add(unknown)
 
-        if len(site_set) > 1:
+        if len(site_set-set(unknown)) > 1:
             identities.append(0)
         else:
             identities.append(1)
 
         site_list = list(site_set)
+        # print(site_list)
         site_list.sort()
         site_str = ''.join(site_list)
+        site_str = site_str.replace('-', '')
+        site_str = site_str.replace('.', '')
+
+        if (unknown in site_str) and len(site_str) > 1:
+            site_str = site_str.replace(unknown, '')
+
         site = unknown
         if site_str == unknown:
             site = unknown
         elif site_str == kriupac.IUPAC_DNA_STRING:
+            site = unknown
+        elif site_str == '':
             site = unknown
         else:
             site = kriupac.IUPAC_DNA_DICT[site_str]
@@ -217,10 +235,77 @@ def consensus(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False):
     if resolve_ambiguities:
         consensus = krseq.resolve_ambiguities(consensus)
 
+    # print(consensus)
+    # print(accepted_bases_at_sites)
+
     consensus = Seq.Seq(consensus)
 
     count_per_site = float(sum(raw_counts_at_sites)) / float(len(raw_counts_at_sites))
-    proportion_identical = float(sum(identities)) / float(len(identities))
+
+    len_identities = len(identities)
+
+    if gap_mismatch:
+
+        front_gap_boundary = None
+        end_gap_boundary = None
+
+        terminal_gap_window = 0
+        number_of_unknown_in_range = 0
+
+        number_of_internal_gaps = 0
+        number_of_internal_gap_opens = 0
+
+        terminal_gap_counter = 0
+        accepted_bases_at_sites.reverse()
+        for i, ab in enumerate(accepted_bases_at_sites):
+            if end_gap_boundary is None:
+                if '-' in ab:
+                    # pass
+                    if unknown in ab:
+                        number_of_unknown_in_range = number_of_unknown_in_range + 1
+                elif terminal_gap_counter <= terminal_gap_window:
+                    terminal_gap_counter = terminal_gap_counter + 1
+                else:
+                    end_gap_boundary = i
+
+        terminal_gap_counter = 0
+        accepted_bases_at_sites.reverse()
+        for i, ab in enumerate(accepted_bases_at_sites):
+            if front_gap_boundary is None:
+                if '-' in ab:
+                    # pass
+                    if unknown in ab:
+                        number_of_unknown_in_range = number_of_unknown_in_range + 1
+                elif terminal_gap_counter <= terminal_gap_window:
+                    terminal_gap_counter = terminal_gap_counter + 1
+                else:
+                    front_gap_boundary = i
+
+        gap_open_prev = False
+        gap_open = False
+        for i, ab in enumerate(accepted_bases_at_sites[front_gap_boundary:len(accepted_bases_at_sites)-end_gap_boundary]):
+            if ('-' in ab) and (unknown not in ab):
+                gap_open = True
+                number_of_internal_gaps = number_of_internal_gaps + 1
+            if unknown in ab:
+                number_of_unknown_in_range = number_of_unknown_in_range + 1
+            else:
+                gap_open = False
+
+            if gap_open != gap_open_prev:
+                number_of_internal_gap_opens = number_of_internal_gap_opens + 1
+
+            gap_open_prev = gap_open
+
+        number_of_internal_gap_opens = number_of_internal_gap_opens / 2
+
+        len_identities = len_identities - front_gap_boundary - end_gap_boundary + number_of_unknown_in_range - number_of_internal_gaps
+
+        # print(sum(identities), len(identities), len_identities, number_of_internal_gap_opens)
+
+    proportion_identical = float(sum(identities)) / float(len_identities)
+    if proportion_identical > 1.0:
+        proportion_identical = 1.0
 
     ret_value = (consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical)
 
