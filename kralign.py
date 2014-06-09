@@ -143,7 +143,7 @@ def consensus(
     alignment,
     threshold=0.0,
     unknown='N',
-    unknown_penalty=.0,
+    unknown_penalty=0.0,
     resolve_ambiguities=False,
     gap_penalty=0.0,
     end_gap_penalty=0.0
@@ -298,6 +298,94 @@ def consensus(
     ret_value = (cons_seq, proportion_identical)
 
     return ret_value
+
+
+def cluster(
+    records,
+    threshold=0.95,
+    unknown='N',
+    key='gi',
+    aln_program='mafft',
+    aln_executable='mafft',
+    aln_options='--auto --reorder --adjustdirection'):
+
+    results_dict = dict()
+    consumed_ids = list()
+
+    records = sorted(records, key=lambda x: len(x.seq), reverse=True)
+
+    for a_rec in records:
+
+        # print(a_rec.id, len(a_rec.seq))
+
+        key_value = None
+        if key == 'accession':
+            key_value = a_rec.id
+        elif key == 'gi':
+            key_value = a_rec.annotations['gi']
+        elif key == 'description':
+            key_value = a_rec.description
+        else:
+            key_value = a_rec.id
+
+        a_id = key_value
+
+        if a_id in consumed_ids:
+            continue
+
+        results_dict[a_id] = list()
+        results_dict[a_id].append(a_id)
+        consumed_ids.append(a_id)
+
+        for b_rec in records:
+
+            key_value = None
+            if key == 'accession':
+                key_value = b_rec.id
+            elif key == 'gi':
+                key_value = b_rec.annotations['gi']
+            elif key == 'description':
+                key_value = b_rec.description
+            else:
+                key_value = b_rec.id
+
+            b_id = key_value
+
+            if a_id == b_id:
+                continue
+
+            if b_id in consumed_ids:
+                continue
+
+            aln = align(
+                records=[a_rec, b_rec],
+                program=aln_program,
+                options=aln_options,
+                program_executable=aln_executable)
+
+            cons = consensus(
+                alignment=aln,
+                threshold=0.000001,
+                unknown=unknown,
+                unknown_penalty=0.0,
+                resolve_ambiguities=False,
+                gap_penalty=0.0,
+                end_gap_penalty=0.0
+                )
+
+            score = cons[1]
+
+            if score >= threshold:
+                results_dict[a_id].append(b_id)
+                consumed_ids.append(b_id)
+
+            print(a_id, ':', b_id, '=', score)
+
+        # for k in results_dict.keys():
+        #     print(k, results_dict[k])
+        # print('=== === === === === === === ===')
+
+    return results_dict
 
 
 def consensus_DEPRECATED(alignment, threshold=0.0, unknown='N', resolve_ambiguities=False, gap_mismatch=False):
@@ -570,8 +658,23 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 #     PS = os.path.sep
 
 #     import krbioio
-#     aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_2.phy', 'phylip-relaxed')
+#     # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_1.phy', 'phylip-relaxed')
 #     # print()
 #     # print(aln)
 #     # print()
-#     print(consensus(alignment=aln))
+#     # print(consensus(alignment=aln))
+
+#     recs = krbioio.read_sequence_file(
+#         file_path='/Users/karolis/Desktop/Actinidia_chinensis__mRNA.gb',
+#         file_format='genbank',
+#         ret_type='list'
+#         )
+
+#     cluster(
+#         records=recs,
+#         threshold=0.95,
+#         unknown='N',
+#         key='gi',
+#         aln_program='mafft',
+#         aln_executable='mafft',
+#         aln_options='--auto --reorder --adjustdirection')
