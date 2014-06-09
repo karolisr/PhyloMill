@@ -159,9 +159,11 @@ def consensus(
     uracil = False
 
     col_count = alignment.get_alignment_length()
+    row_count = len(alignment)
 
-    identities = list()
     cons_str = ''
+    pairwise_list = list()
+    pairwise_list_weights = list()
 
     # Produce a list of string representations of the sequences in alignment.
     # Leading and trailing gaps will be replaced with term_gap_letter.
@@ -183,16 +185,17 @@ def consensus(
             aln_column_str = aln_column_str + aln_seq_str[col_idx]
         aln_column_str_list.append(aln_column_str)
 
-    # Count bases in column.
     for col_idx in range(0, col_count):
 
         col_str = aln_column_str_list[col_idx]
+        col_str_clean = ''
         col_counts = dict()
         col_counts_expanded = dict()
         col_total = float()
         col_proportions = dict()
         col_cons_set = set()
 
+        # Count bases in column.
         for letter in col_str:
 
             letter = letter.upper()
@@ -201,20 +204,23 @@ def consensus(
                 uracil = True
                 letter = 'T'
 
-            factor = 1.0
+            # factor = 1.0
 
-            if letter == end_gap_letter:
-                factor = end_gap_penalty
+            # if letter == end_gap_letter:
+            #     factor = end_gap_penalty
 
-            if letter == unknown:
-                factor = unknown_penalty
+            # if letter == unknown:
+            #     factor = unknown_penalty
 
-            if letter in kriupac.IUPAC_DNA_GAPS:
-                factor = gap_penalty
+            # if letter in kriupac.IUPAC_DNA_GAPS:
+            #     factor = gap_penalty
 
-            col_count = 1.0 * factor
+            # col_count = 1.0 * factor
 
-            col_counts[letter] = col_counts.get(letter, 0) + col_count
+            # col_counts[letter] = col_counts.get(letter, 0) + col_count
+
+            col_counts[letter] = col_counts.get(letter, 0) + 1.0
+            col_str_clean = col_str_clean + letter
 
         for k in col_counts.keys():
             if k in kriupac.IUPAC_DNA_DICT_REVERSE:
@@ -248,14 +254,6 @@ def consensus(
                 if col_proportions[k] >= threshold:
                     col_cons_set.add(k)
 
-        if len(col_cons_set) == 0:
-            col_cons_set.add(unknown)
-
-        if len(col_cons_set) > 1:
-            identities.append(0)
-        else:
-            identities.append(1)
-
         for g in kriupac.IUPAC_DNA_GAPS:
             if g in col_cons_set:
                 col_cons_set.remove(g)
@@ -283,6 +281,75 @@ def consensus(
 
         cons_str = cons_str + site
 
+        # Calculate pairwise identities
+        do_not_compare = set([end_gap_letter, unknown]) | kriupac.IUPAC_DNA_GAPS
+        same = 0
+        diff = 0
+        for i, l_1 in enumerate(col_str_clean):
+            for j, l_2 in enumerate(col_str_clean):
+                if i != j:
+
+                    if (l_1 in do_not_compare) and (l_2 in do_not_compare):
+                        continue
+
+                    if l_1 == l_2:
+                        same = same + 1.0
+
+                    else:
+
+                        if (l_1 == end_gap_letter) or (l_2 == end_gap_letter):
+                            diff = diff + end_gap_penalty
+                            # if end_gap_penalty > 0:
+                            #     same = same + 1.0 - end_gap_penalty
+
+                        elif (l_1 in kriupac.IUPAC_DNA_GAPS) or (l_2 in kriupac.IUPAC_DNA_GAPS):
+                            diff = diff + gap_penalty
+                            # if gap_penalty > 0:
+                            #     same = same + 1.0 - gap_penalty
+
+                        elif (l_1 == unknown) or (l_2 == unknown):
+                            diff = diff + unknown_penalty
+                            # if unknown_penalty > 0:
+                            #     same = same + 1.0 - unknown_penalty
+                        else:
+                            diff = diff + 1
+
+        pairwise = 0.0
+        total = float(same + diff)
+        if total > 0.0:
+            pairwise = float(same) / total
+
+        site_end_gap_count = col_str_clean.count(end_gap_letter)
+
+        site_gap_count = 0
+        for g in kriupac.IUPAC_DNA_GAPS:
+            site_gap_count = site_gap_count + col_str_clean.count(g)
+
+        site_unknown_count = col_str_clean.count(unknown)
+
+        site_nt_count = len(col_str_clean) - site_end_gap_count - site_gap_count - site_unknown_count
+
+        site_row_count = site_nt_count + (site_end_gap_count * (1-end_gap_penalty)) + (site_gap_count * (1-gap_penalty)) + (site_unknown_count * (1-unknown_penalty))
+        pairwise = pairwise * site_row_count
+
+        pairwise_list.append(pairwise)
+
+        site_row_weight_count = site_nt_count + (site_end_gap_count * end_gap_penalty) + (site_gap_count * gap_penalty) + (site_unknown_count * unknown_penalty)
+        pairwise_weight = 1
+        if site_row_weight_count <= 1:
+            pairwise_weight = 0
+
+        pairwise_list_weights.append(pairwise_weight)
+
+        # print(col_str_clean)
+        # print('same:', same, 'diff:', diff, 'site_row_count:', site_row_count, 'pairwise:', pairwise, 'pairwise_weight:', pairwise_weight)
+
+        # print('--- --- ---')
+
+    pairwise_entire = sum(pairwise_list) / sum(pairwise_list_weights) / row_count
+
+    # print(pairwise_entire)
+
     if resolve_ambiguities:
         cons_str = krseq.resolve_ambiguities(cons_str)
 
@@ -293,9 +360,7 @@ def consensus(
 
     cons_seq = Seq.Seq(cons_str, alphabet)
 
-    proportion_identical = float(sum(identities)) / float(len(identities))
-
-    ret_value = (cons_seq, proportion_identical)
+    ret_value = (cons_seq, pairwise_entire)
 
     return ret_value
 
@@ -649,32 +714,42 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
     return
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
-#     # Tests
+    # Tests
 
-#     import os
+    import os
 
-#     PS = os.path.sep
+    PS = os.path.sep
 
-#     import krbioio
-#     # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_1.phy', 'phylip-relaxed')
-#     # print()
-#     # print(aln)
-#     # print()
-#     # print(consensus(alignment=aln))
+    import krbioio
+    aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_2.phy', 'phylip-relaxed')
+    # print()
+    # print(aln)
+    # print()
 
-#     recs = krbioio.read_sequence_file(
-#         file_path='/Users/karolis/Desktop/Actinidia_chinensis__mRNA.gb',
-#         file_format='genbank',
-#         ret_type='list'
-#         )
+    cons = consensus(
+        alignment=aln,
+        threshold=0.1,
+        unknown='N',
+        unknown_penalty=0.0,
+        resolve_ambiguities=False,
+        gap_penalty=0.0,
+        end_gap_penalty=0.0)
 
-#     cluster(
-#         records=recs,
-#         threshold=0.95,
-#         unknown='N',
-#         key='gi',
-#         aln_program='mafft',
-#         aln_executable='mafft',
-#         aln_options='--auto --reorder --adjustdirection')
+    print(cons)
+
+    # recs = krbioio.read_sequence_file(
+    #     file_path='/Users/karolis/Desktop/Actinidia_chinensis__mRNA.gb',
+    #     file_format='genbank',
+    #     ret_type='list'
+    #     )
+
+    # cluster(
+    #     records=recs,
+    #     threshold=0.95,
+    #     unknown='N',
+    #     key='gi',
+    #     aln_program='mafft',
+    #     aln_executable='mafft',
+    #     aln_options='--auto --reorder --adjustdirection')
