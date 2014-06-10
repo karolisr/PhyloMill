@@ -1,4 +1,4 @@
-from __future__ import print_function
+# from __future__ import print_function
 # from __future__ import unicode_literals
 
 
@@ -522,7 +522,7 @@ def cluster(
                 results_dict[a_id].append([direction, b_id, score])
                 consumed_ids.append(b_id)
 
-            print(a_id, ':', b_id, '=', score)
+            # print(a_id, ':', b_id, '=', score)
 
         # for k in results_dict.keys():
         #     print(k, results_dict[k])

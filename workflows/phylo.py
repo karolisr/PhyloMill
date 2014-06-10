@@ -172,7 +172,7 @@ if __name__ == '__main__':
     ############################################################################
 
     # Constants
-    FLAT_ID = 0.97
+    FLAT_ID = 0.98
 
     ############################################################################
 
@@ -493,14 +493,7 @@ if __name__ == '__main__':
                 locus_dict=locus_dict,
                 records=records,
                 log_file_path=LFP,
-                kr_seq_db_object=DB,
-                temp_dir=TEMP_DIR_PATH)
-
-            ###
-            # acc_gi_list = acc_rej_gi_dict['accept']
-            # for acc in acc_gi_list:
-            #     print(acc)
-            ###
+                kr_seq_db_object=DB)
 
             rej_gi_list = acc_rej_gi_dict['reject']
             delete_note = 'failed sequence similarity test'

@@ -524,7 +524,7 @@ def accept_records_by_similarity(records, min_clust_size=10, identity_threshold=
             key='gi',
             aln_program='mafft',
             aln_executable='mafft',
-            aln_options='--auto --reorder --adjustdirection')
+            aln_options='--genafpair --reorder --adjustdirection')
 
         for key in clusters.keys():
 
@@ -536,11 +536,8 @@ def accept_records_by_similarity(records, min_clust_size=10, identity_threshold=
                 reject = reject + clusters[key]
 
             # print(key, clust_size)
-            # print()
-
             # for cluster in clusters[key]:
             #     print(cluster)
-
             # print('=== === === === ===')
 
     return {'accept': accept, 'reject': reject}
@@ -640,7 +637,7 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     return((feature, log_message))
 
 
-def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir):
+def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object):
 
     from krpy import krcl
     from krpy import krother
@@ -844,12 +841,15 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
             trimmed_rec.annotations['gi'] = record.annotations['gi']
             trimmed_records.append(trimmed_rec)
 
-    min_clust_size = min((records_count * 0.05), 25)
+    msg = 'Filtering extracted records...'
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
+
+    min_clust_size = min((records_count * 0.02), 15)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
         min_clust_size=min_clust_size,
-        identity_threshold=0.80)
+        identity_threshold=0.85)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -942,7 +942,7 @@ def improve_alignment_using_reference_records(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.97):
+    min_locus_sequence_identity=0.98):
 
     from Bio.Align import MultipleSeqAlignment
 
@@ -1009,7 +1009,7 @@ def flatten_locus(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.97):
+    min_locus_sequence_identity=0.98):
 
     from krpy.krother import write_log
     from krpy import kralign
@@ -1043,7 +1043,7 @@ def flatten_locus(
             )
 
         ident = kralign.identity(
-            alignment=ref_aln,
+            alignment=aln,
             unknown_letters=set(['N']),
             unknown_id=0.0,
             free_unknowns=True,
