@@ -290,6 +290,49 @@ def pairwise_identity(
     return pair_id
 
 
+def identity(
+
+    alignment,
+    unknown_letters=set(['N']),
+    unknown_id=0.0,
+    free_unknowns=True,
+    gap_id=0.0,
+    free_gaps=True,
+    end_gap_id=0.0,
+    free_end_gaps=True):
+
+    from Bio.Align import MultipleSeqAlignment
+
+    row_count = len(alignment)
+
+    pair_id_list = list()
+
+    for i in range(0, row_count):
+        for j in range(0, row_count):
+            if i == j:
+                continue
+
+            aln = MultipleSeqAlignment(records=[alignment[i], alignment[j]])
+
+            pair_id = pairwise_identity(
+                alignment=aln,
+                unknown_letters=unknown_letters,
+                unknown_id=unknown_id,
+                free_unknowns=free_unknowns,
+                gap_id=gap_id,
+                free_gaps=free_gaps,
+                end_gap_id=end_gap_id,
+                free_end_gaps=free_end_gaps)
+
+            # print(alignment[i].id, alignment[j].id, pair_id)
+
+            pair_id_list.append(pair_id)
+
+    ident = sum(pair_id_list) / len(pair_id_list)
+
+    return ident
+
+
 def consensus(
     alignment,
     threshold=0.0,
@@ -709,7 +752,20 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 
     # import krbioio
 
-    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_2.phy', 'phylip-relaxed')
+    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_1.phy', 'phylip-relaxed')
+
+    # ident = identity(
+
+    #     alignment=aln,
+    #     unknown_letters=set(['N']),
+    #     unknown_id=0.0,
+    #     free_unknowns=True,
+    #     gap_id=0.0,
+    #     free_gaps=True,
+    #     end_gap_id=0.0,
+    #     free_end_gaps=True)
+
+    # print(ident)
 
     # pid = pairwise_identity(
 
