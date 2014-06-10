@@ -670,8 +670,7 @@ def rename_organisms_using_taxids(
     kr_seq_db_object.save()
 
 
-def accept_records_by_similarity(
-    records, temp_dir, min_clust_size=10, strand='both', program='usearch', identity_threshold=0.80):
+def accept_records_by_similarity(records, min_clust_size=10, identity_threshold=0.80):
 
     from krpy import krusearch
     from krpy import kralign
@@ -682,26 +681,6 @@ def accept_records_by_similarity(
     if len(records) < 5:
         pass
     else:
-
-        # clusters = krusearch.cluster_records(
-        #     records=records,
-        #     identity_threshold=identity_threshold,
-        #     temp_dir=temp_dir,
-        #     sorted_input=False,
-        #     algorithm='smallmem',  # fast smallmem
-        #     strand=strand,  # plus both aa
-        #     threads=1,
-        #     quiet=True,
-        #     program=program,
-        #     heuristics=True,
-        #     query_coverage=0.5,
-        #     target_coverage=0.25,
-        #     sizein=False,
-        #     sizeout=False,
-        #     usersort=False,
-        #     seq_id='gi',
-        #     cluster_key='centroid'  # clust_number centroid
-        #     )
 
         clusters = kralign.cluster(
             records=records,
@@ -1034,10 +1013,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
-        temp_dir=temp_dir,
         min_clust_size=min_clust_size,
-        strand='both',
-        program='usearch')
+        identity_threshold=0.80)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -1150,17 +1127,19 @@ def improve_alignment_using_reference_records(
         ref_aln = kralign.align(
             records=ref_loc_records,
             program=aln_program,
-            # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
-            # options='--auto --nuc --reorder --thread 4',
             options=aln_options,
             program_executable=aln_program_executable
             )
 
-        ref_cons = kralign.consensus(ref_aln, threshold=0.4, unknown='N',
-            resolve_ambiguities=False)
-        prop_id = ref_cons[1]
-
-        # print('id:', prop_id, 'cov:', ref_cons[3]/len(ref_aln), 'seqs:', len(ref_aln))
+        ident = kralign.identity(
+            alignment=ref_aln,
+            unknown_letters=set(['N']),
+            unknown_id=0.0,
+            free_unknowns=True,
+            gap_id=0.0,
+            free_gaps=True,
+            end_gap_id=0.0,
+            free_end_gaps=True)
 
         ref_aln_record_list = list()
         for r in ref_aln:
@@ -1168,16 +1147,13 @@ def improve_alignment_using_reference_records(
                 ref_aln_record_list.append(r)
         ref_aln = MultipleSeqAlignment(ref_aln_record_list)
 
-        if prop_id < min_locus_sequence_identity:
+        if ident < min_locus_sequence_identity:
 
-            ref_alignments.append([prop_id, ref_aln])
+            ref_alignments.append([ident, ref_aln])
 
         else:
 
             new_aln = ref_aln
-
-            # print('found good aln:', prop_id)
-            # print(new_aln.format('fasta'))
 
             break
 
@@ -1185,11 +1161,6 @@ def improve_alignment_using_reference_records(
 
         ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
         new_aln = ref_alignments[0][1]
-
-        # prop_id = ref_alignments[0][0]
-
-        # print('could not find good aln:', prop_id)
-        # print(new_aln.format('fasta'))
 
     return new_aln
 
@@ -1232,19 +1203,21 @@ def flatten_locus(
         aln = kralign.align(
             records=records_trimmed,
             program=aln_program,
-            # options='--genafpair --maxiterate 1000 --nuc --reorder --thread 4',
-            # options='--auto --nuc --reorder --thread 4',
             options=aln_options,
             program_executable=aln_program_executable
             )
 
-        # consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical
-        consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=False)
-        prop_id = consensus[1]
+        ident = kralign.identity(
+            alignment=ref_aln,
+            unknown_letters=set(['N']),
+            unknown_id=0.0,
+            free_unknowns=True,
+            gap_id=0.0,
+            free_gaps=True,
+            end_gap_id=0.0,
+            free_end_gaps=True)
 
-        if prop_id < min_locus_sequence_identity:
-
-            # print('id:', prop_id, 'cov:', consensus[3]/len(aln), 'seqs:', len(aln))
+        if ident < min_locus_sequence_identity:
 
             new_aln = improve_alignment_using_reference_records(
                 records=records_trimmed,
@@ -1254,9 +1227,6 @@ def flatten_locus(
                 aln_program_executable=aln_program_executable,
                 aln_options=aln_options,
                 min_locus_sequence_identity=min_locus_sequence_identity)
-
-            # new_cons = kralign.consensus(
-            #     new_aln, threshold=0.4, unknown='N', resolve_ambiguities=False)
 
             aln = new_aln
 

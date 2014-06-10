@@ -970,7 +970,7 @@ if __name__ == '__main__':
                             unknown='N',
                             resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
-                        new_seq_str = str(consensus[0]).upper()
+                        new_seq_str = str(consensus).upper()
 
                         flat_locus_produced = True
 
@@ -1136,9 +1136,9 @@ if __name__ == '__main__':
                                 unknown='N',
                                 resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
-                            new_seq_str = str(consensus[0])
+                            new_seq_str = str(consensus)
 
-                            # print(consensus[0])
+                            # print(consensus)
 
                             # print('--- --- --- --- --- --- --- ---')
 
