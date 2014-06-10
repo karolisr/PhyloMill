@@ -139,6 +139,157 @@ def align(records, program, options='', program_executable=''):
     return alignment
 
 
+def pairwise_identity(
+
+    alignment,
+    unknown_letters=set(['N']),
+    unknown_id=0.0,
+    free_unknowns=True,
+    gap_id=0.0,
+    free_gaps=True,
+    end_gap_id=0.0,
+    free_end_gaps=True):
+
+    import sys
+
+    from krpy import kriupac
+
+    if len(alignment) != 2:
+        print('Alignment must contain exactly two sequences.')
+        sys.exit(1)
+
+    end_gap_letter = '#'
+    col_count = alignment.get_alignment_length()
+
+    # Produce a list of string representations of the sequences in alignment.
+    # Leading and trailing gaps will be replaced with term_gap_letter.
+    aln_seq_str_list = list()
+    for aln_seq in alignment:
+        aln_str = str(aln_seq.seq)
+        aln_str_l_strip = aln_str.lstrip(kriupac.IUPAC_DNA_GAPS_STRING)
+        left_gap_count = len(aln_str) - len(aln_str_l_strip)
+        aln_str_l_r_strip = aln_str_l_strip.rstrip(kriupac.IUPAC_DNA_GAPS_STRING)
+        right_gap_count = len(aln_str_l_strip) - len(aln_str_l_r_strip)
+        aln_str_term_gaps = left_gap_count * end_gap_letter + aln_str_l_r_strip + right_gap_count * end_gap_letter
+        aln_seq_str_list.append(aln_str_term_gaps)
+
+    # Produce a list of alignment column strings.
+    aln_column_str_list = list()
+    for col_idx in range(0, col_count):
+        aln_column_str = ''
+        for aln_seq_str in aln_seq_str_list:
+            aln_column_str = aln_column_str + aln_seq_str[col_idx]
+        aln_column_str_list.append(aln_column_str)
+
+    # print('--- --- --- --- --- --- --- --- --- --- --- ---')
+
+    score_list = list()
+    weights_list = list()
+
+    for col_idx in range(0, col_count):
+        col_str = aln_column_str_list[col_idx]
+
+        l1 = col_str[0]
+        l2 = col_str[1]
+
+        if l1 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
+            l1 = kriupac.IUPAC_DNA_DICT_REVERSE[l1]
+
+        if l2 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
+            l2 = kriupac.IUPAC_DNA_DICT_REVERSE[l2]
+
+        l1 = set(l1)
+        l2 = set(l2)
+
+        #
+
+        end_gap_in_l1 = False
+        end_gap_in_l2 = False
+        end_gap_in_col = False
+
+        if end_gap_letter in l1:
+            end_gap_in_l1 = True
+        if end_gap_letter in l2:
+            end_gap_in_l2 = True
+
+        if end_gap_in_l1 or end_gap_in_l2:
+            end_gap_in_col = True
+
+        #
+
+        gap_in_l1 = False
+        gap_in_l2 = False
+        gap_in_col = False
+
+        for g in list(kriupac.IUPAC_DNA_GAPS):
+
+            if g in l1:
+                gap_in_l1 = True
+            if g in l2:
+                gap_in_l2 = True
+
+        if gap_in_l1 or gap_in_l2:
+            gap_in_col = True
+
+        #
+
+        unknown_in_l1 = False
+        unknown_in_l2 = False
+        unknown_in_col = False
+
+        for u in list(unknown_letters):
+
+            if u in l1:
+                unknown_in_l1 = True
+            if u in l2:
+                unknown_in_l2 = True
+
+        if unknown_in_l1 or unknown_in_l2:
+            unknown_in_col = True
+
+        #
+
+        score = 0.0
+        weight = 0.0
+
+        if end_gap_in_col and gap_in_col:
+            weight = 0.0
+
+        elif unknown_in_l1 and unknown_in_l2:
+            weight = 0.0
+
+        elif not free_end_gaps and end_gap_in_col:
+            score = end_gap_id
+            weight = 1.0
+
+        elif not free_gaps and gap_in_col:
+            score = gap_id
+            weight = 1.0
+
+        elif not free_unknowns and unknown_in_col:
+            score = unknown_id
+            weight = 1.0
+
+        elif (not end_gap_in_col) and (not gap_in_col) and (not unknown_in_col):
+            intersection = l1 & l2
+            union = l1 | l2
+            score = float(len(intersection)) / float(len(union))
+            weight = 1.0
+
+        score_list.append(score)
+        weights_list.append(weight)
+
+        # print(l1, l2, score, weight)
+
+        # print('--- --- --- --- --- --- --- --- --- --- --- ---')
+
+    pair_id = sum(score_list) / sum(weights_list)
+
+    # print(pair_id)
+
+    return pair_id
+
+
 def consensus(
     alignment,
     threshold=0.0,
@@ -721,30 +872,41 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
     return
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    # Tests
+    # # Tests
 
-    import os
+    # import os
 
-    PS = os.path.sep
+    # PS = os.path.sep
 
-    import krbioio
-    aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_2.phy', 'phylip-relaxed')
-    # print()
-    # print(aln)
-    # print()
+    # import krbioio
 
-    cons = consensus(
-        alignment=aln,
-        threshold=0.1,
-        unknown='N',
-        unknown_penalty=0.0,
-        resolve_ambiguities=False,
-        gap_penalty=0.0,
-        end_gap_penalty=0.0)
+    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_2.phy', 'phylip-relaxed')
 
-    print(cons)
+    # pid = pairwise_identity(
+
+    #     alignment=aln,
+    #     unknown_letters=set(['N']),
+    #     unknown_id=0.0,
+    #     free_unknowns=True,
+    #     gap_id=0.0,
+    #     free_gaps=True,
+    #     end_gap_id=0.0,
+    #     free_end_gaps=True)
+
+    # print(pid)
+
+    # cons = consensus(
+    #     alignment=aln,
+    #     threshold=0.1,
+    #     unknown='N',
+    #     unknown_penalty=0.0,
+    #     resolve_ambiguities=False,
+    #     gap_penalty=0.0,
+    #     end_gap_penalty=0.0)
+
+    # print(cons)
 
     # recs = krbioio.read_sequence_file(
     #     file_path='/Users/karolis/Desktop/Actinidia_chinensis__mRNA.gb',
