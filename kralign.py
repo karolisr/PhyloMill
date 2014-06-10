@@ -473,7 +473,7 @@ def cluster(
             continue
 
         results_dict[a_id] = list()
-        results_dict[a_id].append(a_id)
+        results_dict[a_id].append(['+', a_id, '1.0'])
         consumed_ids.append(a_id)
 
         for b_rec in records:
