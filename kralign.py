@@ -337,11 +337,7 @@ def consensus(
     alignment,
     threshold=0.0,
     unknown='N',
-    unknown_penalty=0.0,
-    resolve_ambiguities=False,
-    gap_penalty=0.0,
-    end_gap_penalty=0.0
-    ):
+    resolve_ambiguities=False):
 
     from Bio import Seq
     from Bio.Alphabet import generic_dna
@@ -349,41 +345,16 @@ def consensus(
     from krpy import krseq
     from krpy import kriupac
 
-    end_gap_letter = '#'
-
     uracil = False
 
     col_count = alignment.get_alignment_length()
     row_count = len(alignment)
 
     cons_str = ''
-    pairwise_list = list()
-    pairwise_list_weights = list()
-
-    # Produce a list of string representations of the sequences in alignment.
-    # Leading and trailing gaps will be replaced with term_gap_letter.
-    aln_seq_str_list = list()
-    for aln_seq in alignment:
-        aln_str = str(aln_seq.seq)
-        aln_str_l_strip = aln_str.lstrip(kriupac.IUPAC_DNA_GAPS_STRING)
-        left_gap_count = len(aln_str) - len(aln_str_l_strip)
-        aln_str_l_r_strip = aln_str_l_strip.rstrip(kriupac.IUPAC_DNA_GAPS_STRING)
-        right_gap_count = len(aln_str_l_strip) - len(aln_str_l_r_strip)
-        aln_str_term_gaps = left_gap_count * end_gap_letter + aln_str_l_r_strip + right_gap_count * end_gap_letter
-        aln_seq_str_list.append(aln_str_term_gaps)
-
-    # Produce a list of alignment column strings.
-    aln_column_str_list = list()
-    for col_idx in range(0, col_count):
-        aln_column_str = ''
-        for aln_seq_str in aln_seq_str_list:
-            aln_column_str = aln_column_str + aln_seq_str[col_idx]
-        aln_column_str_list.append(aln_column_str)
 
     for col_idx in range(0, col_count):
 
-        col_str = aln_column_str_list[col_idx]
-        col_str_clean = ''
+        col_str = alignment[:, col_idx]
         col_counts = dict()
         col_counts_expanded = dict()
         col_total = float()
@@ -399,23 +370,8 @@ def consensus(
                 uracil = True
                 letter = 'T'
 
-            # factor = 1.0
-
-            # if letter == end_gap_letter:
-            #     factor = end_gap_penalty
-
-            # if letter == unknown:
-            #     factor = unknown_penalty
-
-            # if letter in kriupac.IUPAC_DNA_GAPS:
-            #     factor = gap_penalty
-
-            # col_count = 1.0 * factor
-
-            # col_counts[letter] = col_counts.get(letter, 0) + col_count
-
-            col_counts[letter] = col_counts.get(letter, 0) + 1.0
-            col_str_clean = col_str_clean + letter
+            if letter not in kriupac.IUPAC_DNA_GAPS:
+                col_counts[letter] = col_counts.get(letter, 0) + 1.0
 
         for k in col_counts.keys():
             if k in kriupac.IUPAC_DNA_DICT_REVERSE:
@@ -438,7 +394,7 @@ def consensus(
             col_proportions[k] = base_prop
 
         # Keep only the bases that occur at a high enough frequency
-        if len(col_proportions) > 0 and threshold == 0:
+        if len(col_proportions) > 0.0 and threshold == 0.0:
             max_prop = max(col_proportions.values())
             if max_prop != 0.0:
                 for k in col_proportions.keys():
@@ -448,13 +404,6 @@ def consensus(
             for k in col_proportions.keys():
                 if col_proportions[k] >= threshold:
                     col_cons_set.add(k)
-
-        for g in kriupac.IUPAC_DNA_GAPS:
-            if g in col_cons_set:
-                col_cons_set.remove(g)
-
-        if end_gap_letter in col_cons_set:
-            col_cons_set.remove(end_gap_letter)
 
         if len(col_cons_set) == 0:
             col_cons_set.add(unknown)
@@ -476,75 +425,6 @@ def consensus(
 
         cons_str = cons_str + site
 
-        # Calculate pairwise identities
-        do_not_compare = set([end_gap_letter, unknown]) | kriupac.IUPAC_DNA_GAPS
-        same = 0
-        diff = 0
-        for i, l_1 in enumerate(col_str_clean):
-            for j, l_2 in enumerate(col_str_clean):
-                if i != j:
-
-                    if (l_1 in do_not_compare) and (l_2 in do_not_compare):
-                        continue
-
-                    if l_1 == l_2:
-                        same = same + 1.0
-
-                    else:
-
-                        if (l_1 == end_gap_letter) or (l_2 == end_gap_letter):
-                            diff = diff + end_gap_penalty
-                            # if end_gap_penalty > 0:
-                            #     same = same + 1.0 - end_gap_penalty
-
-                        elif (l_1 in kriupac.IUPAC_DNA_GAPS) or (l_2 in kriupac.IUPAC_DNA_GAPS):
-                            diff = diff + gap_penalty
-                            # if gap_penalty > 0:
-                            #     same = same + 1.0 - gap_penalty
-
-                        elif (l_1 == unknown) or (l_2 == unknown):
-                            diff = diff + unknown_penalty
-                            # if unknown_penalty > 0:
-                            #     same = same + 1.0 - unknown_penalty
-                        else:
-                            diff = diff + 1
-
-        pairwise = 0.0
-        total = float(same + diff)
-        if total > 0.0:
-            pairwise = float(same) / total
-
-        site_end_gap_count = col_str_clean.count(end_gap_letter)
-
-        site_gap_count = 0
-        for g in kriupac.IUPAC_DNA_GAPS:
-            site_gap_count = site_gap_count + col_str_clean.count(g)
-
-        site_unknown_count = col_str_clean.count(unknown)
-
-        site_nt_count = len(col_str_clean) - site_end_gap_count - site_gap_count - site_unknown_count
-
-        site_row_count = site_nt_count + (site_end_gap_count * (1-end_gap_penalty)) + (site_gap_count * (1-gap_penalty)) + (site_unknown_count * (1-unknown_penalty))
-        pairwise = pairwise * site_row_count
-
-        pairwise_list.append(pairwise)
-
-        site_row_weight_count = site_nt_count + (site_end_gap_count * end_gap_penalty) + (site_gap_count * gap_penalty) + (site_unknown_count * unknown_penalty)
-        pairwise_weight = 1
-        if site_row_weight_count <= 1:
-            pairwise_weight = 0
-
-        pairwise_list_weights.append(pairwise_weight)
-
-        # print(col_str_clean)
-        # print('same:', same, 'diff:', diff, 'site_row_count:', site_row_count, 'pairwise:', pairwise, 'pairwise_weight:', pairwise_weight)
-
-        # print('--- --- ---')
-
-    pairwise_entire = sum(pairwise_list) / sum(pairwise_list_weights) / row_count
-
-    # print(pairwise_entire)
-
     if resolve_ambiguities:
         cons_str = krseq.resolve_ambiguities(cons_str)
 
@@ -555,7 +435,7 @@ def consensus(
 
     cons_seq = Seq.Seq(cons_str, alphabet)
 
-    ret_value = (cons_seq, pairwise_entire)
+    ret_value = cons_seq
 
     return ret_value
 
@@ -782,12 +662,9 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 
     # cons = consensus(
     #     alignment=aln,
-    #     threshold=0.1,
+    #     threshold=0.4,
     #     unknown='N',
-    #     unknown_penalty=0.0,
-    #     resolve_ambiguities=False,
-    #     gap_penalty=0.0,
-    #     end_gap_penalty=0.0)
+    #     resolve_ambiguities=False)
 
     # print(cons)
 
