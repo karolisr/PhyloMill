@@ -967,7 +967,7 @@ if __name__ == '__main__':
                         consensus = kralign.consensus(
                             alignment=new_aln,
                             threshold=0.4,
-                            unknown='',
+                            unknown='N',
                             resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                         new_seq_str = str(consensus[0]).upper()
@@ -1133,7 +1133,7 @@ if __name__ == '__main__':
                             consensus = kralign.consensus(
                                 alignment=aln,
                                 threshold=0.4,
-                                unknown='',
+                                unknown='N',
                                 resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                             new_seq_str = str(consensus[0])

@@ -61,10 +61,12 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         max_seq_length=MAX_SEQ_LENGTH,
         email=EMAIL)
 
-    gis_clean = list()
-    for gi in gis:
-        if gi not in LOCI[locus_name]['bad_gis']:
-            gis_clean.append(gi)
+    gis_clean = gis
+
+    # gis_clean = list()
+    # for gi in gis:
+    #     if gi not in LOCI[locus_name]['bad_gis']:
+    #         gis_clean.append(gi)
 
     msg = 'Found ' + str(len(gis_clean)) + ' records.'
     write_log(msg, LFP)
@@ -495,7 +497,7 @@ def rename_organisms_using_taxids(
             for tax_id in tax_id_list:
                 if str(tax_id) in taxid_blacklist_set:
 
-                    delete_note = 'blacklisted_taxid'
+                    delete_note = 'blacklisted_taxid_' + str(tax_id)
 
                     resolved = False
                     deleted = True
@@ -672,6 +674,7 @@ def accept_records_by_similarity(
     records, temp_dir, min_clust_size=10, strand='both', program='usearch', identity_threshold=0.80):
 
     from krpy import krusearch
+    from krpy import kralign
 
     accept = list()
     reject = list()
@@ -680,25 +683,34 @@ def accept_records_by_similarity(
         pass
     else:
 
-        clusters = krusearch.cluster_records(
+        # clusters = krusearch.cluster_records(
+        #     records=records,
+        #     identity_threshold=identity_threshold,
+        #     temp_dir=temp_dir,
+        #     sorted_input=False,
+        #     algorithm='smallmem',  # fast smallmem
+        #     strand=strand,  # plus both aa
+        #     threads=1,
+        #     quiet=True,
+        #     program=program,
+        #     heuristics=True,
+        #     query_coverage=0.5,
+        #     target_coverage=0.25,
+        #     sizein=False,
+        #     sizeout=False,
+        #     usersort=False,
+        #     seq_id='gi',
+        #     cluster_key='centroid'  # clust_number centroid
+        #     )
+
+        clusters = kralign.cluster(
             records=records,
-            identity_threshold=identity_threshold,
-            temp_dir=temp_dir,
-            sorted_input=False,
-            algorithm='smallmem',  # fast smallmem
-            strand=strand,  # plus both aa
-            threads=1,
-            quiet=True,
-            program=program,
-            heuristics=True,
-            query_coverage=0.5,
-            target_coverage=0.25,
-            sizein=False,
-            sizeout=False,
-            usersort=False,
-            seq_id='gi',
-            cluster_key='centroid'  # clust_number centroid
-            )
+            threshold=identity_threshold,
+            unknown='N',
+            key='gi',
+            aln_program='mafft',
+            aln_executable='mafft',
+            aln_options='--auto --reorder --adjustdirection')
 
         for key in clusters.keys():
 
@@ -1146,7 +1158,7 @@ def improve_alignment_using_reference_records(
 
         ref_cons = kralign.consensus(ref_aln, threshold=0.4, unknown='N',
             resolve_ambiguities=False)
-        prop_id = ref_cons[5]
+        prop_id = ref_cons[1]
 
         # print('id:', prop_id, 'cov:', ref_cons[3]/len(ref_aln), 'seqs:', len(ref_aln))
 
@@ -1228,7 +1240,7 @@ def flatten_locus(
 
         # consensus, accepted_bases_at_sites, raw_counts_at_sites, count_per_site, identities, proportion_identical
         consensus = kralign.consensus(aln, threshold=0.4, unknown='N', resolve_ambiguities=False)
-        prop_id = consensus[5]
+        prop_id = consensus[1]
 
         if prop_id < min_locus_sequence_identity:
 

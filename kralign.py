@@ -152,6 +152,7 @@ def consensus(
     from Bio import Seq
     from Bio.Alphabet import generic_dna
     from Bio.Alphabet import generic_rna
+    from krpy import krseq
     from krpy import kriupac
 
     end_gap_letter = '#'
@@ -428,6 +429,12 @@ def cluster(
                 options=aln_options,
                 program_executable=aln_executable)
 
+            direction = '+'
+            for a in aln:
+                if a.id.startswith('_R_'):
+                    direction = '-'
+                    break
+
             cons = consensus(
                 alignment=aln,
                 threshold=0.000001,
@@ -441,7 +448,7 @@ def cluster(
             score = cons[1]
 
             if score >= threshold:
-                results_dict[a_id].append(b_id)
+                results_dict[a_id].append([direction, b_id, score])
                 consumed_ids.append(b_id)
 
             print(a_id, ':', b_id, '=', score)
