@@ -672,7 +672,6 @@ def rename_organisms_using_taxids(
 
 def accept_records_by_similarity(records, min_clust_size=10, identity_threshold=0.80):
 
-    from krpy import krusearch
     from krpy import kralign
 
     accept = list()
