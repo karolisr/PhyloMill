@@ -441,6 +441,7 @@ def consensus(
 
 
 def cluster(
+
     records,
     threshold=0.95,
     unknown='N',
@@ -455,8 +456,6 @@ def cluster(
     records = sorted(records, key=lambda x: len(x.seq), reverse=True)
 
     for a_rec in records:
-
-        # print(a_rec.id, len(a_rec.seq))
 
         key_value = None
         if key == 'accession':
@@ -509,17 +508,15 @@ def cluster(
                     direction = '-'
                     break
 
-            cons = consensus(
+            score = pairwise_identity(
                 alignment=aln,
-                threshold=0.000001,
-                unknown=unknown,
-                unknown_penalty=0.0,
-                resolve_ambiguities=False,
-                gap_penalty=0.0,
-                end_gap_penalty=0.0
-                )
-
-            score = cons[1]
+                unknown_letters=set(['N']),
+                unknown_id=0.0,
+                free_unknowns=True,
+                gap_id=0.0,
+                free_gaps=True,
+                end_gap_id=0.0,
+                free_end_gaps=True)
 
             if score >= threshold:
                 results_dict[a_id].append([direction, b_id, score])
@@ -676,7 +673,7 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 
     # cluster(
     #     records=recs,
-    #     threshold=0.95,
+    #     threshold=0.99,
     #     unknown='N',
     #     key='gi',
     #     aln_program='mafft',
