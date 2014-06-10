@@ -283,7 +283,9 @@ def pairwise_identity(
 
         # print('--- --- --- --- --- --- --- --- --- --- --- ---')
 
-    pair_id = sum(score_list) / sum(weights_list)
+    pair_id = 0.0
+    if sum(weights_list) > 0.0:
+        pair_id = sum(score_list) / sum(weights_list)
 
     # print(pair_id)
 
