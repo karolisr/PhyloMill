@@ -172,7 +172,7 @@ if __name__ == '__main__':
     ############################################################################
 
     # Constants
-    FLAT_ID = 0.98
+    FLAT_ID = 0.95
 
     ############################################################################
 
@@ -696,7 +696,7 @@ if __name__ == '__main__':
                 inactive=False)
 
             records = sorted(records, key=lambda x: len(x.seq), reverse=True)
-            reference_records = records[0:min(100, len(records))]
+            reference_records = records[0:min(50, len(records))]
 
             org_locus_dict = dict()
             for record in records:
@@ -1182,6 +1182,8 @@ if __name__ == '__main__':
                                 seq_rep_id_list=seq_rep_id_list,
                                 description=None,
                                 rec_id=rec_id)
+
+                DB.save()
 
                 # print('--- --- --- --- --- --- --- --- --- --- --- --- --- ---')
 

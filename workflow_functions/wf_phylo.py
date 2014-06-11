@@ -942,7 +942,7 @@ def improve_alignment_using_reference_records(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.98):
+    min_locus_sequence_identity=0.96):
 
     from Bio.Align import MultipleSeqAlignment
 
@@ -1009,7 +1009,7 @@ def flatten_locus(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.98):
+    min_locus_sequence_identity=0.96):
 
     from krpy.krother import write_log
     from krpy import kralign
