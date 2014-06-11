@@ -156,6 +156,7 @@ if __name__ == '__main__':
     DNLD_DIR_PATH = PRJ_DIR_PATH + 'downloaded_files' + PS
     OUT_DIR_PATH = PRJ_DIR_PATH + 'output' + PS
     ORG_LOC_DIR_PATH = OUT_DIR_PATH + 'flatten' + PS
+    ALN_DIR_PATH = OUT_DIR_PATH + 'align' + PS
     SRCH_DIR_PATH = PRJ_DIR_PATH + 'search_strategies' + PS
     ORGN_DIR_PATH = PRJ_DIR_PATH + 'organism_name_files' + PS
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
@@ -189,6 +190,11 @@ if __name__ == '__main__':
     FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
     FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
     FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
+
+    # Align options
+    ALN_ALN_PROG = CFG.get('Align', 'align_program')
+    ALN_ALN_PROG_EXE = CFG.get('General', ALN_ALN_PROG + '_executable')
+    ALN_ALN_PROG_OPTIONS = CFG.get('Align', 'align_program_options')
 
     # Hacks
     hacks_items = CFG.items('Hacks')
@@ -1192,6 +1198,46 @@ if __name__ == '__main__':
             DB.save()
 
             print()
+
+    ############################################################################
+
+    # Align sequences
+    if 'align' in COMMANDS:
+
+        msg = 'Aligning sequences.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+        krio.prepare_directory(ALN_DIR_PATH)
+
+        for locus_name in LOCI.keys():
+
+            msg = locus_name
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            # Get all flattened records for current locus
+            records_flat = DB.get_records_with_annotations(
+                annotation_type='locus_flat',
+                annotation=locus_name,
+                active=True,
+                inactive=False)
+
+            for r in records_flat:
+                r.id = r.annotations['organism'].replace(' ', '_')
+                r.description = ''
+                r.name = ''
+
+            aln = kralign.align(
+                records=records_flat,
+                program=ALN_ALN_PROG,
+                options=ALN_ALN_PROG_OPTIONS,
+                program_executable=ALN_ALN_PROG_EXE)
+
+            aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
+
+            krbioio.write_alignment_file(
+                alignment=aln,
+                file_path=aln_file_path,
+                file_format='phylip-relaxed')
 
     ############################################################################
 
