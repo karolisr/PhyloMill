@@ -6,78 +6,47 @@ email = test@test.com
 # If sequence exceeds this length it will not be downloaded.
 max_seq_length = 10000
 
-usearch_executable = usearch
 mafft_executable = mafft
 muscle_executable = muscle
 clustalo_executable = clustalo
 
 [Hacks]
 
-tgrc = Yes
+tgrc = No
 
 [Taxa]
 
 # Taxa can be NCBI "Taxonomy IDs" or a recognized taxonomic name.
 
-# Solanaceae
-# 4070
-
-# Convolvulaceae
-# 4118
-
-# Ipomoea
-# Solanoideae
-
-# Solanum
-# 4107
-
-# Petunia
-4101
-
-# Lycianthes
-52871
-
-# Capsicum
-4071
-
-# Lycium
-24646
-
-# Physalis
-24663
-
-# Jaltomata
+### TAXA ###
 
 [Organism Names]
 
 remove_nonspecific = Yes
 remove_hybrids = Yes
-# synonymize = Solanaceae
+synonymize = ###
 skip_previously_synonymized = Yes
 
 [Loci]
 
-# GBSSI
-# matK
-ndhF
-# trnS-trnG
-# ITS1-5.8S-ITS2
+### LOCI ###
 
 [Flatten]
 
-align_program = mafft
-align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
-
 resolve_ambiguities = No
 
-# [Align]
+align_program = mafft
+align_program_options = --auto --nuc --reorder --thread 4
+# align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
 
-# align_program = mafft
-# align_program_options = --auto --thread 2
-# #align_program_options = --auto --maxiterate 1000 --nuc --reorder --thread 2 --jtt 100
-# #align_program_options = --localpair --maxiterate 1000 --nuc --reorder --thread 8 --op 1.53 --lop -2.0 --jtt 100
-# #align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 8 --op 1.53 --lop -2.0 --jtt 100
+# align_program = muscle
+# align_program_options = -maxiters 1000
 
-# [Concatenate]
+[Align]
 
-# number_of_gaps_between_loci = 100
+align_program = mafft
+align_program_options = --auto --nuc --reorder --thread 4
+# align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
+
+# align_program = muscle
+# align_program_options = -maxiters 1000
