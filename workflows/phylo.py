@@ -15,6 +15,8 @@ if __name__ == '__main__':
     import argparse
     import inspect
     import shutil
+    import copy
+    import random
     import ConfigParser
 
     from subprocess import call
@@ -1238,6 +1240,129 @@ if __name__ == '__main__':
                 alignment=aln,
                 file_path=aln_file_path,
                 file_format='phylip-relaxed')
+
+    ############################################################################
+
+    # Concatenate alignments
+    if 'concatenate' in COMMANDS:
+
+        msg = 'Concatenating alignments.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+        aln_list = list()
+        name_list = list()
+        aln_and_name_list = list()
+
+        for locus_name in LOCI.keys():
+
+            msg = locus_name
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
+
+            aln = krbioio.read_alignment_file(
+                file_path=aln_file_path,
+                file_format='phylip-relaxed')
+
+            aln_list.append(aln)
+            name_list.append(locus_name)
+            aln_and_name_list.append([aln, locus_name])
+
+        ########################################################################
+
+        # Produce presence/absence matrix
+        presence_list = list()
+        length_list = list()
+        for p in range(0, len(aln_and_name_list)):
+            presence_list.append('0')
+        matrix = dict()
+        for a in aln_and_name_list:
+            # length_list.append(str(a[0].get_alignment_length()))
+            for s in a[0]:
+                if not s.id in matrix:
+                    matrix[s.id] = copy.copy(presence_list)
+        for a in aln_and_name_list:
+            for s in a[0]:
+                idx = name_list.index(a[1])
+                matrix[s.id][idx] = '1'
+        matrix_output_file = ALN_DIR_PATH + 'locus-presence' + '.csv'
+        f = open(matrix_output_file, 'wb')
+        f.write('taxon' + ',' + 'count' + ',' + ','.join(name_list) + '\n')
+        # f.write('' + ',' + '' + ',' + ','.join(length_list) + '\n')
+        for key in matrix.keys():
+            f.write(key + ',' + str(matrix[key].count('1')) + ',' +
+                    ','.join(matrix[key]) + '\n')
+        f.close()
+
+        ########################################################################
+
+        # Concatenate alignments
+        concatenated = kralign.concatenate(
+            alignments=aln_list,
+            padding_length=0,
+            partitions=None)
+
+        aln = concatenated[0]
+        partitions = concatenated[1]
+
+        aln_file_path = ALN_DIR_PATH + 'concatenated.phy'
+
+        krbioio.write_alignment_file(
+            alignment=aln,
+            file_path=aln_file_path,
+            file_format='phylip-relaxed')
+
+        ########################################################################
+
+        # Write partitions files
+        partitions_output_file = ALN_DIR_PATH + 'locus-partitions' + '.csv'
+        raxml_partitions_output_file = ALN_DIR_PATH + 'locus-partitions-raxml' + '.txt'
+        f_part = open(partitions_output_file, 'wb')
+        f_part_raxml = open(raxml_partitions_output_file, 'wb')
+        partitions = concatenated[1]
+        f_part.write('locus,start,end\n')
+        for i, part in enumerate(partitions):
+            raxml_part_line = 'DNA, ' + name_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
+            f_part_raxml.write(raxml_part_line)
+            part_line = name_list[i] + ',' + str(part[0]) + ',' + str(part[1]) + '\n'
+            f_part.write(part_line)
+        f_part.close()
+        f_part_raxml.close()
+
+        ########################################################################
+
+        # Write RAxML commands file
+        rand_seed = str(random.randrange(0, 1000000000))
+        raxml_dir = ALN_DIR_PATH + 'RAxML_' + rand_seed
+        raxml_commands_file = ALN_DIR_PATH + 'raxml-commands.txt'
+        f_raxml = open(raxml_commands_file, 'wb')
+
+        raxml_line_1 = 'raxml \\\n'
+        f_raxml.write(raxml_line_1)
+
+        raxml_line_2 = '-s ' + aln_file_path + ' \\\n'
+        f_raxml.write(raxml_line_2)
+
+        raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
+        f_raxml.write(raxml_line_3)
+
+        krio.prepare_directory(raxml_dir)
+
+        raxml_line_4 = '-w ' + raxml_dir + ' \\\n'
+        f_raxml.write(raxml_line_4)
+
+        raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T 4 \\\n-N 1 \\\n'
+        f_raxml.write(raxml_line_6)
+
+        raxml_line_7 = '-p ' + rand_seed + ' \\\n'
+        f_raxml.write(raxml_line_7)
+
+        raxml_line_8 = '-n ' + '' + rand_seed + '\n'
+        f_raxml.write(raxml_line_8)
+
+        f_raxml.close()
+
+        ########################################################################
 
     ############################################################################
 
