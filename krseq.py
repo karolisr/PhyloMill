@@ -115,6 +115,18 @@ def location_from_string(location_string):
             strand = int(loc_str_split[1].strip(')') + '1')
         bounds_list = loc_str_split[0].strip('[').strip(']').split(':')
 
+        ########################################################################
+        # Hack. Fixes things like: AY148051.1[0:362] in
+        #   order{AY148051.1[0:362](+), [0:>355](+)}
+        should_skip = False
+        for b in bounds_list:
+            if '[' in b:
+                should_skip = True
+                break
+        if should_skip:
+            continue
+        ########################################################################
+
         l_bound = bounds_list[0].split('<')
         start = None
         if len(l_bound) == 2:
@@ -208,7 +220,7 @@ def translate_cds(record, table):
     # from krpy import krbioio
 
     # records = krbioio.read_sequence_file(
-    #     file_path='/Users/karolis/Desktop/p_virginiana.gb',
+    #     file_path='/Users/karolis/Desktop/strange_record.gb',
     #     file_format='genbank',
     #     ret_type='list')
 
@@ -223,3 +235,10 @@ def translate_cds(record, table):
 
     # location_from_string('join{[<109:199](+), [294:358](+), [444:545](+), [635:745](+), [829:>886](+)}')
     # location_from_string('[294:358](+)')
+
+    # feats = records[0].features
+
+    # for f in feats:
+    #     # print(str(f.location))
+    #     print(location_from_string(str(f.location)))
+    #     print('--- --- ---')
