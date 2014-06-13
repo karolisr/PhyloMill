@@ -175,7 +175,8 @@ if __name__ == '__main__':
     ############################################################################
 
     # Constants
-    FLAT_ID = 0.95
+    FLAT_ID_BOTTOM = 0.90
+    FLAT_ID_TOP = 0.95
 
     ############################################################################
 
@@ -958,7 +959,7 @@ if __name__ == '__main__':
                                 aln_program=FLAT_ALN_PROG,
                                 aln_program_executable=FLAT_ALN_PROG_EXE,
                                 aln_options=FLAT_ALN_PROG_OPTIONS,
-                                min_locus_sequence_identity=FLAT_ID)
+                                min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
                         wf.update_record_alignment(
                             rec_id=flat_rec_id,
@@ -1091,7 +1092,7 @@ if __name__ == '__main__':
                             aln_program=FLAT_ALN_PROG,
                             aln_program_executable=FLAT_ALN_PROG_EXE,
                             aln_options=FLAT_ALN_PROG_OPTIONS,
-                            min_locus_sequence_identity=FLAT_ID)
+                            min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
                         if aln:
                             flat_locus_produced = True

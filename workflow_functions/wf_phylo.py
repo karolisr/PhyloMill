@@ -981,17 +981,25 @@ def improve_alignment_using_reference_records(
     records,
     reference_records,
     locus_name,
+    log_file_path,
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.96):
+    min_locus_sequence_identity_range=[0.90, 0.98]):
 
     from Bio.Align import MultipleSeqAlignment
 
     from krpy import kralign
     from krpy import krother
+    from krpy.krother import write_log
 
     new_aln = None
+
+    ident_step = 0.01
+
+    bottom_ident = min_locus_sequence_identity_range[0]
+    max_ident = min_locus_sequence_identity_range[1]
+    current_ident = max_ident
 
     ref_alignments = list()
 
@@ -1018,15 +1026,25 @@ def improve_alignment_using_reference_records(
             end_gap_id=0.0,
             free_end_gaps=True)
 
+        # msg = 'Locus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ')'
+        # write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+        #     to_file=True, to_screen=True)
+
         ref_aln_record_list = list()
         for r in ref_aln:
             if r.id != ref_rec_trimmed.id:
                 ref_aln_record_list.append(r)
         ref_aln = MultipleSeqAlignment(ref_aln_record_list)
 
-        if ident < min_locus_sequence_identity:
+        if ident < current_ident:
 
             ref_alignments.append([ident, ref_aln])
+            ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
+            temp_ident = ref_alignments[0][0]
+            if temp_ident >= current_ident:
+                new_aln = ref_alignments[0][1]
+                break
+            current_ident = max(current_ident-ident_step, bottom_ident)
 
         else:
 
@@ -1036,7 +1054,7 @@ def improve_alignment_using_reference_records(
 
     if not new_aln:
 
-        ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
+        # ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
         new_aln = ref_alignments[0][1]
 
     return new_aln
@@ -1051,7 +1069,7 @@ def flatten_locus(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity=0.96):
+    min_locus_sequence_identity_range=[0.90, 0.98]):
 
     from krpy.krother import write_log
     from krpy import kralign
@@ -1094,16 +1112,21 @@ def flatten_locus(
             end_gap_id=0.0,
             free_end_gaps=True)
 
-        if ident < min_locus_sequence_identity:
+        # msg = 'Locus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
+        # write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+        #     to_file=True, to_screen=True)
+
+        if ident < min_locus_sequence_identity_range[1]:
 
             new_aln = improve_alignment_using_reference_records(
                 records=records_trimmed,
                 reference_records=reference_records,
                 locus_name=locus_name,
+                log_file_path=log_file_path,
                 aln_program=aln_program,
                 aln_program_executable=aln_program_executable,
                 aln_options=aln_options,
-                min_locus_sequence_identity=min_locus_sequence_identity)
+                min_locus_sequence_identity_range=min_locus_sequence_identity_range)
 
             aln = new_aln
 
