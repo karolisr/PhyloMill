@@ -23,7 +23,8 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email,
                 seq_length_str
 
     msg = 'ENTREZ query: ' + query_str
-    write_log(msg, log_file_path, newlines_before=1, newlines_after=1)
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
+        to_file=True, to_screen=False)
 
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
         email=email)
