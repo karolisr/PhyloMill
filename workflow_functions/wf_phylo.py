@@ -3,9 +3,11 @@
 from __future__ import print_function
 
 
-def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email):
+def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email, log_file_path):
 
     from krpy import krncbi
+
+    from krpy.krother import write_log
 
     tax_ncbi_query_strings = list()
     for t in ncbi_tax_ids:
@@ -19,6 +21,9 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email)
 
     query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
                 seq_length_str
+
+    msg = 'ENTREZ query: ' + query_str
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=1)
 
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
         email=email)
@@ -59,7 +64,8 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         query_term_str=query_term_str,
         ncbi_tax_ids=TAX_IDS,
         max_seq_length=MAX_SEQ_LENGTH,
-        email=EMAIL)
+        email=EMAIL,
+        log_file_path=log_file_path)
 
     gis_clean = gis
 
@@ -506,25 +512,51 @@ def rename_organisms_using_taxids(
     kr_seq_db_object.save()
 
 
-def accept_records_by_similarity(records, min_clust_size=10, identity_threshold=0.80):
+def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
 
     from krpy import kralign
+    from krpy import krusearch
 
     accept = list()
     reject = list()
+
+    clusters = dict()
 
     if len(records) < 5:
         pass
     else:
 
-        clusters = kralign.cluster(
-            records=records,
-            threshold=identity_threshold,
-            unknown='N',
-            key='gi',
-            aln_program='mafft',
-            aln_executable='mafft',
-            aln_options='--genafpair --reorder --adjustdirection')
+        if len(records) <= 500:
+
+            clusters = kralign.cluster(
+                records=records,
+                threshold=identity_threshold,
+                unknown='N',
+                key='gi',
+                aln_program='mafft',
+                aln_executable='mafft',
+                aln_options='--auto --reorder --adjustdirection')
+
+        else:
+
+            clusters = krusearch.cluster_records(
+                records=records,
+                identity_threshold=identity_threshold,
+                temp_dir=temp_dir,
+                sorted_input=False,
+                algorithm='smallmem',  # fast smallmem
+                strand='both',  # plus both aa
+                threads=1,
+                quiet=True,
+                program='usearch',
+                heuristics=True,
+                query_coverage=0.1,
+                target_coverage=0.1,
+                sizein=False,
+                sizeout=False,
+                usersort=False,
+                seq_id='gi',
+                cluster_key='centroid')
 
         for key in clusters.keys():
 
@@ -637,7 +669,7 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     return((feature, log_message))
 
 
-def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object):
+def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir):
 
     from krpy import krcl
     from krpy import krother
@@ -844,12 +876,14 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object):
     msg = 'Filtering extracted records...'
     write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
 
-    min_clust_size = min((records_count * 0.02), 15)
+    # min_clust_size = min((records_count * 0.02), 15)
+    min_clust_size = 3
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
+        temp_dir=temp_dir,
         min_clust_size=min_clust_size,
-        identity_threshold=0.85)
+        identity_threshold=0.70)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -862,11 +896,18 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object):
             rev_comp_gi_list.append(int(acc[1]))
             # print(acc)
 
-    for r in prelim_record_feat_loc_list:
+    prfl_count = len(prelim_record_feat_loc_list)
+    for i, r in enumerate(prelim_record_feat_loc_list):
 
         location_list_deduplicated = r['loc_list']
         rec_id = r['rec_id']
         gi = r['gi']
+
+        krcl.print_progress(
+            current=i+1, total=prfl_count, length=0,
+            prefix=krother.timestamp() + ' - ',
+            postfix='',
+            show_bar=False)
 
         for loc in location_list_deduplicated:
 
@@ -896,7 +937,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object):
                 type_str=qual_type_str,
                 qualifier_str=qual_str)
 
-        kr_seq_db_object.save()
+    kr_seq_db_object.save()
 
     return acc_rej_gi_dict
 

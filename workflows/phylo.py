@@ -220,13 +220,13 @@ if __name__ == '__main__':
     tax_temp = [x[0] for x in tax_temp]
     TAX_IDS = list()
     for tax in tax_temp:
-        if tax.isalpha():
+        if tax.isdigit():
+            TAX_IDS.append(tax)
+        else:
             tax_id = list(krncbi.esearch(tax, 'taxonomy', EMAIL))[0]
             TAX_IDS.append(str(tax_id))
             msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
             write_log(msg, LFP, newlines_before=0, newlines_after=0)
-        else:
-            TAX_IDS.append(tax)
 
     # Organism name resolution
     SYN = list()
@@ -486,7 +486,7 @@ if __name__ == '__main__':
             if len(ln_split) > 1 and ln_split[1] == 'blast':
                 continue
 
-            msg = locus_name
+            msg = locus_name + ' - loading records, this may take a bit...'
             write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dict = LOCI[locus_name]
@@ -501,7 +501,8 @@ if __name__ == '__main__':
                 locus_dict=locus_dict,
                 records=records,
                 log_file_path=LFP,
-                kr_seq_db_object=DB)
+                kr_seq_db_object=DB,
+                temp_dir=TEMP_DIR_PATH)
 
             rej_gi_list = acc_rej_gi_dict['reject']
             delete_note = 'failed sequence similarity test'
@@ -558,7 +559,7 @@ if __name__ == '__main__':
 
                 # DB.delete_orphaned_organisms()
                 # DB.delete_orphaned_taxonomies()
-                DB.save()
+            DB.save()
 
     ############################################################################
 
