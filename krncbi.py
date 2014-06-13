@@ -110,29 +110,34 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     uids = fixed_uids
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 2000
-    small_batch_size = 500
+    large_batch_size = 1000
+    small_batch_size = 250
 
     # Perhaps these may be function arguments?
     rettype = 'gb'
     retmode = 'text'
+
+    missing_uids = set()
+    small_batch_forced = None
 
     for uid_start in range(0, uid_count, large_batch_size):
         # if uid_start < 1:
         #     continue
         while True:
             # ##
-            # downloaded_uids = set()
-            # to_download_uids = set()
+            downloaded_uids = set()
+            to_download_uids = set()
             # ##
             try:
                 uid_end = min(uid_count, uid_start + large_batch_size)
                 print('Downloading records %i to %i of %i.'
                       % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
-                # ##
-                # to_download_uids |= set(small_batch)
-                # ##
+                if small_batch_forced:
+                    small_batch = small_batch_forced
+                ##
+                to_download_uids |= set(small_batch)
+                ##
                 small_batch_count = len(small_batch)
                 small_batch_text = ','.join(small_batch)
                 epost = Entrez.read(Entrez.epost(db, id=small_batch_text))
@@ -157,22 +162,24 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                     batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
                     temp_records = temp_records + batch_data
 
-                n_rec_to_download = uid_end - uid_start
+                # n_rec_to_download = uid_end - uid_start
+                n_rec_to_download = len(small_batch)
                 rec_downloaded = len(temp_records)
-                # ##
-                # import krseq
-                # for x in temp_records:
-                #     downloaded_uids.add(krseq.get_annotation(x, 'gi'))
-                # ##
+                ##
+                for tr in temp_records:
+                    downloaded_uids.add(tr.annotations['gi'])
+                ##
             except Exception as err:
                 # print(rec_downloaded, n_rec_to_download)
                 # print(len(downloaded_uids), len(to_download_uids))
                 # print(downloaded_uids - to_download_uids)
                 # print(to_download_uids - downloaded_uids)
 
-                print('    HTTP problem, retrying...')
-                time.sleep(5)
-                continue
+                print(err)
+
+                # print('    HTTP problem, retrying...')
+                # time.sleep(5)
+                # continue
 
             # print(rec_downloaded, n_rec_to_download)
             # print(len(downloaded_uids), len(to_download_uids))
@@ -184,12 +191,20 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                       n_rec_to_download, 'records.')
                 SeqIO.write(temp_records, out_handle, 'gb')
                 fetch_handle.close()
+                small_batch_forced = None
                 break
             else:
                 fetch_handle.close()
-                print('    Downloaded', rec_downloaded, 'of',
-                      n_rec_to_download, 'records.')
+                missing_uids_now = to_download_uids - downloaded_uids
+                if len(missing_uids_now & missing_uids) > 0:
+                    print('    Excluding uids:', ', '.join(list(missing_uids_now)))
+                    small_batch_forced = list(set(small_batch) - missing_uids_now)
+                    continue
+                # print('    Downloaded', rec_downloaded, 'of',
+                #       n_rec_to_download, 'records.')
                 print('    Download corrupted, retrying...')
+                print('    Missing uids:', ', '.join(list(missing_uids_now)))
+                missing_uids |= missing_uids_now
                 continue
 
     out_handle.close()
