@@ -241,6 +241,8 @@ if __name__ == '__main__':
         'skip_previously_synonymized')
     REM_HYBRIDS = CFG.getboolean('Organism Names', 'remove_hybrids')
     REM_NONSPECIFIC = CFG.getboolean('Organism Names', 'remove_nonspecific')
+    MERGE_SUBSPECIES = CFG.getboolean('Organism Names', 'merge_subspecies')
+    MERGE_VARIETIES = CFG.getboolean('Organism Names', 'merge_varieties')
 
     # Loci
     LOCI = dict()
@@ -460,6 +462,8 @@ if __name__ == '__main__':
             email=EMAIL,
             rem_hybrids=REM_HYBRIDS,
             rem_nonspecific=REM_NONSPECIFIC,
+            merge_subspecies=MERGE_SUBSPECIES,
+            merge_varieties=MERGE_VARIETIES,
             skip_prev_syn=SKIP_PREV_SYN,
             tax_groups_to_syn=SYN,
             authority_alternates_file = ORGN_DIR_PATH + \

@@ -294,6 +294,8 @@ def rename_organisms_using_taxids(
     email,
     rem_hybrids,
     rem_nonspecific,
+    merge_subspecies,
+    merge_varieties,
     skip_prev_syn,
     tax_groups_to_syn,
     authority_alternates_file,
@@ -415,6 +417,34 @@ def rename_organisms_using_taxids(
                 resolved = True
                 deleted = False
                 synonymy_check_done = True
+
+        if (not (resolved or deleted)
+            and merge_varieties
+            and ((org_dict['variety'] is not None)
+                and (org_dict['variety'] != ''))):
+
+            org_dict['status'] = 'merge_varieties'
+            org_dict['variety'] = None
+            acc_name = org_dict
+            acc_name_flat = krbionames.flatten_organism_name(
+                parsed_name=acc_name, sep=' ')
+
+            resolved = True
+            deleted = False
+
+        if (not (resolved or deleted)
+            and merge_subspecies
+            and ((org_dict['subspecies'] is not None)
+                and (org_dict['subspecies'] != ''))):
+
+            org_dict['status'] = 'merge_subspecies'
+            org_dict['subspecies'] = None
+            acc_name = org_dict
+            acc_name_flat = krbionames.flatten_organism_name(
+                parsed_name=acc_name, sep=' ')
+
+            resolved = True
+            deleted = False
 
         if resolved or synonymy_check_done:
 
