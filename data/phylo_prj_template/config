@@ -20,33 +20,74 @@ tgrc = No
 
 ### TAXA ###
 
+# Callithrix geoffroyi
+52231
+# Callithrix jacchus
+9483
+# Gorilla gorilla
+9593
+# Homo sapiens
+# 9606
+# Hylobates lar
+9580
+# Nomascus gabriellae
+61852
+# Nomascus leucogenys
+61853
+# Pan paniscus
+9597
+# Pan troglodytes
+9598
+# Pongo abelii
+9601
+# Pongo pygmaeus
+9600
+# Symphalangus syndactylus
+9590
+
 [Organism Names]
 
 remove_nonspecific = Yes
 remove_hybrids = Yes
-synonymize = ###
+merge_subspecies = Yes
+merge_varieties = Yes
+synonymize =
 skip_previously_synonymized = Yes
 
 [Loci]
 
 ### LOCI ###
 
+COI
+RAG1
+NADH2
+
 [Flatten]
 
 resolve_ambiguities = No
 
 align_program = mafft
-align_program_options = --auto --nuc --reorder --thread 4
-# align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
+# align_program_options = --auto --nuc --reorder --thread 4
+align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
 
 # align_program = muscle
+# align_program_options =
 # align_program_options = -maxiters 1000
 
 [Align]
 
 align_program = mafft
-align_program_options = --auto --nuc --reorder --thread 4
-# align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
+# align_program_options = --auto --nuc --reorder --thread 4
+align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
 
 # align_program = muscle
 # align_program_options = -maxiters 1000
+
+###  ###
+
+# superkingdom, kingdom, phylum, subphylum, class, superorder, order, suborder,
+# infraorder, parvorder, family, subfamily
+
+# scientific, common
+
+taxon_name = scientific, order, common
