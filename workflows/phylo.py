@@ -108,8 +108,8 @@ if __name__ == '__main__':
         PRJ_DIR_PATH = ARGS.project_dir.rstrip(PS)
         PRJ_DIR_PATH = PRJ_DIR_PATH + PS
     else:
-        write_log('Project directory is required.', LFP, newlines_before=1,
-            newlines_after=0)
+        # write_log('Project directory is required.', LFP, newlines_before=1,
+        #     newlines_after=0)
         sys.exit(0)
 
     # Log file path
@@ -119,9 +119,9 @@ if __name__ == '__main__':
 
         if os.path.exists(PRJ_DIR_PATH):
 
-            msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
-            write_log(msg=msg, log_file_path=LFP, append=True,
-                newlines_before=1, newlines_after=0)
+            # msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
+            # write_log(msg=msg, log_file_path=LFP, append=True,
+            #     newlines_before=1, newlines_after=0)
             DB = KRSequenceDatabase.KRSequenceDatabase(
                 PRJ_DIR_PATH + 'db.sqlite3')
 
@@ -139,10 +139,10 @@ if __name__ == '__main__':
             shutil.copytree(prj_template_dir_path, PRJ_DIR_PATH, symlinks=False,
                             ignore=None)
 
-            print('')
-            msg = 'Creating project directory at ' + PRJ_DIR_PATH.rstrip(PS)
-            write_log(msg=msg, log_file_path=LFP, append=False,
-                newlines_before=0, newlines_after=0)
+            # print('')
+            # msg = 'Creating project directory at ' + PRJ_DIR_PATH.rstrip(PS)
+            # write_log(msg=msg, log_file_path=LFP, append=False,
+            #     newlines_before=0, newlines_after=0)
 
             KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
@@ -168,8 +168,8 @@ if __name__ == '__main__':
     ############################################################################
 
     if not COMMANDS:
-        write_log('No commands given.', LFP, newlines_before=1,
-            newlines_after=0)
+        # write_log('No commands given.', LFP, newlines_before=1,
+        #     newlines_after=0)
         sys.exit(0)
 
     ############################################################################
@@ -230,8 +230,8 @@ if __name__ == '__main__':
         else:
             tax_id = list(krncbi.esearch(tax, 'taxonomy', EMAIL))[0]
             TAX_IDS.append(str(tax_id))
-            msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            # msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
     # Organism name resolution
     SYN = list()
@@ -314,7 +314,7 @@ if __name__ == '__main__':
 
             LOCI[l] = l_dict
         else:
-            write_log('There is no search strategy file for locus: ' + l, LFP)
+            # write_log('There is no search strategy file for locus: ' + l, LFP)
             sys.exit(0)
 
     ############################################################################
@@ -357,8 +357,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        msg = 'Resolving organism names.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Resolving organism names.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         ########################################################################
 
@@ -367,8 +367,8 @@ if __name__ == '__main__':
 
         if len(SYN) > 0:
 
-            msg = 'Loading synonymy table and NCBI organism name list.'
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            # msg = 'Loading synonymy table and NCBI organism name list.'
+            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             ncbi_names_table = krio.read_table_file(
                 path=ORGN_DIR_PATH + 'ncbi_tax_names',
@@ -429,8 +429,8 @@ if __name__ == '__main__':
 
         if 'tgrc' in HACKS.keys():
 
-            msg = 'Using "Tomato Genetics Resource Center" to resolve organism names.'
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            # msg = 'Using "Tomato Genetics Resource Center" to resolve organism names.'
+            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             wf.rename_tgrc_organisms(
                 kr_seq_db_object=DB,
@@ -441,8 +441,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        msg = 'Checking for record -> taxon mappings.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Checking for record -> taxon mappings.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         wf.rename_organisms_with_record_taxon_mappings(
             kr_seq_db_object=DB,
@@ -454,8 +454,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        msg = 'Checking for tax_id -> taxon mappings and synonymy.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Checking for tax_id -> taxon mappings and synonymy.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         wf.rename_organisms_using_taxids(
             kr_seq_db_object=DB,
@@ -478,8 +478,8 @@ if __name__ == '__main__':
         ########################################################################
 
         krcl.clear_line()
-        msg = 'Organism name check: done.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Organism name check: done.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         ########################################################################
 
@@ -523,11 +523,11 @@ if __name__ == '__main__':
 
             # print(org_flat, '::', common_names_str)
 
-            krcl.print_progress(
-                current=i+1, total=organism_count, length=0,
-                prefix=krother.timestamp() + ' ',
-                postfix=' - ' + org_flat + ' -> ' + common_names_str,
-                show_bar=False)
+            # krcl.print_progress(
+            #     current=i+1, total=organism_count, length=0,
+            #     prefix=krother.timestamp() + ' ',
+            #     postfix=' - ' + org_flat + ' -> ' + common_names_str,
+            #     show_bar=False)
 
             DB.db_update(
                 table_name='organisms',
@@ -564,8 +564,8 @@ if __name__ == '__main__':
     # Extract loci
     if 'extract_loci' in COMMANDS:
 
-        msg = 'Extracting loci.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Extracting loci.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         for locus_name in LOCI.keys():
 
@@ -573,8 +573,8 @@ if __name__ == '__main__':
             if len(ln_split) > 1 and ln_split[1] == 'blast':
                 continue
 
-            msg = locus_name + ' - loading records, this may take a bit.'
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            # msg = locus_name + ' - loading records, this may take a bit.'
+            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dict = LOCI[locus_name]
 
@@ -601,16 +601,16 @@ if __name__ == '__main__':
 
             bad_list = rej_gi_list + no_feature_gi_list
 
-            print()
+            # print()
 
             for bad in bad_list:
 
                 bad_gi = bad[0]
                 delete_note = bad[1]
 
-                msg = 'inactivating:' + \
-                ' gi:' + str(bad_gi) + ' note:' + delete_note
-                write_log(msg, LFP)
+                # msg = 'inactivating:' + \
+                # ' gi:' + str(bad_gi) + ' note:' + delete_note
+                # write_log(msg, LFP)
 
                 where_dict = {'ncbi_gi': bad_gi}
 
@@ -653,8 +653,8 @@ if __name__ == '__main__':
     # Export active records
     if 'export_active_records' in COMMANDS:
 
-        msg = 'Exporting active records.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Exporting active records.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         timestamp = krother.timestamp()
         timestamp = timestamp.replace('-', '_')
@@ -701,8 +701,8 @@ if __name__ == '__main__':
     if 'blacklist_gi' in COMMANDS:
 
         if not GI:
-            write_log('No GI given.', LFP, newlines_before=1,
-                newlines_after=0)
+            # write_log('No GI given.', LFP, newlines_before=1,
+            #     newlines_after=0)
             sys.exit(0)
 
         record = DB.get_record(
@@ -714,9 +714,9 @@ if __name__ == '__main__':
 
         blacklist_notes = 'user_deleted'
 
-        msg = 'inactivating:' + \
-        ' gi:' + str(GI) + ' note:' + blacklist_notes
-        write_log(msg, LFP)
+        # msg = 'inactivating:' + \
+        # ' gi:' + str(GI) + ' note:' + blacklist_notes
+        # write_log(msg, LFP)
 
         where_dict = {'ncbi_gi': GI}
 
@@ -744,15 +744,15 @@ if __name__ == '__main__':
     if 'whitelist_gi' in COMMANDS:
 
         if not GI:
-            write_log('No GI given.', LFP, newlines_before=1,
-                newlines_after=0)
+            # write_log('No GI given.', LFP, newlines_before=1,
+            #     newlines_after=0)
             sys.exit(0)
 
         whitelist_notes = 'user_activated'
 
-        msg = 'activating:' + \
-        ' gi:' + str(GI) + ' note:' + whitelist_notes
-        write_log(msg, LFP)
+        # msg = 'activating:' + \
+        # ' gi:' + str(GI) + ' note:' + whitelist_notes
+        # write_log(msg, LFP)
 
         where_dict = {'ncbi_gi': GI}
 
@@ -771,13 +771,13 @@ if __name__ == '__main__':
     # Produce one locus per organism
     if 'flatten' in COMMANDS:
 
-        msg = 'Producing one locus per organism.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        # msg = 'Producing one locus per organism.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         for locus_name in LOCI.keys():
 
-            msg = locus_name
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            # msg = locus_name
+            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
             krio.prepare_directory(locus_dir_path)
@@ -795,8 +795,8 @@ if __name__ == '__main__':
 
             ###
 
-            msg = 'Producing deduplicated set of reference records.'
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            # msg = 'Producing deduplicated set of reference records.'
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             reference_records = list()
 
@@ -858,11 +858,11 @@ if __name__ == '__main__':
 
                 org_records = org_locus_dict[org_id]
 
-                krcl.print_progress(
-                    current=i+1, total=org_count, length=0,
-                    prefix=krother.timestamp() + ' ',
-                    postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
-                    show_bar=False)
+                # krcl.print_progress(
+                #     current=i+1, total=org_count, length=0,
+                #     prefix=krother.timestamp() + ' ',
+                #     postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
+                #     show_bar=False)
 
                 # if (org_flat != 'Psephotus haematonotus') or (org_flat != 'Anodorhynchus hyacinthinus'):
                 # if (org_flat != 'Psephotus haematonotus'):
@@ -899,7 +899,8 @@ if __name__ == '__main__':
                     redo_aln = False
 
                     if len(flat_rec_list) > 1:
-                        print('More than one flat record!')
+                        # print('More than one flat record!')
+                        pass
                     else:
 
                         parent_rec_ids = DB.get_parent_rec_ids(rec_id=flat_rec_id)
@@ -1031,9 +1032,9 @@ if __name__ == '__main__':
 
                                 #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
 
-                                msg = 'inactivating:' + \
-                                ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
-                                write_log(msg, LFP)
+                                # msg = 'inactivating:' + \
+                                # ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
+                                # write_log(msg, LFP)
 
                                 where_dict = {'id': del_rec_id}
 
@@ -1090,8 +1091,10 @@ if __name__ == '__main__':
                                 min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
                             if new_aln[1] < FLAT_ID_BOTTOM:
-                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
-                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                # msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
+                                # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+                                pass
 
                             # print('\n', new_aln, '\n')
 
@@ -1238,8 +1241,10 @@ if __name__ == '__main__':
                         if aln:
 
                             if aln[1] < FLAT_ID_BOTTOM:
-                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
-                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                # msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
+                                # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+                                pass
 
                             aln = aln[0]
 
@@ -1349,22 +1354,22 @@ if __name__ == '__main__':
 
             DB.save()
 
-            print()
+            # print()
 
     ############################################################################
 
     # Align sequences
     if 'align' in COMMANDS:
 
-        msg = 'Aligning sequences.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+        # msg = 'Aligning sequences.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         krio.prepare_directory(ALN_DIR_PATH)
 
         for locus_name in LOCI.keys():
 
-            msg = locus_name
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            # msg = locus_name
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             # Get all flattened records for current locus
             records_flat = DB.get_records_with_annotations(
@@ -1424,8 +1429,8 @@ if __name__ == '__main__':
     # Concatenate alignments
     if 'concatenate' in COMMANDS:
 
-        msg = 'Concatenating alignments.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+        # msg = 'Concatenating alignments.'
+        # write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         aln_list = list()
         name_list = list()
@@ -1433,8 +1438,8 @@ if __name__ == '__main__':
 
         for locus_name in LOCI.keys():
 
-            msg = locus_name
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            # msg = locus_name
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
 
