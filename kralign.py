@@ -286,6 +286,8 @@ def pairwise_identity(
     pair_id = 0.0
     if sum(weights_list) > 0.0:
         pair_id = sum(score_list) / sum(weights_list)
+    # else:
+    #     pair_id = 1.0
 
     # print(pair_id)
 
@@ -308,11 +310,24 @@ def identity(
     row_count = len(alignment)
 
     pair_id_list = list()
+    done = set()
 
     for i in range(0, row_count):
         for j in range(0, row_count):
+
             if i == j:
                 continue
+
+            str_1 = str(i)+','+str(j)
+            str_2 = str(j)+','+str(i)
+
+            if (str_1 in done) or (str_2 in done):
+                continue
+
+            done.add(str_1)
+            done.add(str_2)
+
+            # print(str_1)
 
             aln = MultipleSeqAlignment(records=[alignment[i], alignment[j]])
 
@@ -327,8 +342,11 @@ def identity(
                 free_end_gaps=free_end_gaps)
 
             # print(alignment[i].id, alignment[j].id, pair_id)
+            if pair_id > 0.0:
+                pair_id_list.append(pair_id)
 
-            pair_id_list.append(pair_id)
+    # print(sum(pair_id_list))
+    # print(len(pair_id_list))
 
     ident = sum(pair_id_list) / len(pair_id_list)
 
@@ -350,7 +368,7 @@ def consensus(
     uracil = False
 
     col_count = alignment.get_alignment_length()
-    row_count = len(alignment)
+    # row_count = len(alignment)
 
     cons_str = ''
 
@@ -417,6 +435,9 @@ def consensus(
         if (unknown in col_str_new) and len(col_str_new) > 1:
             col_str_new = col_str_new.replace(unknown, '')
 
+        if ('N' in col_str_new) and len(col_str_new) > 1:
+            col_str_new = col_str_new.replace('N', '')
+
         site = unknown
         if col_str_new == unknown:
             site = unknown
@@ -450,14 +471,34 @@ def cluster(
     key='gi',
     aln_program='mafft',
     aln_executable='mafft',
-    aln_options='--auto --reorder --adjustdirection'):
+    aln_options='--auto --reorder --adjustdirection',
+    seeds=None):
 
     results_dict = dict()
     consumed_ids = list()
+    seed_ids = list()
 
     records = sorted(records, key=lambda x: len(x.seq), reverse=True)
+    records_seeds = records
+    if seeds:
+        records_seeds = seeds
 
-    for a_rec in records:
+        for seed_rec in records_seeds:
+
+            key_value = None
+            if key == 'accession':
+                key_value = seed_rec.id
+            elif key == 'gi':
+                key_value = seed_rec.annotations['gi']
+            elif key == 'description':
+                key_value = seed_rec.description
+            else:
+                key_value = seed_rec.id
+
+            s_id = key_value
+            seed_ids.append(s_id)
+
+    for a_rec in records_seeds:
 
         key_value = None
         if key == 'accession':
@@ -471,12 +512,14 @@ def cluster(
 
         a_id = key_value
 
-        if a_id in consumed_ids:
-            continue
+        if not seeds:
+            if a_id in consumed_ids:
+                continue
 
         results_dict[a_id] = list()
-        results_dict[a_id].append(['+', a_id, '1.0'])
-        consumed_ids.append(a_id)
+        if a_id not in consumed_ids:
+            results_dict[a_id].append(['+', a_id, '1.0'])
+            consumed_ids.append(a_id)
 
         for b_rec in records:
 
@@ -506,6 +549,7 @@ def cluster(
 
             direction = '+'
             for a in aln:
+                # This will only work with MAFFT!
                 if a.id.startswith('_R_'):
                     direction = '-'
                     break
@@ -526,11 +570,69 @@ def cluster(
 
             # print(a_id, ':', b_id, '=', score)
 
-        # for k in results_dict.keys():
-        #     print(k, results_dict[k])
-        # print('=== === === === === === === ===')
+    # Report unclustered ids
+    results_dict['unclustered'] = list()
+    for rec in records:
+
+        key_value = None
+        if key == 'accession':
+            key_value = rec.id
+        elif key == 'gi':
+            key_value = rec.annotations['gi']
+        elif key == 'description':
+            key_value = rec.description
+        else:
+            key_value = rec.id
+
+        rec_id = key_value
+
+        if rec_id not in consumed_ids:
+            results_dict['unclustered'].append(['.', rec_id, '0.0'])
 
     return results_dict
+
+
+def dereplicate(
+    records,
+    threshold=0.95,
+    unknown='N',
+    key='gi',
+    aln_program='mafft',
+    aln_executable='mafft',
+    aln_options='--auto --reorder --adjustdirection'):
+
+    clusters = cluster(
+        records=records,
+        threshold=threshold,
+        unknown=unknown,
+        key=key,
+        aln_program=aln_program,
+        aln_executable=aln_executable,
+        aln_options=aln_options,
+        seeds=None)
+
+    dereplicated = list()
+
+    for clust_key in clusters.keys():
+        for r in records:
+            key_value = None
+            if key == 'accession':
+                key_value = r.id
+            elif key == 'gi':
+                key_value = r.annotations['gi']
+            elif key == 'description':
+                key_value = r.description
+            else:
+                key_value = r.id
+
+            r_id = key_value
+
+            if r_id == clust_key:
+                dereplicated.append(r)
+                break
+
+    # Should also probably return cluster info, so it is clear which records clustered together
+    return dereplicated
 
 
 def determine_conserved_regions(alignment_file, matrix, window, min_length, cutoff):
@@ -631,7 +733,7 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 
     # import krbioio
 
-    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_1.phy', 'phylip-relaxed')
+    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_11.phy', 'phylip-relaxed')
 
     # ident = identity(
 
