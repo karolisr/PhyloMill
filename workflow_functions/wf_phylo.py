@@ -208,8 +208,10 @@ def rename_organisms_with_record_taxon_mappings(
             if acc_name['genus'] in taxonomy_cache.keys():
                 taxonomy_list = taxonomy_cache[acc_name['genus']]
             else:
-                taxonomy_list = krncbi.get_lineage(
-                    email=email, tax_term=acc_name['genus'])
+                # taxonomy_list = krncbi.get_lineage(
+                #     email=email, tax_term=acc_name['genus'])
+                taxonomy_list = krncbi.get_lineages(
+                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()[0]
                 taxonomy_cache[acc_name['genus']] = taxonomy_list
 
             org_id_new = kr_seq_db_object.add_organism(
@@ -330,7 +332,7 @@ def rename_organisms_using_taxids(
 
         krcl.print_progress(
             current=i+1, total=organism_count, length=0,
-            prefix=krother.timestamp() + ' - ',
+            prefix=krother.timestamp() + ' ',
             postfix=' - ' + org_flat,
             show_bar=False)
 
@@ -382,6 +384,7 @@ def rename_organisms_using_taxids(
         taxonomy = org_dict['taxonomy']
         if taxonomy:
             taxonomy = taxonomy.split(',')
+            taxonomy = krncbi.parse_lineage_string_list(taxonomy)[1]
             taxonomy_lower = [x.lower() for x in taxonomy]
             for tax_term in tax_groups_to_syn:
                 if tax_term in taxonomy_lower:
@@ -461,15 +464,18 @@ def rename_organisms_using_taxids(
                 'variety': acc_name['variety'],
                 'hybrid': acc_name['hybrid'],
                 'other': acc_name['other'],
-                'authority': acc_name['authority']
+                'authority': acc_name['authority'],
+                'common_name': acc_name['common_name']
                 }
 
             taxonomy_list = None
             if acc_name['genus'] in taxonomy_cache.keys():
                 taxonomy_list = taxonomy_cache[acc_name['genus']]
             else:
-                taxonomy_list = krncbi.get_lineage(
-                    email=email, tax_term=acc_name['genus'])
+                # taxonomy_list = krncbi.get_lineage(
+                #     email=email, tax_term=acc_name['genus'])
+                taxonomy_list = krncbi.get_lineages(
+                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()[0]
                 taxonomy_cache[acc_name['genus']] = taxonomy_list
 
             ncbi_tax_id_list = None
@@ -543,10 +549,11 @@ def rename_organisms_using_taxids(
     kr_seq_db_object.save()
 
 
-def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
+# def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
+def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
 
     from krpy import kralign
-    from krpy import krusearch
+    # from krpy import krusearch
 
     accept = list()
     reject = list()
@@ -557,50 +564,56 @@ def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_
         pass
     else:
 
-        if len(records) <= 500:
+        # if len(records) <= 500:
 
-            clusters = kralign.cluster(
-                records=records,
-                threshold=identity_threshold,
-                unknown='N',
-                key='gi',
-                aln_program='mafft',
-                aln_executable='mafft',
-                aln_options='--auto --reorder --adjustdirection')
+        clusters = kralign.cluster(
+            records=records,
+            threshold=identity_threshold,
+            unknown='N',
+            key='gi',
+            aln_program='mafft',
+            aln_executable='mafft',
+            aln_options='--auto --reorder --adjustdirection',
+            seeds=seeds)
 
-        else:
+        # else:
 
-            clusters = krusearch.cluster_records(
-                records=records,
-                identity_threshold=identity_threshold,
-                temp_dir=temp_dir,
-                sorted_input=False,
-                algorithm='smallmem',  # fast smallmem
-                strand='both',  # plus both aa
-                threads=1,
-                quiet=True,
-                program='usearch',
-                heuristics=True,
-                query_coverage=0.1,
-                target_coverage=0.1,
-                sizein=False,
-                sizeout=False,
-                usersort=False,
-                seq_id='gi',
-                cluster_key='centroid')
+        #     clusters = krusearch.cluster_records(
+        #         records=records,
+        #         identity_threshold=identity_threshold,
+        #         temp_dir=temp_dir,
+        #         sorted_input=False,
+        #         algorithm='smallmem',  # fast smallmem
+        #         strand='both',  # plus both aa
+        #         threads=1,
+        #         quiet=True,
+        #         program='usearch',
+        #         heuristics=True,
+        #         query_coverage=0.1,
+        #         target_coverage=0.1,
+        #         sizein=False,
+        #         sizeout=False,
+        #         usersort=False,
+        #         seq_id='gi',
+        #         cluster_key='centroid')
 
         for key in clusters.keys():
 
-            clust_size = len(clusters[key])
+            # clust_size = len(clusters[key])
 
-            if clust_size >= min_clust_size:
-                accept = accept + clusters[key]
-            else:
+            if key == 'unclustered':
                 reject = reject + clusters[key]
+            else:
+                accept = accept + clusters[key]
+
+            # if clust_size >= min_clust_size:
+            #     accept = accept + clusters[key]
+            # else:
+            #     reject = reject + clusters[key]
 
             # print(key, clust_size)
-            # for cluster in clusters[key]:
-            #     print(cluster)
+            # print('--- --- --- --- ---')
+            # print(clusters[key])
             # print('=== === === === ===')
 
     return {'accept': accept, 'reject': reject}
@@ -728,7 +741,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
         krcl.print_progress(
             current=i+1, total=records_count, length=0,
-            prefix=krother.timestamp() + ' - ',
+            prefix=krother.timestamp() + ' ',
             postfix='',
             show_bar=False)
 
@@ -745,10 +758,10 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
             feature_type = strategy['feature_type']
             qualifier_label = strategy['qualifier_label']
             qualifier_value = strategy['qualifier_value']
-            l_re = strategy['regex']
+            # l_re = strategy['regex']
             strict_value_match = strategy['strict_value_match']
             l_ml = strategy['min_length']
-            l_el = strategy['extra_length']
+            # l_el = strategy['extra_length']
 
             match_stringency = 'loose'
             if strict_value_match:
@@ -784,11 +797,11 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
                     start_A = int(feature_A.location.start)
                     end_A = int(feature_A.location.end)
-                    strand_A = int(feature_A.location.strand)
+                    # strand_A = int(feature_A.location.strand)
 
                     start_B = int(feature_B.location.start)
                     end_B = int(feature_B.location.end)
-                    strand_B = int(feature_B.location.strand)
+                    # strand_B = int(feature_B.location.strand)
 
                     d1 = abs(start_A - start_B)
                     d2 = abs(end_A - start_B)
@@ -894,27 +907,91 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
             loc = location_list_deduplicated[-1]
             trimmed_rec = record[loc[0]:loc[1]]
-            # print(trimmed_rec.seq)
-            if loc[3] and loc[3] < 0:
-                trimmed_rec = trimmed_rec.reverse_complement()
-            # print(loc)
-            # print(trimmed_rec.seq)
-            # print('---')
+            if len(trimmed_rec.seq) < l_ml:
+                no_feature_record_gi_list.append(gi)
+            else:
+                # print(trimmed_rec.seq)
+                if loc[3] and loc[3] < 0:
+                    trimmed_rec = trimmed_rec.reverse_complement()
+                # print(loc)
+                # print(trimmed_rec.seq)
+                # print('---')
+                trimmed_rec.annotations['organism'] = record.annotations['organism']
+                trimmed_rec.annotations['gi'] = record.annotations['gi']
+                trimmed_records.append(trimmed_rec)
 
-            trimmed_rec.annotations['gi'] = record.annotations['gi']
-            trimmed_records.append(trimmed_rec)
-
-    msg = 'Filtering extracted records...'
+    msg = 'Filtering extracted records.'
     write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
 
     # min_clust_size = min((records_count * 0.02), 15)
-    min_clust_size = 3
+
+    ### ###
+
+    # min_clust_size = 3
+
+    # acc_rej_gi_dict = accept_records_by_similarity(
+    #     records=trimmed_records,
+    #     temp_dir=temp_dir,
+    #     min_clust_size=min_clust_size,
+    #     identity_threshold=0.70)
+
+    ### ###
+
+    # Produce seeds. Longest records rom each genus.
+    msg = '\tPreparing seed sequences.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    seed_records_dict = dict()
+    for r in trimmed_records:
+        genus = r.annotations['organism'].split(' ')[0]
+        if genus not in seed_records_dict.keys():
+            seed_records_dict[genus] = list()
+        seed_records_dict[genus].append(r)
+
+    seed_records_prelim = list()
+    for key in seed_records_dict.keys():
+        recs = seed_records_dict[key]
+        recs = sorted(recs, key=lambda x: len(x.seq), reverse=True)
+        seed_records_prelim.append(recs[0])
+
+    clusters = kralign.cluster(
+        records=seed_records_prelim,
+        threshold=0.85,
+        unknown='N',
+        key='gi',
+        aln_program='mafft',
+        aln_executable='mafft',
+        aln_options='--auto --reorder --adjustdirection',
+        seeds=None)
+
+    seed_records = list()
+    for key in clusters.keys():
+        clust_size = len(clusters[key])
+        if clust_size > 3:
+            for sr in seed_records_prelim:
+                gi = sr.annotations['gi']
+                if gi in clusters[key]:
+                    seed_records.append(sr)
+
+        # print(key, clust_size)
+        # print('--- --- --- --- ---')
+        # print(clusters[key])
+        # print('=== === === === ===')
+
+    msg = '\tFiltering.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
-        temp_dir=temp_dir,
-        min_clust_size=min_clust_size,
-        identity_threshold=0.70)
+        seeds=seed_records,
+        identity_threshold=0.80)
+
+    # import sys
+    # sys.exit(0)
+
+    ### ###
+
+    msg = 'Annotating sequence features in database.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -936,7 +1013,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
         krcl.print_progress(
             current=i+1, total=prfl_count, length=0,
-            prefix=krother.timestamp() + ' - ',
+            prefix=krother.timestamp() + ' ',
             postfix='',
             show_bar=False)
 
@@ -999,7 +1076,7 @@ def trim_record_to_locus(record, locus_name):
         rec_trimmed.name = ''
         rec_trimmed.description = ''
 
-        # rec_trimmed.annotations[b'gi'] = record.annotations[b'gi']
+        rec_trimmed.annotations[b'gi'] = record.annotations[b'gi']
         # rec_trimmed.annotations[b'organism'] = record.annotations[b'organism']
         # rec_trimmed.annotations[b'kr_seq_db_org_id'] = record.annotations[b'kr_seq_db_org_id']
         # rec_trimmed.annotations[b'kr_seq_db_id'] = record.annotations[b'kr_seq_db_id']
@@ -1025,7 +1102,7 @@ def improve_alignment_using_reference_records(
 
     new_aln = None
 
-    ident_step = 0.01
+    ident_step = 0.005
 
     bottom_ident = min_locus_sequence_identity_range[0]
     max_ident = min_locus_sequence_identity_range[1]
@@ -1034,6 +1111,7 @@ def improve_alignment_using_reference_records(
     ref_alignments = list()
 
     for ref_rec in reference_records:
+        ref_rec_original_gi = ref_rec.annotations['gi']
         ref_rec_trimmed = trim_record_to_locus(
             record=ref_rec, locus_name=locus_name)
         ref_rec_trimmed.id = str(krother.random_id(20))
@@ -1056,9 +1134,9 @@ def improve_alignment_using_reference_records(
             end_gap_id=0.0,
             free_end_gaps=True)
 
-        # msg = 'Locus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ')'
-        # write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
-        #     to_file=True, to_screen=True)
+        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+            to_file=True, to_screen=True)
 
         ref_aln_record_list = list()
         for r in ref_aln:
@@ -1068,25 +1146,26 @@ def improve_alignment_using_reference_records(
 
         if ident < current_ident:
 
-            ref_alignments.append([ident, ref_aln])
-            ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
-            temp_ident = ref_alignments[0][0]
+            ref_alignments.append([ref_aln, ident])
+            ref_alignments = sorted(ref_alignments, key=lambda x: x[1], reverse=True)
+            temp_ident = ref_alignments[0][1]
             if temp_ident >= current_ident:
-                new_aln = ref_alignments[0][1]
+                new_aln = ref_alignments[0]
                 break
             current_ident = max(current_ident-ident_step, bottom_ident)
 
         else:
 
-            new_aln = ref_aln
+            new_aln = [ref_aln, ident]
 
             break
 
     if not new_aln:
 
         # ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
-        new_aln = ref_alignments[0][1]
+        new_aln = ref_alignments[0]
 
+    # new_aln is a list: [aln, identity]
     return new_aln
 
 
@@ -1125,6 +1204,8 @@ def flatten_locus(
 
     if len(records_trimmed) > 1:
 
+        # print('\n', len(records_trimmed), '\n')
+
         aln = kralign.align(
             records=records_trimmed,
             program=aln_program,
@@ -1142,11 +1223,13 @@ def flatten_locus(
             end_gap_id=0.0,
             free_end_gaps=True)
 
-        # msg = 'Locus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
-        # write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
-        #     to_file=True, to_screen=True)
+        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
+        write_log(msg, log_file_path, newlines_before=1, newlines_after=0,
+            to_file=True, to_screen=True)
 
-        if ident < min_locus_sequence_identity_range[1]:
+        aln = [aln, ident]
+
+        if (ident < min_locus_sequence_identity_range[1]) and (len(records_trimmed) <= 40):
 
             new_aln = improve_alignment_using_reference_records(
                 records=records_trimmed,
@@ -1160,6 +1243,8 @@ def flatten_locus(
 
             aln = new_aln
 
+
+    # aln is a list: [aln, identity]
     return aln
 
 
@@ -1351,7 +1436,7 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
 
         krcl.print_progress(
             current=i+1, total=tgrc_count, length=0,
-            prefix=krother.timestamp() + ' - ',
+            prefix=krother.timestamp() + ' ',
             postfix= ' - ' + voucher + ' - ' + org_flat,
             show_bar=False)
 
@@ -1379,8 +1464,10 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
         if new_name['genus'] in taxonomy_cache.keys():
             taxonomy_list = taxonomy_cache[new_name['genus']]
         else:
-            taxonomy_list = krncbi.get_lineage(
-                email=email, tax_term=new_name['genus'])
+            # taxonomy_list = krncbi.get_lineage(
+            #     email=email, tax_term=new_name['genus'])
+            taxonomy_list = krncbi.get_lineages(
+                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()[0]
             taxonomy_cache[new_name['genus']] = taxonomy_list
 
         org_id_new = kr_seq_db_object.add_organism(

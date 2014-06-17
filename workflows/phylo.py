@@ -175,7 +175,7 @@ if __name__ == '__main__':
     ############################################################################
 
     # Constants
-    FLAT_ID_BOTTOM = 0.90
+    FLAT_ID_BOTTOM = 0.85
     FLAT_ID_TOP = 0.95
 
     ############################################################################
@@ -198,6 +198,10 @@ if __name__ == '__main__':
     ALN_ALN_PROG = CFG.get('Align', 'align_program')
     ALN_ALN_PROG_EXE = CFG.get('General', ALN_ALN_PROG + '_executable')
     ALN_ALN_PROG_OPTIONS = CFG.get('Align', 'align_program_options')
+
+    ALN_TAX_NAME_LIST = CFG.get('Align', 'taxon_name')
+    ALN_TAX_NAME_LIST = ALN_TAX_NAME_LIST.split(',')
+    ALN_TAX_NAME_LIST = [x.strip() for x in ALN_TAX_NAME_LIST]
 
     # Hacks
     hacks_items = CFG.items('Hacks')
@@ -477,6 +481,84 @@ if __name__ == '__main__':
         msg = 'Organism name check: done.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
+        ########################################################################
+
+        # Get common names and full lineage information
+
+        organisms = DB.get_organisms(where_dict={'active': 1})
+        organism_count = len(organisms)
+        tax_id_list = list()
+
+        for org_dict in organisms:
+            org_tax_id_list = org_dict['ncbi_tax_ids']
+            tax_id_list = tax_id_list + org_tax_id_list
+
+        common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
+        lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+
+        # for k in common_names.keys():
+        #     print(k, common_names[k])
+
+        for i, org_dict in enumerate(organisms):
+
+            org_id = org_dict['id']
+
+            org_flat = krbionames.flatten_organism_name(
+                parsed_name=org_dict, sep=' ')
+
+            org_tax_id_list = org_dict['ncbi_tax_ids']
+            org_common_names = list()
+            org_lineage = None
+            for ti in org_tax_id_list:
+                if str(ti) in common_names.keys():
+                    org_common_names.append(common_names[str(ti)])
+                if str(ti) in lineages.keys():
+                    org_lineage = lineages[str(ti)]
+
+            common_names_str = ''
+            if org_common_names:
+                common_names_str = ', '.join(org_common_names)
+            else:
+                common_names_str = org_flat
+
+            # print(org_flat, '::', common_names_str)
+
+            krcl.print_progress(
+                current=i+1, total=organism_count, length=0,
+                prefix=krother.timestamp() + ' ',
+                postfix=' - ' + org_flat + ' -> ' + common_names_str,
+                show_bar=False)
+
+            DB.db_update(
+                table_name='organisms',
+                values_dict={'common_name': common_names_str},
+                where_dict={'id': org_id})
+
+            values_dict = {
+                'genus': org_dict['genus'],
+                'species': org_dict['species'],
+                'subspecies': org_dict['subspecies'],
+                'variety': org_dict['variety'],
+                'hybrid': org_dict['hybrid'],
+                'other': org_dict['other'],
+                'authority': org_dict['authority'],
+                'common_name': common_names_str
+                }
+
+            org_id_new = DB.add_organism(
+                organism_dict=values_dict,
+                taxonomy_list=org_lineage,
+                ncbi_tax_id_list=org_dict['ncbi_tax_ids'],
+                synonymy_check_done=org_dict['synonymy_check_done'])[0]
+
+            DB.update_records(
+                values_dict={'org_id': org_id_new},
+                where_dict={'org_id': org_id})
+
+        DB.save()
+
+        ########################################################################
+
     ############################################################################
 
     # Extract loci
@@ -491,7 +573,7 @@ if __name__ == '__main__':
             if len(ln_split) > 1 and ln_split[1] == 'blast':
                 continue
 
-            msg = locus_name + ' - loading records, this may take a bit...'
+            msg = locus_name + ' - loading records, this may take a bit.'
             write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dict = LOCI[locus_name]
@@ -710,7 +792,38 @@ if __name__ == '__main__':
                 inactive=False)
 
             records = sorted(records, key=lambda x: len(x.seq), reverse=True)
-            reference_records = records[0:min(50, len(records))]
+
+            ###
+
+            msg = 'Producing deduplicated set of reference records.'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            reference_records = list()
+
+            for record in records:
+                rec_trimmed = wf.trim_record_to_locus(
+                    record=record,
+                    locus_name=locus_name)
+                reference_records.append(rec_trimmed)
+
+            reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
+            reference_records = reference_records[0:min(50, len(reference_records))]
+            reference_records = kralign.dereplicate(
+                records=reference_records,
+                threshold=0.95,
+                unknown='N',
+                # key='accession',  # this works because trim_record_to_locus makes gi the accession
+                key='gi',
+                aln_program='mafft',
+                aln_executable='mafft',
+                aln_options='--auto --reorder --adjustdirection')
+
+            ###
+
+            krbioio.write_sequence_file(
+                records=reference_records,
+                file_path=ORG_LOC_DIR_PATH + locus_name + '__reference.fasta',
+                file_format='fasta')
 
             org_locus_dict = dict()
             for record in records:
@@ -738,23 +851,28 @@ if __name__ == '__main__':
             org_count = len(org_locus_dict.keys())
             for i, org_id in enumerate(org_locus_dict.keys()):
 
-                krcl.print_progress(
-                    current=i+1, total=org_count, length=0,
-                    prefix=krother.timestamp() + ' - ',
-                    postfix='',  # ' - ' + org_flat,
-                    show_bar=False)
-
                 where_dict = {'organisms.id': int(org_id)}
                 org_dict = DB.get_organisms(where_dict=where_dict)[0]
                 org_flat = krbionames.flatten_organism_name(
                     parsed_name=org_dict, sep=' ')
 
+                org_records = org_locus_dict[org_id]
+
+                krcl.print_progress(
+                    current=i+1, total=org_count, length=0,
+                    prefix=krother.timestamp() + ' ',
+                    postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
+                    show_bar=False)
+
+                # if (org_flat != 'Psephotus haematonotus') or (org_flat != 'Anodorhynchus hyacinthinus'):
+                # if (org_flat != 'Psephotus haematonotus'):
+                # if (org_flat != 'Anodorhynchus hyacinthinus'):
+                    # continue
+
                 aln_name = locus_name + '__' + org_flat.replace(' ', '_')
 
                 aln_file_path = locus_dir_path + aln_name + '.phy'
                 seq_file_path = locus_dir_path + aln_name + '.fasta'
-
-                org_records = org_locus_dict[org_id]
 
                 ################################################################
 
@@ -778,6 +896,8 @@ if __name__ == '__main__':
 
                     db_aln = None
 
+                    redo_aln = False
+
                     if len(flat_rec_list) > 1:
                         print('More than one flat record!')
                     else:
@@ -790,6 +910,10 @@ if __name__ == '__main__':
                         # Check if there is a locus alignment/sequence file
                         seq_file_exists = os.path.exists(seq_file_path)
                         aln_file_exists = os.path.exists(aln_file_path)
+
+                        if (not seq_file_exists) and (not aln_file_exists):
+                            redo_aln = True
+                            # print('\n', org_flat, '\n')
 
                         existing_record_list = list()
 
@@ -937,7 +1061,7 @@ if __name__ == '__main__':
 
                     new_seq_str = None
                     flat_locus_produced = False
-                    if (len(org_records) > 1) and ((not aln_match) or new_rec_ids or deleted_rec_ids):
+                    if (len(org_records) > 1) and (redo_aln or ((not aln_match) or new_rec_ids or deleted_rec_ids)):
 
                         if seq_file_exists:
                             os.remove(seq_file_path)
@@ -945,10 +1069,10 @@ if __name__ == '__main__':
                             os.remove(aln_file_path)
 
                         new_aln = existing_record_list
-                        if new_rec_ids or deleted_rec_ids:
+                        if new_rec_ids or deleted_rec_ids or redo_aln:
                             records_to_align = list(existing_record_list)
                             for r in org_records:
-                                if new_rec_ids and int(r.annotations['kr_seq_db_id']) in new_rec_ids:
+                                if redo_aln or (new_rec_ids and int(r.annotations['kr_seq_db_id']) in new_rec_ids):
                                     trimmed_rec = wf.trim_record_to_locus(
                                         record=r,
                                         locus_name=locus_name)
@@ -965,6 +1089,16 @@ if __name__ == '__main__':
                                 aln_options=FLAT_ALN_PROG_OPTIONS,
                                 min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
+                            if new_aln[1] < FLAT_ID_BOTTOM:
+                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
+                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+                            # print('\n', new_aln, '\n')
+
+                            new_aln = new_aln[0]
+
+                        # print('\n', new_aln, '\n')
+
                         wf.update_record_alignment(
                             rec_id=flat_rec_id,
                             new_aln=new_aln,
@@ -974,7 +1108,7 @@ if __name__ == '__main__':
                         consensus = kralign.consensus(
                             alignment=new_aln,
                             threshold=0.4,
-                            unknown='N',
+                            unknown='',
                             resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                         new_seq_str = str(consensus).upper()
@@ -999,7 +1133,7 @@ if __name__ == '__main__':
                             new_seq_str = str(er.seq).upper()
                             new_rec = er
 
-                        elif deleted_rec_ids:
+                        elif deleted_rec_ids or redo_aln:
                             trimmed_rec = wf.trim_record_to_locus(
                                 record=org_records[0],
                                 locus_name=locus_name)
@@ -1007,7 +1141,7 @@ if __name__ == '__main__':
                                 new_seq_str = str(trimmed_rec.seq)
                                 new_rec = trimmed_rec
                                 db_seq_str = str(flat_rec.seq).upper()
-                                if new_seq_str.upper() != db_seq_str:
+                                if (new_seq_str.upper() != db_seq_str) or redo_aln:
                                     seq_match = False
 
                         if not seq_match:
@@ -1023,6 +1157,9 @@ if __name__ == '__main__':
                                 records=[new_rec],
                                 file_path=seq_file_path,
                                 file_format='fasta')
+
+                    # elif redo_aln:
+                    #     pass
 
                     if flat_locus_produced:
 
@@ -1099,6 +1236,13 @@ if __name__ == '__main__':
                             min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
                         if aln:
+
+                            if aln[1] < FLAT_ID_BOTTOM:
+                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
+                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+                            aln = aln[0]
+
                             flat_locus_produced = True
 
                             krbioio.write_alignment_file(
@@ -1140,7 +1284,7 @@ if __name__ == '__main__':
                             consensus = kralign.consensus(
                                 alignment=aln,
                                 threshold=0.4,
-                                unknown='N',
+                                unknown='',
                                 resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                             new_seq_str = str(consensus)
@@ -1230,7 +1374,35 @@ if __name__ == '__main__':
                 inactive=False)
 
             for r in records_flat:
-                r.id = r.annotations['organism'].replace(' ', '_')
+
+                binomial = r.annotations['organism'].replace(' ', '_')
+                common = r.annotations['common_name'].replace(', ', '|').replace(' ', '_').replace('\'', '')
+
+                lineage = r.annotations['lineage'].split(',')
+                lineage_parsed = krncbi.parse_lineage_string_list(
+                    lineage_string_list=lineage)[0]
+
+                name_terms = list()
+                for term in ALN_TAX_NAME_LIST:
+                    name_term = term
+                    if term == 'scientific':
+                        name_term = binomial
+                    elif term == 'common':
+                        name_term = common
+                    else:
+                        for lp in lineage_parsed:
+                            if ('rank' in lp.keys()) and (lp['rank'] == term):
+                                name_term = lp['name']
+                                break
+                    name_terms.append(name_term)
+
+                # print(binomial, common, name_term)
+                # print('--- --- --- --- --- --- ---')
+
+                # r.id = binomial + '||' + common + '||' + name_term
+
+                r.id = '||'.join(name_terms)
+
                 r.description = ''
                 r.name = ''
 
