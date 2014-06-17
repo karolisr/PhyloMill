@@ -111,6 +111,7 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     organism_dict['subspecies'] = ''
     organism_dict['hybrid'] = ''
     organism_dict['other'] = ''
+    organism_dict['common_name'] = ''
 
     if (len(name_list) == 3 and ((len(indexes) == 0))):
         organism_dict['subspecies'] = name_list[2]
@@ -242,6 +243,7 @@ def accepted_name(name, synonymy_table, auth_file, sep=' ',
     accepted['hybrid'] = ''
     accepted['other'] = ''
     accepted['id'] = ''
+    accepted['common_name'] = ''
 
     if 'hybrid' in o and o['hybrid'] != '' and not resolve_hybrids:
         return((accepted, 0))
