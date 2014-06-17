@@ -38,6 +38,7 @@ class KRSequenceDatabase:
         hybrid TEXT,
         other TEXT,
         authority TEXT,
+        common_name TEXT,
         synonymy_check_done INTEGER NOT NULL
         );
 
@@ -325,7 +326,7 @@ class KRSequenceDatabase:
         return (row_id, already_in_db)
 
 
-    def _db_update(self, table_name, values_dict, where_dict=None):
+    def db_update(self, table_name, values_dict, where_dict=None):
 
         import sys
         import sqlite3
@@ -459,7 +460,7 @@ class KRSequenceDatabase:
 
     def set_active(self, table_name, where_dict):
 
-        self._db_update(
+        self.db_update(
             table_name=table_name,
             values_dict={'active': 1},
             where_dict=where_dict)
@@ -467,7 +468,7 @@ class KRSequenceDatabase:
 
     def set_inactive(self, table_name, where_dict):
 
-        self._db_update(
+        self.db_update(
             table_name=table_name,
             values_dict={'active': 0},
             where_dict=where_dict)
@@ -520,6 +521,7 @@ class KRSequenceDatabase:
             'hybrid': organism_dict['hybrid'],
             'other': organism_dict['other'],
             'authority': organism_dict['authority'],
+            'common_name': organism_dict['common_name'],
             'synonymy_check_done': synonymy_check_done
         }
 
@@ -546,7 +548,7 @@ class KRSequenceDatabase:
             if not values_dict[b'synonymy_check_done']:
                 values_dict[b'synonymy_check_done'] = org_dict[b'synonymy_check_done']
 
-            self._db_update('organisms',
+            self.db_update('organisms',
                 values_dict=values_dict,
                 where_dict={'id': org_id})
             already_in_db = True
@@ -612,7 +614,7 @@ class KRSequenceDatabase:
         table_name_list = ['organisms', 'taxonomies']
         column_list = ['organisms.id', 'genus', 'species',
                        'subspecies', 'variety', 'hybrid', 'other', 'authority',
-                       'taxonomy', 'synonymy_check_done']
+                       'taxonomy', 'common_name', 'synonymy_check_done']
         order_by_column_list = ['genus', 'species']
 
         orgs = self._db_select(
@@ -905,7 +907,7 @@ class KRSequenceDatabase:
 
     def update_records(self, values_dict, where_dict):
 
-        self._db_update(
+        self.db_update(
             table_name='records',
             values_dict=values_dict,
             where_dict=where_dict)
@@ -1011,7 +1013,9 @@ class KRSequenceDatabase:
         org = record.annotations['organism']
         org_dict = krbionames.parse_organism_name(org, sep=' ',
             ncbi_authority=False)
-        taxonomy_list = record.annotations['taxonomy']
+        taxonomy_list_temp = record.annotations['taxonomy']
+        taxonomy_list = [('name=' + x) for x in taxonomy_list_temp]
+
         ncbi_tax_id = int(krncbi.get_ncbi_tax_id_for_record(record))
 
         org_id = self.add_organism(
@@ -1150,7 +1154,7 @@ class KRSequenceDatabase:
                 'id': seq_rep_id
             }
 
-            self._db_update(
+            self.db_update(
                 table_name='sequence_representations',
                 values_dict=values_dict,
                 where_dict=where_dict)
@@ -1470,6 +1474,8 @@ class KRSequenceDatabase:
 
         record.annotations[b'gi'] = str(results[b'ncbi_gi'])
         record.annotations[b'organism'] = str(org_flat)
+        record.annotations[b'common_name'] = str(org_dict['common_name'])
+        record.annotations[b'lineage'] = str(org_dict['taxonomy'])
         record.annotations[b'internal_reference'] = str(results[b'internal_reference'])
         record.annotations[b'kr_seq_db_org_id'] = str(results[b'org_id'])
         record.annotations[b'kr_seq_db_id'] = str(results[b'id'])
@@ -1612,7 +1618,7 @@ class KRSequenceDatabase:
 
 #     ##########################################################################
 
-#     x = seq_db._db_update(
+#     x = seq_db.db_update(
 #         table_name='organisms',
 #         values_dict={'subspecies': 'karolis'},
 #         where_dict={'genus': 'Solanum'})
