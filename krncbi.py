@@ -231,24 +231,112 @@ def get_ncbi_tax_id_for_tax_term(email, tax_term):
     return taxid
 
 
-def get_lineage(email, tax_term):
+def get_lineages(email, tax_terms=None, tax_ids=None):
 
     from Bio import Entrez
 
-    taxid = get_ncbi_tax_id_for_tax_term(email, tax_term)
+    if not tax_ids:
+        tax_ids = list()
+        for tax_term in tax_terms:
+            tax_id = get_ncbi_tax_id_for_tax_term(email, tax_term)
+            tax_ids.append(tax_id)
 
-    lineage_list = None
+    clean_tax_ids = list()
+    for ti in tax_ids:
+        clean_tax_ids.append(str(ti))
+
+    Entrez.email = email
+    handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+    records = Entrez.read(handle)
+
+    results = dict()
+
+    for record in records:
+        lineage_list_temp = record['LineageEx']
+        lineage_list = list()
+        for l in lineage_list_temp:
+            lin_item = 'name=' + l['ScientificName'] + ';' + 'rank=' + l['Rank'] + ';' + 'taxid=' + l['TaxId'] + ';'
+            lineage_list.append(lin_item)
+        tax_id = record['TaxId']
+        results[tax_id] = lineage_list
+
+    return results
+
+
+def parse_lineage_string_list(lineage_string_list):
+
+    full_list = list()
+    name_list = list()
+
+    for ls in lineage_string_list:
+        ls_split_1 = ls.split(';')
+        local_dict = dict()
+        for ls1 in ls_split_1:
+            ls_split_2 = ls1.split('=')
+            if ls_split_2[0] == '':
+                continue
+            # print(ls_split_2)
+            key = ls_split_2[0]
+            value = ls_split_2[1]
+            if key == 'name':
+                name_list.append(value)
+            local_dict[key] = value
+        full_list.append(local_dict)
+        #     print(key, value)
+        # print('--- --- --- --- ---')
+
+    return [full_list, name_list]
+
+
+def get_common_names(email, tax_ids=None):
+
+    from Bio import Entrez
+
+    clean_tax_ids = list()
+    for ti in tax_ids:
+        clean_tax_ids.append(str(ti))
+
+    Entrez.email = email
+    handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+    records = Entrez.read(handle)
+
+    results = dict()
+    for record in records:
+        for k in record.keys():
+            # print(k, ' :: ', record[k])
+            # print('--- --- ---')
+            if ('OtherNames' in record.keys()) and ('GenbankCommonName' in record['OtherNames'].keys()):
+                common_name = record['OtherNames']['GenbankCommonName']
+                tax_id = record['TaxId']
+                results[tax_id] = common_name
+        # print('================================================================')
+
+    return results
+
+
+def get_common_name(email, tax_term=None, tax_id=None):
+
+    from Bio import Entrez
+
+    taxid = None
+    if not tax_id:
+        taxid = get_ncbi_tax_id_for_tax_term(email, tax_term)
+    else:
+        taxid = tax_id
+
+    common_name = None
     if taxid:
         Entrez.email = email
         handle = Entrez.efetch('taxonomy', id=str(taxid), retmode="xml")
         record = Entrez.read(handle)[0]
-        lineage_string = record['Lineage']
-        lineage_string = lineage_string.replace(' ', '')
-        lineage_list = lineage_string.split(';')
-        lineage_list = lineage_list[1:]
-        lineage_list.append(tax_term)
 
-    return lineage_list
+        # for k in record['OtherNames'].keys():
+        #     print(k, ' :: ', record['OtherNames'][k])
+        #     print('--- --- ---')
+
+        common_name = record['OtherNames']['GenbankCommonName']
+
+    return common_name
 
 
 # if __name__ == '__main__':
@@ -266,8 +354,13 @@ def get_lineage(email, tax_term):
     # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
     #      'test@test.com'))
 
-    # lineage = get_lineage(email='test@test.com', tax_term='Schraderanthus')
-    # print(lineage)
+    # lineages = get_lineages(email='test@test.com', tax_ids=['52231', '9483'])
+    # for key in lineages.keys():
+    #     parsed = parse_lineage_string_list(lineages[key])
+    #     print(parsed[1])
 
-    # lineage = get_lineage(email='test@test.com', tax_term='Solanum')
-    # print(lineage)
+    # common_name = get_common_name(email='test@test.com', tax_term='Callithrix geoffroyi')
+    # print(common_name)
+
+    # common_names = get_common_names(email='test@test.com', tax_ids=['52231', '9483'])
+    # print(common_names)
