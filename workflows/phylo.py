@@ -174,12 +174,6 @@ if __name__ == '__main__':
 
     ############################################################################
 
-    # Constants
-    FLAT_ID_BOTTOM = 0.85
-    FLAT_ID_TOP = 0.95
-
-    ############################################################################
-
     # Get configuration information
     CFG = ConfigParser.SafeConfigParser(allow_no_value=True)
     CFG.optionxform=str
@@ -193,6 +187,8 @@ if __name__ == '__main__':
     FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
     FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
     FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
+    FLAT_ID_BOTTOM = 0.85
+    FLAT_ID_TOP = 0.95
 
     # Align options
     ALN_ALN_PROG = CFG.get('Align', 'align_program')
@@ -221,7 +217,19 @@ if __name__ == '__main__':
             HACKS[hack] = None
 
     # Taxa
-    tax_temp = CFG.items('Taxa')
+    out_temp = CFG.items('Outgroup Taxa')
+    out_temp = [x[0] for x in out_temp]
+    OUT_TAX_IDS = list()
+    for out in out_temp:
+        if out.isdigit():
+            OUT_TAX_IDS.append(out)
+        else:
+            out_id = list(krncbi.esearch(out, 'taxonomy', EMAIL))[0]
+            OUT_TAX_IDS.append(str(out_id))
+            # msg = 'NCBI taxonomy ID for ' + out + ' is ' + str(out_id)
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+    tax_temp = CFG.items('Main Taxa')
     tax_temp = [x[0] for x in tax_temp]
     TAX_IDS = list()
     for tax in tax_temp:
@@ -232,6 +240,8 @@ if __name__ == '__main__':
             TAX_IDS.append(str(tax_id))
             # msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
             # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+    ALL_TAX_IDS = OUT_TAX_IDS + TAX_IDS
 
     # Organism name resolution
     SYN = list()
@@ -319,6 +329,21 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    # Reset database
+    if 'reset' in COMMANDS:
+        msg = 'Resetting database.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        os.remove(PRJ_DIR_PATH + 'db.sqlite3')
+        KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
+
+    ############################################################################
+
+    # Autopilot
+    if 'autopilot' in COMMANDS:
+        COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate'])
+
+    ############################################################################
+
     # Search genbank
     if 'search' in COMMANDS:
 
@@ -331,7 +356,7 @@ if __name__ == '__main__':
             #         kr_seq_db_object=DB,
             #         loci=LOCI,
             #         locus_name=locus_name,
-            #         ncbi_tax_ids=TAX_IDS,
+            #         ncbi_tax_ids=ALL_TAX_IDS,
             #         max_seq_length=MAX_SEQ_LENGTH,
             #         email=EMAIL,
             #         log_file_path=LFP,
@@ -346,7 +371,7 @@ if __name__ == '__main__':
                 email=EMAIL,
                 loci=LOCI,
                 locus_name=locus_name,
-                ncbi_tax_ids=TAX_IDS,
+                ncbi_tax_ids=ALL_TAX_IDS,
                 max_seq_length=MAX_SEQ_LENGTH,
                 dnld_dir_path=DNLD_DIR_PATH)
 
@@ -357,8 +382,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        # msg = 'Resolving organism names.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Resolving organism names.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         ########################################################################
 
@@ -367,8 +392,8 @@ if __name__ == '__main__':
 
         if len(SYN) > 0:
 
-            # msg = 'Loading synonymy table and NCBI organism name list.'
-            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            msg = 'Loading synonymy table and NCBI organism name list.'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             ncbi_names_table = krio.read_table_file(
                 path=ORGN_DIR_PATH + 'ncbi_tax_names',
@@ -429,8 +454,8 @@ if __name__ == '__main__':
 
         if 'tgrc' in HACKS.keys():
 
-            # msg = 'Using "Tomato Genetics Resource Center" to resolve organism names.'
-            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            msg = 'Using "Tomato Genetics Resource Center" to resolve organism names.'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             wf.rename_tgrc_organisms(
                 kr_seq_db_object=DB,
@@ -441,8 +466,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        # msg = 'Checking for record -> taxon mappings.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Checking for record -> taxon mappings.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         wf.rename_organisms_with_record_taxon_mappings(
             kr_seq_db_object=DB,
@@ -454,8 +479,8 @@ if __name__ == '__main__':
 
         ########################################################################
 
-        # msg = 'Checking for tax_id -> taxon mappings and synonymy.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Checking for tax_id -> taxon mappings and synonymy.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         wf.rename_organisms_using_taxids(
             kr_seq_db_object=DB,
@@ -478,12 +503,15 @@ if __name__ == '__main__':
         ########################################################################
 
         krcl.clear_line()
-        # msg = 'Organism name check: done.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Organism name check: done.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         ########################################################################
 
         # Get common names and full lineage information
+
+        msg = 'Downloading lineage information and common names.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         organisms = DB.get_organisms(where_dict={'active': 1})
         organism_count = len(organisms)
@@ -495,9 +523,6 @@ if __name__ == '__main__':
 
         common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
         lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
-
-        # for k in common_names.keys():
-        #     print(k, common_names[k])
 
         for i, org_dict in enumerate(organisms):
 
@@ -521,13 +546,11 @@ if __name__ == '__main__':
             else:
                 common_names_str = org_flat
 
-            # print(org_flat, '::', common_names_str)
-
-            # krcl.print_progress(
-            #     current=i+1, total=organism_count, length=0,
-            #     prefix=krother.timestamp() + ' ',
-            #     postfix=' - ' + org_flat + ' -> ' + common_names_str,
-            #     show_bar=False)
+            krcl.print_progress(
+                current=i+1, total=organism_count, length=0,
+                prefix=krother.timestamp() + ' ',
+                postfix=' - ' + org_flat + ' -> ' + common_names_str + '\n',
+                show_bar=False)
 
             DB.db_update(
                 table_name='organisms',
@@ -564,8 +587,8 @@ if __name__ == '__main__':
     # Extract loci
     if 'extract_loci' in COMMANDS:
 
-        # msg = 'Extracting loci.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Extracting loci.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         for locus_name in LOCI.keys():
 
@@ -573,8 +596,8 @@ if __name__ == '__main__':
             if len(ln_split) > 1 and ln_split[1] == 'blast':
                 continue
 
-            # msg = locus_name + ' - loading records, this may take a bit.'
-            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dict = LOCI[locus_name]
 
@@ -601,16 +624,16 @@ if __name__ == '__main__':
 
             bad_list = rej_gi_list + no_feature_gi_list
 
-            # print()
+            print()
 
             for bad in bad_list:
 
                 bad_gi = bad[0]
                 delete_note = bad[1]
 
-                # msg = 'inactivating:' + \
-                # ' gi:' + str(bad_gi) + ' note:' + delete_note
-                # write_log(msg, LFP)
+                msg = 'inactivating:' + \
+                ' gi:' + str(bad_gi) + ' note:' + delete_note
+                write_log(msg, LFP)
 
                 where_dict = {'ncbi_gi': bad_gi}
 
@@ -639,13 +662,6 @@ if __name__ == '__main__':
                             internal_reference=rec.annotations['internal_reference'],
                             notes=blacklist_notes)
 
-                # DB.delete_records(
-                #     where_dict=where_dict,
-                #     blacklist=True,
-                #     blacklist_notes=blacklist_notes)
-
-                # DB.delete_orphaned_organisms()
-                # DB.delete_orphaned_taxonomies()
             DB.save()
 
     ############################################################################
@@ -771,13 +787,13 @@ if __name__ == '__main__':
     # Produce one locus per organism
     if 'flatten' in COMMANDS:
 
-        # msg = 'Producing one locus per organism.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Producing one locus per organism.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         for locus_name in LOCI.keys():
 
-            # msg = locus_name
-            # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
             locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
             krio.prepare_directory(locus_dir_path)
@@ -795,35 +811,46 @@ if __name__ == '__main__':
 
             ###
 
-            # msg = 'Producing deduplicated set of reference records.'
-            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
-
+            ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
             reference_records = list()
 
-            for record in records:
-                rec_trimmed = wf.trim_record_to_locus(
-                    record=record,
-                    locus_name=locus_name)
-                reference_records.append(rec_trimmed)
+            if os.path.exists(ref_recs_file_path):
 
-            reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
-            reference_records = reference_records[0:min(50, len(reference_records))]
-            reference_records = kralign.dereplicate(
-                records=reference_records,
-                threshold=0.95,
-                unknown='N',
-                # key='accession',  # this works because trim_record_to_locus makes gi the accession
-                key='gi',
-                aln_program='mafft',
-                aln_executable='mafft',
-                aln_options='--auto --reorder --adjustdirection')
+                msg = 'Reading previously produced reference sequences.'
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+                reference_records = krbioio.read_sequence_file(
+                    file_path=ref_recs_file_path,
+                    file_format='fasta',
+                    ret_type='list')
+            else:
+
+                msg = 'Producing deduplicated set of reference sequences.'
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+                for record in records:
+                    rec_trimmed = wf.trim_record_to_locus(
+                        record=record,
+                        locus_name=locus_name)
+                    reference_records.append(rec_trimmed)
+
+                reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
+                reference_records = reference_records[0:min(50, len(reference_records))]
+                reference_records = kralign.dereplicate(
+                    records=reference_records,
+                    threshold=0.95,
+                    unknown='N',
+                    key='gi',
+                    aln_program='mafft',
+                    aln_executable='mafft',
+                    aln_options='--auto --reorder --adjustdirection')
+
+                krbioio.write_sequence_file(
+                    records=reference_records,
+                    file_path=ref_recs_file_path,
+                    file_format='fasta')
 
             ###
-
-            krbioio.write_sequence_file(
-                records=reference_records,
-                file_path=ORG_LOC_DIR_PATH + locus_name + '__reference.fasta',
-                file_format='fasta')
 
             org_locus_dict = dict()
             for record in records:
@@ -858,16 +885,11 @@ if __name__ == '__main__':
 
                 org_records = org_locus_dict[org_id]
 
-                # krcl.print_progress(
-                #     current=i+1, total=org_count, length=0,
-                #     prefix=krother.timestamp() + ' ',
-                #     postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
-                #     show_bar=False)
-
-                # if (org_flat != 'Psephotus haematonotus') or (org_flat != 'Anodorhynchus hyacinthinus'):
-                # if (org_flat != 'Psephotus haematonotus'):
-                # if (org_flat != 'Anodorhynchus hyacinthinus'):
-                    # continue
+                krcl.print_progress(
+                    current=i+1, total=org_count, length=0,
+                    prefix=krother.timestamp() + ' ',
+                    postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
+                    show_bar=False)
 
                 aln_name = locus_name + '__' + org_flat.replace(' ', '_')
 
@@ -899,7 +921,7 @@ if __name__ == '__main__':
                     redo_aln = False
 
                     if len(flat_rec_list) > 1:
-                        # print('More than one flat record!')
+                        print('More than one flat record!')
                         pass
                     else:
 
@@ -914,7 +936,6 @@ if __name__ == '__main__':
 
                         if (not seq_file_exists) and (not aln_file_exists):
                             redo_aln = True
-                            # print('\n', org_flat, '\n')
 
                         existing_record_list = list()
 
@@ -925,14 +946,10 @@ if __name__ == '__main__':
                                 ret_type='list',
                                 key='gi')
 
-                            # os.remove(seq_file_path)
-
                         elif aln_file_exists:
                             existing_record_list = krbioio.read_alignment_file(
                                 file_path=aln_file_path,
                                 file_format='phylip-relaxed')
-
-                            # os.remove(aln_file_path)
 
                         gis_in_file = list()
                         if existing_record_list:
@@ -1032,9 +1049,9 @@ if __name__ == '__main__':
 
                                 #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
 
-                                # msg = 'inactivating:' + \
-                                # ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
-                                # write_log(msg, LFP)
+                                msg = 'inactivating:' + \
+                                ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
+                                write_log(msg, LFP)
 
                                 where_dict = {'id': del_rec_id}
 
@@ -1091,16 +1108,15 @@ if __name__ == '__main__':
                                 min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
                             if new_aln[1] < FLAT_ID_BOTTOM:
-                                # msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
-                                # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
+                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
-                                pass
-
-                            # print('\n', new_aln, '\n')
+                                if 'align' in COMMANDS:
+                                    COMMANDS.remove('align')
+                                if 'concatenate' in COMMANDS:
+                                    COMMANDS.remove('concatenate')
 
                             new_aln = new_aln[0]
-
-                        # print('\n', new_aln, '\n')
 
                         wf.update_record_alignment(
                             rec_id=flat_rec_id,
@@ -1160,9 +1176,6 @@ if __name__ == '__main__':
                                 records=[new_rec],
                                 file_path=seq_file_path,
                                 file_format='fasta')
-
-                    # elif redo_aln:
-                    #     pass
 
                     if flat_locus_produced:
 
@@ -1241,10 +1254,13 @@ if __name__ == '__main__':
                         if aln:
 
                             if aln[1] < FLAT_ID_BOTTOM:
-                                # msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
-                                # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
+                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
-                                pass
+                                if 'align' in COMMANDS:
+                                    COMMANDS.remove('align')
+                                if 'concatenate' in COMMANDS:
+                                    COMMANDS.remove('concatenate')
 
                             aln = aln[0]
 
@@ -1265,10 +1281,6 @@ if __name__ == '__main__':
                                 seq_rep_list = DB.produce_seq_edits(
                                     s1=str(seq).upper(),
                                     s2=str(ar.seq).upper())
-
-                                # print(seq[0:100])
-                                # print(str(ar.seq).upper()[0:100])
-                                # print(seq_rep)
 
                                 rec_id = DB.db_get_row_ids(
                                     table_name='records',
@@ -1293,10 +1305,6 @@ if __name__ == '__main__':
                                 resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
                             new_seq_str = str(consensus)
-
-                            # print(consensus)
-
-                            # print('--- --- --- --- --- --- --- ---')
 
                     else:
 
@@ -1348,28 +1356,26 @@ if __name__ == '__main__':
 
                 DB.save()
 
-                # print('--- --- --- --- --- --- --- --- --- --- --- --- --- ---')
-
             ####################################################################
 
             DB.save()
 
-            # print()
+            print()
 
     ############################################################################
 
     # Align sequences
     if 'align' in COMMANDS:
 
-        # msg = 'Aligning sequences.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+        msg = 'Preparing inter-taxon locus alignments.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         krio.prepare_directory(ALN_DIR_PATH)
 
         for locus_name in LOCI.keys():
 
-            # msg = locus_name
-            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            msg = 'Aligning locus ' + locus_name + '.'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             # Get all flattened records for current locus
             records_flat = DB.get_records_with_annotations(
@@ -1386,6 +1392,16 @@ if __name__ == '__main__':
                 lineage = r.annotations['lineage'].split(',')
                 lineage_parsed = krncbi.parse_lineage_string_list(
                     lineage_string_list=lineage)[0]
+
+                outgroup = ''
+                lineage_taxids = [x['taxid'] for x in lineage_parsed]
+                org_id = int(r.annotations['kr_seq_db_org_id'])
+                org_dict = DB.get_organisms(where_dict={'organisms.id': org_id})[0]
+                org_taxids = org_dict['ncbi_tax_ids']
+                lineage_taxids = org_taxids + lineage_taxids
+                for lineage_taxid in lineage_taxids:
+                    if str(lineage_taxid) in OUT_TAX_IDS:
+                        outgroup = '||OUTGROUP'
 
                 name_terms = list()
                 for term in ALN_TAX_NAME_LIST:
@@ -1406,7 +1422,7 @@ if __name__ == '__main__':
 
                 # r.id = binomial + '||' + common + '||' + name_term
 
-                r.id = '||'.join(name_terms)
+                r.id = '||'.join(name_terms) + outgroup
 
                 r.description = ''
                 r.name = ''
@@ -1429,8 +1445,8 @@ if __name__ == '__main__':
     # Concatenate alignments
     if 'concatenate' in COMMANDS:
 
-        # msg = 'Concatenating alignments.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=1)
+        msg = 'Concatenating alignments.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         aln_list = list()
         name_list = list()
@@ -1438,8 +1454,8 @@ if __name__ == '__main__':
 
         for locus_name in LOCI.keys():
 
-            # msg = locus_name
-            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            msg = 'Loading alignment for locus ' + locus_name + '.'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
 
@@ -1455,7 +1471,7 @@ if __name__ == '__main__':
 
         # Produce presence/absence matrix
         presence_list = list()
-        length_list = list()
+        # length_list = list()
         for p in range(0, len(aln_and_name_list)):
             presence_list.append('0')
         matrix = dict()
@@ -1497,7 +1513,19 @@ if __name__ == '__main__':
 
         ########################################################################
 
+        outgroup_taxa = list()
+        for a in aln:
+            last_id_term = a.id.split('||')[-1]
+            if last_id_term == 'OUTGROUP':
+                outgroup_taxa.append(a.id)
+
+        ########################################################################
+
         # Write partitions files
+
+        msg = 'Writing locus partition files.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
         partitions_output_file = ALN_DIR_PATH + 'locus-partitions' + '.csv'
         raxml_partitions_output_file = ALN_DIR_PATH + 'locus-partitions-raxml' + '.txt'
         f_part = open(partitions_output_file, 'wb')
@@ -1515,6 +1543,10 @@ if __name__ == '__main__':
         ########################################################################
 
         # Write RAxML commands file
+
+        msg = 'Writing RAxML input files.'
+        write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
         rand_seed = str(random.randrange(0, 1000000000))
         raxml_dir = ALN_DIR_PATH + 'RAxML_' + rand_seed
         raxml_commands_file = ALN_DIR_PATH + 'raxml-commands.txt'
@@ -1529,10 +1561,14 @@ if __name__ == '__main__':
         raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
         f_raxml.write(raxml_line_3)
 
+        outgroup_taxa_raxml = ','.join(outgroup_taxa)
+        raxml_line_4 = '-o "' + outgroup_taxa_raxml + '" \\\n'
+        f_raxml.write(raxml_line_4)
+
         krio.prepare_directory(raxml_dir)
 
-        raxml_line_4 = '-w ' + raxml_dir + ' \\\n'
-        f_raxml.write(raxml_line_4)
+        raxml_line_5 = '-w ' + raxml_dir + ' \\\n'
+        f_raxml.write(raxml_line_5)
 
         raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T 4 \\\n-N 1 \\\n'
         f_raxml.write(raxml_line_6)

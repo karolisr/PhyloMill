@@ -22,9 +22,9 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email,
     query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
                 seq_length_str
 
-    # msg = 'ENTREZ query: ' + query_str
-    # write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
-    #     to_file=True, to_screen=False)
+    msg = 'ENTREZ query: ' + query_str
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
+        to_file=True, to_screen=False)
 
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
         email=email)
@@ -56,9 +56,9 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
     ncbi_db = LOCI[locus_name]['database']
     query_term_str = LOCI[locus_name]['query']
 
-    # msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
-    #       locus_name + '.'
-    # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+    msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
+          locus_name + '.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
     gis = search_genbank(
         ncbi_db=ncbi_db,
@@ -75,8 +75,8 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
     #     if gi not in LOCI[locus_name]['bad_gis']:
     #         gis_clean.append(gi)
 
-    # msg = 'Found ' + str(len(gis_clean)) + ' records.'
-    # write_log(msg, LFP)
+    msg = 'Found ' + str(len(gis_clean)) + ' records.'
+    write_log(msg, LFP)
 
     gis_in_blacklist = list()
     gis_good = list()
@@ -92,9 +92,9 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         else:
             gis_good.append(gi)
 
-    # msg = 'There are ' + str(len(gis_in_blacklist)) + \
-    #       ' blacklisted records.'
-    # write_log(msg, LFP)
+    msg = 'There are ' + str(len(gis_in_blacklist)) + \
+          ' blacklisted records.'
+    write_log(msg, LFP)
 
     gis_in_db = list()
     gis_new = list()
@@ -110,16 +110,16 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         else:
             gis_new.append(gi)
 
-    # msg = 'There are ' + str(len(gis_new)) + \
-    #       ' new records.'
-    # write_log(msg, LFP)
+    msg = 'There are ' + str(len(gis_new)) + \
+          ' new records.'
+    write_log(msg, LFP)
 
     if len(gis_new) > 0:
 
-        # msg = 'Downloading new records.'
-        # write_log(msg, LFP)
+        msg = 'Downloading new records.'
+        write_log(msg, LFP)
 
-        # print('')
+        print('')
 
         timestamp = krother.timestamp()
         timestamp = timestamp.replace('-', '_')
@@ -135,7 +135,7 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
             db=ncbi_db,
             entrez_email=EMAIL)
 
-        # print('')
+        print('')
 
         records_new = krbioio.read_sequence_file(
             file_path=gb_file_path,
@@ -147,8 +147,8 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
         if len(records_to_add) > 0:
 
-            # msg = 'Adding downloaded records to database.'
-            # write_log(msg, LFP)
+            msg = 'Adding downloaded records to database.'
+            write_log(msg, LFP)
 
             for record in records_to_add:
                 DB.add_genbank_record(
@@ -225,10 +225,10 @@ def rename_organisms_with_record_taxon_mappings(
 
             if org_flat != acc_name_flat:
 
-                # msg = 'renaming: ' + org_flat + ' -> ' + acc_name_flat + \
-                # ' tax_id:' + str(tax_id) + ' gi:' + str(gi_mapped) + \
-                # ' note:' + acc_name['status']
-                # write_log(msg, log_file_path)
+                msg = 'renaming: ' + org_flat + ' -> ' + acc_name_flat + \
+                ' tax_id:' + str(tax_id) + ' gi:' + str(gi_mapped) + \
+                ' note:' + acc_name['status']
+                write_log(msg, log_file_path)
 
                 pass
 
@@ -332,11 +332,11 @@ def rename_organisms_using_taxids(
         org_flat = krbionames.flatten_organism_name(
             parsed_name=org_dict, sep=' ')
 
-        # krcl.print_progress(
-        #     current=i+1, total=organism_count, length=0,
-        #     prefix=krother.timestamp() + ' ',
-        #     postfix=' - ' + org_flat,
-        #     show_bar=False)
+        krcl.print_progress(
+            current=i+1, total=organism_count, length=0,
+            prefix=krother.timestamp() + ' ',
+            postfix=' - ' + org_flat,
+            show_bar=False)
 
         tax_id = None
         tax_id_list = org_dict['ncbi_tax_ids']
@@ -455,9 +455,9 @@ def rename_organisms_using_taxids(
 
             if org_flat != acc_name_flat:
 
-                # msg = 'renaming: ' + org_flat + ' -> ' + acc_name_flat + \
-                # ' tax_id:' + str(tax_id) + ' note:' + acc_name['status']
-                # write_log(msg, log_file_path)
+                msg = 'renaming: ' + org_flat + ' -> ' + acc_name_flat + \
+                ' tax_id:' + str(tax_id) + ' note:' + acc_name['status']
+                write_log(msg, log_file_path)
 
                 pass
 
@@ -500,11 +500,9 @@ def rename_organisms_using_taxids(
 
         elif deleted:
 
-            # msg = 'tax_id:' + str(tax_id) + ', status:inactivating : ' + org_flat
-
-            # msg = 'inactivating: ' + org_flat + \
-            # ' tax_id:' + str(tax_id) + ' note:' + delete_note
-            # write_log(msg, log_file_path)
+            msg = 'inactivating: ' + org_flat + \
+            ' tax_id:' + str(tax_id) + ' note:' + delete_note
+            write_log(msg, log_file_path)
 
             where_dict = {'org_id': org_id}
 
@@ -512,10 +510,6 @@ def rename_organisms_using_taxids(
                 'records', where_dict=where_dict)
 
             blacklist_notes = delete_note + ' ' + org_flat
-
-            # kr_seq_db_object.delete_records(
-            #     where_dict=where_dict, blacklist=True,
-            #     blacklist_notes=blacklist_notes)
 
             kr_seq_db_object.set_inactive(
                 table_name='records',
@@ -538,13 +532,9 @@ def rename_organisms_using_taxids(
 
             where_dict = {'id': org_id}
 
-            # kr_seq_db_object.delete_organisms(where_dict=where_dict)
-
             kr_seq_db_object.set_inactive(
                 table_name='organisms',
                 where_dict=where_dict)
-
-            # kr_seq_db_object.delete_orphaned_taxonomies()
 
         kr_seq_db_object.save()
 
@@ -724,9 +714,6 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
     from krpy import kralign
     from krpy.krother import write_log
 
-    # msg = 'msg'
-    # write_log(msg, log_file_path)
-
     strategies = locus_dict['strategies']
     locus_name = locus_dict['name']
     # locus_short_name = locus_dict['short_name']
@@ -741,13 +728,16 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
 
     prelim_record_feat_loc_list = list()
 
+    msg = 'Extracting records.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+
     for i, record in enumerate(records):
 
-        # krcl.print_progress(
-        #     current=i+1, total=records_count, length=0,
-        #     prefix=krother.timestamp() + ' ',
-        #     postfix='',
-        #     show_bar=False)
+        krcl.print_progress(
+            current=i+1, total=records_count, length=0,
+            prefix=krother.timestamp() + ' ',
+            postfix='',
+            show_bar=False)
 
         rec_id = int(record.annotations['kr_seq_db_id'])
         gi = int(record.annotations['gi'])
@@ -914,36 +904,19 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
             if len(trimmed_rec.seq) < l_ml:
                 no_feature_record_gi_list.append(gi)
             else:
-                # print(trimmed_rec.seq)
                 if loc[3] and loc[3] < 0:
                     trimmed_rec = trimmed_rec.reverse_complement()
-                # print(loc)
-                # print(trimmed_rec.seq)
-                # print('---')
                 trimmed_rec.annotations['organism'] = record.annotations['organism']
                 trimmed_rec.annotations['gi'] = record.annotations['gi']
                 trimmed_records.append(trimmed_rec)
 
-    # msg = 'Filtering extracted records.'
-    # write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
+    msg = 'Filtering extracted records.'
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
 
-    # min_clust_size = min((records_count * 0.02), 15)
+    # Produce seeds. Longest records from each genus.
+    msg = '\tPreparing seed sequences.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
 
-    ### ###
-
-    # min_clust_size = 3
-
-    # acc_rej_gi_dict = accept_records_by_similarity(
-    #     records=trimmed_records,
-    #     temp_dir=temp_dir,
-    #     min_clust_size=min_clust_size,
-    #     identity_threshold=0.70)
-
-    ### ###
-
-    # Produce seeds. Longest records rom each genus.
-    # msg = '\tPreparing seed sequences.'
-    # write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
     seed_records_dict = dict()
     for r in trimmed_records:
         genus = r.annotations['organism'].split(' ')[0]
@@ -976,26 +949,16 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
                 if gi in clusters[key]:
                     seed_records.append(sr)
 
-        # print(key, clust_size)
-        # print('--- --- --- --- ---')
-        # print(clusters[key])
-        # print('=== === === === ===')
-
-    # msg = '\tFiltering.'
-    # write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    msg = '\tFiltering.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
         seeds=seed_records,
         identity_threshold=0.80)
 
-    # import sys
-    # sys.exit(0)
-
-    ### ###
-
-    # msg = 'Annotating sequence features in database.'
-    # write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    msg = 'Annotating sequence features in database.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -1006,7 +969,6 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
     for acc in acc_gi_list:
         if acc[0] == '-':
             rev_comp_gi_list.append(int(acc[1]))
-            # print(acc)
 
     prfl_count = len(prelim_record_feat_loc_list)
     for i, r in enumerate(prelim_record_feat_loc_list):
@@ -1015,11 +977,11 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
         rec_id = r['rec_id']
         gi = r['gi']
 
-        # krcl.print_progress(
-        #     current=i+1, total=prfl_count, length=0,
-        #     prefix=krother.timestamp() + ' ',
-        #     postfix='',
-        #     show_bar=False)
+        krcl.print_progress(
+            current=i+1, total=prfl_count, length=0,
+            prefix=krother.timestamp() + ' ',
+            postfix='',
+            show_bar=False)
 
         for loc in location_list_deduplicated:
 
@@ -1096,7 +1058,7 @@ def improve_alignment_using_reference_records(
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
-    min_locus_sequence_identity_range=[0.90, 0.98]):
+    min_locus_sequence_identity_range=[0.90, 0.95]):
 
     from Bio.Align import MultipleSeqAlignment
 
@@ -1138,9 +1100,9 @@ def improve_alignment_using_reference_records(
             end_gap_id=0.0,
             free_end_gaps=True)
 
-        # msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
-        # write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
-        #     to_file=True, to_screen=True)
+        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+            to_file=True, to_screen=True)
 
         ref_aln_record_list = list()
         for r in ref_aln:
@@ -1165,8 +1127,6 @@ def improve_alignment_using_reference_records(
             break
 
     if not new_aln:
-
-        # ref_alignments = sorted(ref_alignments, key=lambda x: x[0], reverse=True)
         new_aln = ref_alignments[0]
 
     # new_aln is a list: [aln, identity]
@@ -1189,8 +1149,6 @@ def flatten_locus(
 
     locus_name = locus_dict['name']
 
-    # print('--- --- --- --- --- --- ---')
-
     records_trimmed = list()
 
     if already_trimmed:
@@ -1207,8 +1165,6 @@ def flatten_locus(
     aln = None
 
     if len(records_trimmed) > 1:
-
-        # print('\n', len(records_trimmed), '\n')
 
         aln = kralign.align(
             records=records_trimmed,
@@ -1227,9 +1183,9 @@ def flatten_locus(
             end_gap_id=0.0,
             free_end_gaps=True)
 
-        # msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
-        # write_log(msg, log_file_path, newlines_before=1, newlines_after=0,
-        #     to_file=True, to_screen=True)
+        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
+        write_log(msg, log_file_path, newlines_before=1, newlines_after=0,
+            to_file=True, to_screen=True)
 
         aln = [aln, ident]
 
@@ -1438,11 +1394,11 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
         if not voucher:
             continue
 
-        # krcl.print_progress(
-        #     current=i+1, total=tgrc_count, length=0,
-        #     prefix=krother.timestamp() + ' ',
-        #     postfix= ' - ' + voucher + ' - ' + org_flat,
-        #     show_bar=False)
+        krcl.print_progress(
+            current=i+1, total=tgrc_count, length=0,
+            prefix=krother.timestamp() + ' ',
+            postfix= ' - ' + voucher + ' - ' + org_flat,
+            show_bar=False)
 
         tgrc_resolved = None
         if voucher in tgrc_cache.keys():
@@ -1485,10 +1441,10 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
 
         if org_flat != new_name_flat:
 
-            # msg = 'renaming: ' + org_flat + ' -> ' + new_name_flat + \
-            # ' tax_id:' + str(tax_id) + ' gi:' + str(gi) + ' voucher:' + \
-            # str(voucher) + ' note:tgrc'
-            # write_log(msg, log_file_path)
+            msg = 'renaming: ' + org_flat + ' -> ' + new_name_flat + \
+            ' tax_id:' + str(tax_id) + ' gi:' + str(gi) + ' voucher:' + \
+            str(voucher) + ' note:tgrc'
+            write_log(msg, log_file_path)
 
             pass
 
