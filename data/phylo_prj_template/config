@@ -14,16 +14,17 @@ clustalo_executable = clustalo
 
 tgrc = No
 
-[Taxa]
-
 # Taxa can be NCBI "Taxonomy IDs" or a recognized taxonomic name.
 
-### TAXA ###
+[Outgroup Taxa]
 
 # Callithrix geoffroyi
 52231
 # Callithrix jacchus
 9483
+
+[Main Taxa]
+
 # Gorilla gorilla
 9593
 # Homo sapiens
@@ -60,7 +61,7 @@ skip_previously_synonymized = Yes
 
 COI
 RAG1
-NADH2
+CCR2
 
 [Flatten]
 
@@ -90,4 +91,4 @@ align_program_options = --genafpair --maxiterate 1000 --nuc --reorder --thread 4
 
 # scientific, common
 
-taxon_name = scientific, order, common
+taxon_name = scientific, family, common

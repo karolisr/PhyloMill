@@ -1,9 +1,9 @@
-# cytb (cytochrome b) mitochondrial
+# CCR2 chemokine (C-C motif) receptor 2 genomic
 
-[cytb]
+[CCR2]
 
 database = nuccore
-query = cytb[Title] OR cytochrome b[Title]
+query = CCR2[Title] NOT "promoter region"[Title]
 
 [1]
 
@@ -11,14 +11,14 @@ query = cytb[Title] OR cytochrome b[Title]
 locus_relative_position = 0
 
 # gene, mRNA, CDS, etc.
-feature_type = gene
+feature_type = mRNA
 
 # gene, product, etc.
-qualifier_label = gene
+qualifier_label = product
 
 # GBSSI, waxy, granule bound starch synthase
 # Alternative values can be separated by a vertical bar '|'
-qualifier_value = cytb|cytochrome b
+qualifier_value = CCR2
 
 # Yes or No
 #   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
@@ -31,7 +31,7 @@ regex = No
 strict_value_match = No
 
 # minimum length of the feature being extracted
-min_length = 100
+min_length = 200
 
 # extract more to the left and to the right of the feature
 extra_length = 0
@@ -45,11 +45,11 @@ locus_relative_position = 0
 feature_type = CDS
 
 # gene, product, etc.
-qualifier_label = gene
+qualifier_label = product
 
 # GBSSI, waxy, granule bound starch synthase
 # Alternative values can be separated by a vertical bar '|'
-qualifier_value = cytb|cytochrome b
+qualifier_value = CCR2
 
 # Yes or No
 #   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
@@ -62,7 +62,38 @@ regex = No
 strict_value_match = No
 
 # minimum length of the feature being extracted
-min_length = 100
+min_length = 200
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+
+[3]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 0
+
+# gene, mRNA, CDS, etc.
+feature_type = gene
+
+# gene, product, etc.
+qualifier_label = gene
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = CCR2
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = No
+
+# minimum length of the feature being extracted
+min_length = 200
 
 # extract more to the left and to the right of the feature
 extra_length = 0
