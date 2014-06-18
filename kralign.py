@@ -439,7 +439,7 @@ def consensus(
             col_str_new = col_str_new.replace('N', '')
 
         site = unknown
-        if col_str_new == unknown:
+        if (col_str_new == unknown) or (col_str_new == 'N'):
             site = unknown
         elif col_str_new == kriupac.IUPAC_DNA_STRING:
             site = unknown
