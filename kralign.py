@@ -1,4 +1,6 @@
-# from __future__ import print_function
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
 # from __future__ import unicode_literals
 
 
@@ -139,24 +141,234 @@ def align(records, program, options='', program_executable=''):
     return alignment
 
 
-def pairwise_identity(
+# def pairwise_identity(
+
+#     alignment,
+#     unknown_letters=set(['N']),
+#     unknown_id=0.0,
+#     free_unknowns=True,
+#     gap_id=0.0,
+#     free_gaps=True,
+#     end_gap_id=0.0,
+#     free_end_gaps=True):
+
+#     import sys
+
+#     from krpy import kriupac
+
+#     if len(alignment) != 2:
+#         print('Alignment must contain exactly two sequences.')
+#         sys.exit(1)
+
+#     end_gap_letter = '#'
+#     col_count = alignment.get_alignment_length()
+
+#     # Produce a list of string representations of the sequences in alignment.
+#     # Leading and trailing gaps will be replaced with term_gap_letter.
+#     aln_seq_str_list = list()
+#     for aln_seq in alignment:
+#         aln_str = str(aln_seq.seq)
+#         aln_str_l_strip = aln_str.lstrip(kriupac.IUPAC_DNA_GAPS_STRING)
+#         left_gap_count = len(aln_str) - len(aln_str_l_strip)
+#         aln_str_l_r_strip = aln_str_l_strip.rstrip(kriupac.IUPAC_DNA_GAPS_STRING)
+#         right_gap_count = len(aln_str_l_strip) - len(aln_str_l_r_strip)
+#         aln_str_term_gaps = left_gap_count * end_gap_letter + aln_str_l_r_strip + right_gap_count * end_gap_letter
+#         aln_seq_str_list.append(aln_str_term_gaps)
+
+#     # Produce a list of alignment column strings.
+#     aln_column_str_list = list()
+#     for col_idx in range(0, col_count):
+#         aln_column_str = ''
+#         for aln_seq_str in aln_seq_str_list:
+#             aln_column_str = aln_column_str + aln_seq_str[col_idx]
+#         aln_column_str_list.append(aln_column_str)
+
+#     # print('--- --- --- --- --- --- --- --- --- --- --- ---')
+
+#     score_list = list()
+#     weights_list = list()
+
+#     for col_idx in range(0, col_count):
+#         col_str = aln_column_str_list[col_idx]
+
+#         l1 = col_str[0]
+#         l2 = col_str[1]
+
+#         if l1 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
+#             l1 = kriupac.IUPAC_DNA_DICT_REVERSE[l1]
+
+#         if l2 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
+#             l2 = kriupac.IUPAC_DNA_DICT_REVERSE[l2]
+
+#         l1 = set(l1)
+#         l2 = set(l2)
+
+#         #
+
+#         end_gap_in_l1 = False
+#         end_gap_in_l2 = False
+#         end_gap_in_col = False
+
+#         if end_gap_letter in l1:
+#             end_gap_in_l1 = True
+#         if end_gap_letter in l2:
+#             end_gap_in_l2 = True
+
+#         if end_gap_in_l1 or end_gap_in_l2:
+#             end_gap_in_col = True
+
+#         #
+
+#         gap_in_l1 = False
+#         gap_in_l2 = False
+#         gap_in_col = False
+
+#         for g in list(kriupac.IUPAC_DNA_GAPS):
+
+#             if g in l1:
+#                 gap_in_l1 = True
+#             if g in l2:
+#                 gap_in_l2 = True
+
+#         if gap_in_l1 or gap_in_l2:
+#             gap_in_col = True
+
+#         #
+
+#         unknown_in_l1 = False
+#         unknown_in_l2 = False
+#         unknown_in_col = False
+
+#         for u in list(unknown_letters):
+
+#             if u in l1:
+#                 unknown_in_l1 = True
+#             if u in l2:
+#                 unknown_in_l2 = True
+
+#         if unknown_in_l1 or unknown_in_l2:
+#             unknown_in_col = True
+
+#         #
+
+#         score = 0.0
+#         weight = 0.0
+
+#         if end_gap_in_col and gap_in_col:
+#             weight = 0.0
+
+#         elif unknown_in_l1 and unknown_in_l2:
+#             weight = 0.0
+
+#         elif not free_end_gaps and end_gap_in_col:
+#             score = end_gap_id
+#             weight = 1.0
+
+#         elif not free_gaps and gap_in_col:
+#             score = gap_id
+#             weight = 1.0
+
+#         elif not free_unknowns and unknown_in_col:
+#             score = unknown_id
+#             weight = 1.0
+
+#         elif (not end_gap_in_col) and (not gap_in_col) and (not unknown_in_col):
+#             intersection = l1 & l2
+#             union = l1 | l2
+#             score = float(len(intersection)) / float(len(union))
+#             weight = 1.0
+
+#         score_list.append(score)
+#         weights_list.append(weight)
+
+#         # print(l1, l2, score, weight)
+
+#         # print('--- --- --- --- --- --- --- --- --- --- --- ---')
+
+#     pair_id = 0.0
+#     if sum(weights_list) > 0.0:
+#         pair_id = sum(score_list) / sum(weights_list)
+#     # else:
+#     #     pair_id = 1.0
+
+#     # print(pair_id)
+
+#     return pair_id
+
+
+# def identity(
+
+#     alignment,
+#     unknown_letters=set(['N']),
+#     unknown_id=0.0,
+#     free_unknowns=True,
+#     gap_id=0.0,
+#     free_gaps=True,
+#     end_gap_id=0.0,
+#     free_end_gaps=True):
+
+#     from Bio.Align import MultipleSeqAlignment
+
+#     row_count = len(alignment)
+
+#     pair_id_list = list()
+#     done = set()
+
+#     for i in range(0, row_count):
+#         for j in range(0, row_count):
+
+#             if i == j:
+#                 continue
+
+#             str_1 = str(i)+','+str(j)
+#             str_2 = str(j)+','+str(i)
+
+#             if (str_1 in done) or (str_2 in done):
+#                 continue
+
+#             done.add(str_1)
+#             done.add(str_2)
+
+#             # print(str_1)
+
+#             aln = MultipleSeqAlignment(records=[alignment[i], alignment[j]])
+
+#             pair_id = pairwise_identity(
+#                 alignment=aln,
+#                 unknown_letters=unknown_letters,
+#                 unknown_id=unknown_id,
+#                 free_unknowns=free_unknowns,
+#                 gap_id=gap_id,
+#                 free_gaps=free_gaps,
+#                 end_gap_id=end_gap_id,
+#                 free_end_gaps=free_end_gaps)
+
+#             # print(alignment[i].id, alignment[j].id, pair_id)
+#             if pair_id > 0.0:
+#                 pair_id_list.append(pair_id)
+
+#     # print(sum(pair_id_list))
+#     # print(len(pair_id_list))
+
+#     ident = sum(pair_id_list) / len(pair_id_list)
+
+#     return ident
+
+
+
+def identity(
 
     alignment,
     unknown_letters=set(['N']),
-    unknown_id=0.0,
     free_unknowns=True,
-    gap_id=0.0,
     free_gaps=True,
-    end_gap_id=0.0,
     free_end_gaps=True):
 
     import sys
 
-    from krpy import kriupac
+    from scipy.special import comb
 
-    if len(alignment) != 2:
-        print('Alignment must contain exactly two sequences.')
-        sys.exit(1)
+    from krpy import kriupac
 
     end_gap_letter = '#'
     col_count = alignment.get_alignment_length()
@@ -181,174 +393,57 @@ def pairwise_identity(
             aln_column_str = aln_column_str + aln_seq_str[col_idx]
         aln_column_str_list.append(aln_column_str)
 
-    # print('--- --- --- --- --- --- --- --- --- --- --- ---')
+    ident_list = list()
+    for col_str in aln_column_str_list:
 
-    score_list = list()
-    weights_list = list()
+        clean_col_str = col_str
 
-    for col_idx in range(0, col_count):
-        col_str = aln_column_str_list[col_idx]
+        if free_unknowns:
+            for u in list(unknown_letters):
+                clean_col_str = clean_col_str.replace(u, '')
 
-        l1 = col_str[0]
-        l2 = col_str[1]
+        if free_gaps:
+            for g in list(kriupac.IUPAC_DNA_GAPS):
+                clean_col_str = clean_col_str.replace(g, '')
 
-        if l1 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
-            l1 = kriupac.IUPAC_DNA_DICT_REVERSE[l1]
+        if free_end_gaps:
+            clean_col_str = clean_col_str.replace(end_gap_letter, '')
 
-        if l2 in kriupac.IUPAC_DNA_DICT_REVERSE.keys():
-            l2 = kriupac.IUPAC_DNA_DICT_REVERSE[l2]
+        if clean_col_str == '':
+            continue
 
-        l1 = set(l1)
-        l2 = set(l2)
+        letter_counts = dict()
+        for l in clean_col_str:
+            letter_counts[l] = letter_counts.get(l, 0) + 1
 
-        #
+        total_l = len(clean_col_str)
+        if total_l == 1:
+            ident_list.append(1.0)
+            continue
+        total_comb = comb(total_l, 2)
 
-        end_gap_in_l1 = False
-        end_gap_in_l2 = False
-        end_gap_in_col = False
+        l_comb_sum = 0.0
+        for l in letter_counts.keys():
+            c = letter_counts[l]
+            if c > 1:
+                l_comb = comb(c, 2)
+                l_comb_sum = l_comb_sum + l_comb
 
-        if end_gap_letter in l1:
-            end_gap_in_l1 = True
-        if end_gap_letter in l2:
-            end_gap_in_l2 = True
+        col_ident = l_comb_sum / total_comb
 
-        if end_gap_in_l1 or end_gap_in_l2:
-            end_gap_in_col = True
+        # print(l_comb_sum, total_comb, col_ident, col_str, '::', clean_col_str)
 
-        #
+        ident_list.append(col_ident)
 
-        gap_in_l1 = False
-        gap_in_l2 = False
-        gap_in_col = False
+    # print(ident_list)
 
-        for g in list(kriupac.IUPAC_DNA_GAPS):
+    ident_list_sum = 0.0
+    if ident_list:
+        ident_list_sum = sum(ident_list)
 
-            if g in l1:
-                gap_in_l1 = True
-            if g in l2:
-                gap_in_l2 = True
+    # print('\n', ident_list_sum, len(ident_list), '\n')
 
-        if gap_in_l1 or gap_in_l2:
-            gap_in_col = True
-
-        #
-
-        unknown_in_l1 = False
-        unknown_in_l2 = False
-        unknown_in_col = False
-
-        for u in list(unknown_letters):
-
-            if u in l1:
-                unknown_in_l1 = True
-            if u in l2:
-                unknown_in_l2 = True
-
-        if unknown_in_l1 or unknown_in_l2:
-            unknown_in_col = True
-
-        #
-
-        score = 0.0
-        weight = 0.0
-
-        if end_gap_in_col and gap_in_col:
-            weight = 0.0
-
-        elif unknown_in_l1 and unknown_in_l2:
-            weight = 0.0
-
-        elif not free_end_gaps and end_gap_in_col:
-            score = end_gap_id
-            weight = 1.0
-
-        elif not free_gaps and gap_in_col:
-            score = gap_id
-            weight = 1.0
-
-        elif not free_unknowns and unknown_in_col:
-            score = unknown_id
-            weight = 1.0
-
-        elif (not end_gap_in_col) and (not gap_in_col) and (not unknown_in_col):
-            intersection = l1 & l2
-            union = l1 | l2
-            score = float(len(intersection)) / float(len(union))
-            weight = 1.0
-
-        score_list.append(score)
-        weights_list.append(weight)
-
-        # print(l1, l2, score, weight)
-
-        # print('--- --- --- --- --- --- --- --- --- --- --- ---')
-
-    pair_id = 0.0
-    if sum(weights_list) > 0.0:
-        pair_id = sum(score_list) / sum(weights_list)
-    # else:
-    #     pair_id = 1.0
-
-    # print(pair_id)
-
-    return pair_id
-
-
-def identity(
-
-    alignment,
-    unknown_letters=set(['N']),
-    unknown_id=0.0,
-    free_unknowns=True,
-    gap_id=0.0,
-    free_gaps=True,
-    end_gap_id=0.0,
-    free_end_gaps=True):
-
-    from Bio.Align import MultipleSeqAlignment
-
-    row_count = len(alignment)
-
-    pair_id_list = list()
-    done = set()
-
-    for i in range(0, row_count):
-        for j in range(0, row_count):
-
-            if i == j:
-                continue
-
-            str_1 = str(i)+','+str(j)
-            str_2 = str(j)+','+str(i)
-
-            if (str_1 in done) or (str_2 in done):
-                continue
-
-            done.add(str_1)
-            done.add(str_2)
-
-            # print(str_1)
-
-            aln = MultipleSeqAlignment(records=[alignment[i], alignment[j]])
-
-            pair_id = pairwise_identity(
-                alignment=aln,
-                unknown_letters=unknown_letters,
-                unknown_id=unknown_id,
-                free_unknowns=free_unknowns,
-                gap_id=gap_id,
-                free_gaps=free_gaps,
-                end_gap_id=end_gap_id,
-                free_end_gaps=free_end_gaps)
-
-            # print(alignment[i].id, alignment[j].id, pair_id)
-            if pair_id > 0.0:
-                pair_id_list.append(pair_id)
-
-    # print(sum(pair_id_list))
-    # print(len(pair_id_list))
-
-    ident = sum(pair_id_list) / len(pair_id_list)
+    ident = ident_list_sum / float(len(ident_list))
 
     return ident
 
@@ -463,6 +558,32 @@ def consensus(
     return ret_value
 
 
+def pairwise_coverage(pairwise_alignment):
+
+    row_count = len(pairwise_alignment)
+    if row_count != 2:
+        print('Alignment must contain two sequences.')
+        return
+
+    col_count = pairwise_alignment.get_alignment_length()
+
+    a_count = len(str(pairwise_alignment[0].seq).lstrip('-').rstrip('-'))
+    b_count = len(str(pairwise_alignment[1].seq).lstrip('-').rstrip('-'))
+
+    count_str = ''
+
+    for col_idx in range(0, col_count):
+        col_str = pairwise_alignment[:, col_idx]
+        col_str = col_str.replace('-','')
+        count_str = count_str + str(len(col_str))
+
+    l_count = col_count - len(count_str.lstrip('1'))
+    r_count = col_count - len(count_str.rstrip('1'))
+    overlap = col_count - l_count - r_count
+
+    # return {pairwise_alignment[0].id: overlap/float(a_count), pairwise_alignment[1].id: overlap/float(b_count)}
+    return [overlap/float(a_count), overlap/float(b_count)]
+
 def cluster(
 
     records,
@@ -472,7 +593,9 @@ def cluster(
     aln_program='mafft',
     aln_executable='mafft',
     aln_options='--auto --reorder --adjustdirection',
-    seeds=None):
+    seeds=None,
+    seed_coverage=0.5,
+    query_coverage=0.9):
 
     results_dict = dict()
     consumed_ids = list()
@@ -500,6 +623,8 @@ def cluster(
 
     for a_rec in records_seeds:
 
+        # print('a_rec', a_rec)
+
         key_value = None
         if key == 'accession':
             key_value = a_rec.id
@@ -522,6 +647,8 @@ def cluster(
             consumed_ids.append(a_id)
 
         for b_rec in records:
+
+            # print('b_rec', b_rec)
 
             key_value = None
             if key == 'accession':
@@ -547,6 +674,25 @@ def cluster(
                 options=aln_options,
                 program_executable=aln_executable)
 
+            # print(aln)
+
+            pw_cov = pairwise_coverage(pairwise_alignment=aln)
+
+            # print(pw_cov)
+
+            a_cov = pw_cov[0]
+            b_cov = pw_cov[1]
+
+            # if a_rec.id in pw_cov.keys():
+            #     a_cov = pw_cov[a_rec.id]
+            # else:
+            #     a_cov = pw_cov['_R_' + a_rec.id]
+
+            # if b_rec.id in pw_cov.keys():
+            #     b_cov = pw_cov[b_rec.id]
+            # else:
+            #     b_cov = pw_cov['_R_' + b_rec.id]
+
             direction = '+'
             for a in aln:
                 # This will only work with MAFFT!
@@ -554,21 +700,28 @@ def cluster(
                     direction = '-'
                     break
 
-            score = pairwise_identity(
+            # score = pairwise_identity(
+            #     alignment=aln,
+            #     unknown_letters=set(['N']),
+            #     unknown_id=0.0,
+            #     free_unknowns=True,
+            #     gap_id=0.0,
+            #     free_gaps=True,
+            #     end_gap_id=0.0,
+            #     free_end_gaps=True)
+
+            score = identity(
                 alignment=aln,
                 unknown_letters=set(['N']),
-                unknown_id=0.0,
                 free_unknowns=True,
-                gap_id=0.0,
                 free_gaps=True,
-                end_gap_id=0.0,
                 free_end_gaps=True)
 
-            if score >= threshold:
+            if (score >= threshold) and (a_cov >= seed_coverage) and (b_cov >= query_coverage):
                 results_dict[a_id].append([direction, b_id, score])
                 consumed_ids.append(b_id)
 
-            # print(a_id, ':', b_id, '=', score)
+            # print(a_id, ':', b_id, '=', score, '|', a_cov, b_cov)
 
     # Report unclustered ids
     results_dict['unclustered'] = list()
@@ -599,7 +752,9 @@ def dereplicate(
     key='gi',
     aln_program='mafft',
     aln_executable='mafft',
-    aln_options='--auto --reorder --adjustdirection'):
+    aln_options='--auto --reorder --adjustdirection',
+    seed_coverage=0.5,
+    query_coverage=0.9):
 
     clusters = cluster(
         records=records,
@@ -609,7 +764,9 @@ def dereplicate(
         aln_program=aln_program,
         aln_executable=aln_executable,
         aln_options=aln_options,
-        seeds=None)
+        seeds=None,
+        seed_coverage=seed_coverage,
+        query_coverage=query_coverage)
 
     dereplicated = list()
 
@@ -733,7 +890,19 @@ def slice_out_conserved_regions(regions, alignment_file, name_prefix, output_dir
 
     # import krbioio
 
-    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_11.phy', 'phylip-relaxed')
+    # aln = krbioio.read_alignment_file('/Users/karolis/Desktop/aln_4.phy', 'phylip-relaxed')
+
+    # ident = identity(
+    #     alignment=aln,
+    #     unknown_letters=set(['N']),
+    #     free_unknowns=True,
+    #     free_gaps=True,
+    #     free_end_gaps=True)
+
+    # print(ident)
+
+    # pc = pairwise_coverage(pairwise_alignment=aln)
+    # print(pc)
 
     # ident = identity(
 
