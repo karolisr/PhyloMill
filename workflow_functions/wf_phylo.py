@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 
-def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email, log_file_path):
+def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, max_seq_length, email, log_file_path):
 
     from krpy import krncbi
 
@@ -16,11 +16,20 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email,
 
     taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
     taxa_query_str = '(' + taxa_query_str + ')'
+
+    tax_exclude_ncbi_query_strings = list()
+    for te in exclude_tax_ids:
+        tnqs = 'txid' + str(te) + '[Organism]'
+        tax_exclude_ncbi_query_strings.append(tnqs)
+
+    taxa_exclude_query_str = ' OR '.join(tax_exclude_ncbi_query_strings)
+    taxa_exclude_query_str = '(' + taxa_exclude_query_str + ')'
+
     query_term_str = '(' + query_term_str + ')'
     seq_length_str = '0:' + str(max_seq_length) + '[Sequence Length]'
 
     query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
-                seq_length_str
+                seq_length_str + ' NOT ' + taxa_exclude_query_str
 
     msg = 'ENTREZ query: ' + query_str
     write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
@@ -38,17 +47,19 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, max_seq_length, email,
     return uid_list
 
 
-def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncbi_tax_ids, max_seq_length, dnld_dir_path):
+def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncbi_tax_ids, exclude_tax_ids, max_seq_length, dnld_dir_path):
 
     from krpy import krother
     from krpy import krncbi
     from krpy import krbioio
+    from krpy import krcl
     from krpy.krother import write_log
 
     LOCI = loci
     LFP = log_file_path
     DB = kr_seq_db_object
     TAX_IDS = ncbi_tax_ids
+    EXCLUDE_TAX_IDS = exclude_tax_ids
     MAX_SEQ_LENGTH = max_seq_length
     EMAIL = email
     DNLD_DIR_PATH = dnld_dir_path
@@ -64,6 +75,7 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         ncbi_db=ncbi_db,
         query_term_str=query_term_str,
         ncbi_tax_ids=TAX_IDS,
+        exclude_tax_ids=EXCLUDE_TAX_IDS,
         max_seq_length=MAX_SEQ_LENGTH,
         email=EMAIL,
         log_file_path=log_file_path)
@@ -147,10 +159,18 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
         if len(records_to_add) > 0:
 
-            msg = 'Adding downloaded records to database.'
+            msg = 'Adding downloaded records to database. This may take a bit.'
             write_log(msg, LFP)
 
-            for record in records_to_add:
+            record_count = len(records_to_add)
+            for i, record in enumerate(records_to_add):
+
+                krcl.print_progress(
+                    current=i+1, total=record_count, length=0,
+                    prefix=krother.timestamp() + ' ',
+                    postfix=' - ' + record.annotations['gi'],
+                    show_bar=False)
+
                 DB.add_genbank_record(
                     record=record,
                     action_str='Genbank search result.')
@@ -168,6 +188,8 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
                     type_str='source_file',
                     annotation_str=gb_file_name,
                     record_reference_type='gi')
+
+            print()
 
     DB.save()
 
@@ -567,8 +589,10 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
             key='gi',
             aln_program='mafft',
             aln_executable='mafft',
-            aln_options='--auto --reorder --adjustdirection',
-            seeds=seeds)
+            aln_options='--genafpair --jtt 1 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+            seeds=seeds,
+            seed_coverage=0.15,
+            query_coverage=0.5)
 
         # else:
 
@@ -591,11 +615,13 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
         #         seq_id='gi',
         #         cluster_key='centroid')
 
+        min_clust_size = 3
+
         for key in clusters.keys():
 
-            # clust_size = len(clusters[key])
+            clust_size = len(clusters[key])
 
-            if key == 'unclustered':
+            if (key == 'unclustered') or (clust_size < min_clust_size):
                 reject = reject + clusters[key]
             else:
                 accept = accept + clusters[key]
@@ -908,6 +934,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
                     trimmed_rec = trimmed_rec.reverse_complement()
                 trimmed_rec.annotations['organism'] = record.annotations['organism']
                 trimmed_rec.annotations['gi'] = record.annotations['gi']
+                # trimmed_rec.id = record.id
+                # trimmed_rec.name = record.name
                 trimmed_records.append(trimmed_rec)
 
     msg = 'Filtering extracted records.'
@@ -937,8 +965,10 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
         key='gi',
         aln_program='mafft',
         aln_executable='mafft',
-        aln_options='--auto --reorder --adjustdirection',
-        seeds=None)
+        aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+        seeds=None,
+        seed_coverage=0.5,
+        query_coverage=0.5)
 
     seed_records = list()
     for key in clusters.keys():
@@ -1038,6 +1068,9 @@ def trim_record_to_locus(record, locus_name):
         if strand and (int(strand) < 0):
             rec_trimmed = rec_trimmed.reverse_complement()
 
+        # rec_trimmed.id = record.id
+        # rec_trimmed.name = record.name
+        # rec_trimmed.description = record.description
         rec_trimmed.id = record.annotations[b'gi']
         rec_trimmed.name = ''
         rec_trimmed.description = ''
@@ -1055,6 +1088,7 @@ def improve_alignment_using_reference_records(
     reference_records,
     locus_name,
     log_file_path,
+    current_aln,
     aln_program='mafft',
     aln_program_executable='mafft',
     aln_options='--auto',
@@ -1062,24 +1096,28 @@ def improve_alignment_using_reference_records(
 
     from Bio.Align import MultipleSeqAlignment
 
+    from Bio.SeqRecord import SeqRecord
+
     from krpy import kralign
     from krpy import krother
     from krpy.krother import write_log
 
     new_aln = None
 
-    ident_step = 0.005
+    ident_step = 0.01
 
     bottom_ident = min_locus_sequence_identity_range[0]
     max_ident = min_locus_sequence_identity_range[1]
     current_ident = max_ident
 
     ref_alignments = list()
+    # ref_alignments.append(current_aln)
 
     for ref_rec in reference_records:
         ref_rec_original_gi = ref_rec.annotations['gi']
-        ref_rec_trimmed = trim_record_to_locus(
-            record=ref_rec, locus_name=locus_name)
+        # ref_rec_trimmed = trim_record_to_locus(
+        #     record=ref_rec, locus_name=locus_name)
+        ref_rec_trimmed = SeqRecord(ref_rec.seq)
         ref_rec_trimmed.id = str(krother.random_id(20))
         ref_loc_records = records + [ref_rec_trimmed]
 
@@ -1087,17 +1125,23 @@ def improve_alignment_using_reference_records(
             records=ref_loc_records,
             program=aln_program,
             options=aln_options,
-            program_executable=aln_program_executable
-            )
+            program_executable=aln_program_executable)
+
+        # ident = kralign.identity(
+        #     alignment=ref_aln,
+        #     unknown_letters=set(['N']),
+        #     unknown_id=0.0,
+        #     free_unknowns=True,
+        #     gap_id=0.0,
+        #     free_gaps=True,
+        #     end_gap_id=0.0,
+        #     free_end_gaps=True)
 
         ident = kralign.identity(
             alignment=ref_aln,
             unknown_letters=set(['N']),
-            unknown_id=0.0,
             free_unknowns=True,
-            gap_id=0.0,
             free_gaps=True,
-            end_gap_id=0.0,
             free_end_gaps=True)
 
         msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
@@ -1173,14 +1217,21 @@ def flatten_locus(
             program_executable=aln_program_executable
             )
 
+        # ident = kralign.identity(
+        #     alignment=aln,
+        #     unknown_letters=set(['N']),
+        #     unknown_id=0.0,
+        #     free_unknowns=True,
+        #     gap_id=0.0,
+        #     free_gaps=True,
+        #     end_gap_id=0.0,
+        #     free_end_gaps=True)
+
         ident = kralign.identity(
             alignment=aln,
             unknown_letters=set(['N']),
-            unknown_id=0.0,
             free_unknowns=True,
-            gap_id=0.0,
             free_gaps=True,
-            end_gap_id=0.0,
             free_end_gaps=True)
 
         msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
@@ -1196,6 +1247,7 @@ def flatten_locus(
                 reference_records=reference_records,
                 locus_name=locus_name,
                 log_file_path=log_file_path,
+                current_aln=aln,
                 aln_program=aln_program,
                 aln_program_executable=aln_program_executable,
                 aln_options=aln_options,

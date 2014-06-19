@@ -108,8 +108,8 @@ if __name__ == '__main__':
         PRJ_DIR_PATH = ARGS.project_dir.rstrip(PS)
         PRJ_DIR_PATH = PRJ_DIR_PATH + PS
     else:
-        # write_log('Project directory is required.', LFP, newlines_before=1,
-        #     newlines_after=0)
+        write_log('Project directory is required.', LFP, newlines_before=1,
+            newlines_after=0)
         sys.exit(0)
 
     # Log file path
@@ -119,9 +119,9 @@ if __name__ == '__main__':
 
         if os.path.exists(PRJ_DIR_PATH):
 
-            # msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
-            # write_log(msg=msg, log_file_path=LFP, append=True,
-            #     newlines_before=1, newlines_after=0)
+            msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
+            write_log(msg=msg, log_file_path=LFP, append=True,
+                newlines_before=1, newlines_after=0)
             DB = KRSequenceDatabase.KRSequenceDatabase(
                 PRJ_DIR_PATH + 'db.sqlite3')
 
@@ -139,10 +139,10 @@ if __name__ == '__main__':
             shutil.copytree(prj_template_dir_path, PRJ_DIR_PATH, symlinks=False,
                             ignore=None)
 
-            # print('')
-            # msg = 'Creating project directory at ' + PRJ_DIR_PATH.rstrip(PS)
-            # write_log(msg=msg, log_file_path=LFP, append=False,
-            #     newlines_before=0, newlines_after=0)
+            print('')
+            msg = 'Creating project directory at ' + PRJ_DIR_PATH.rstrip(PS)
+            write_log(msg=msg, log_file_path=LFP, append=False,
+                newlines_before=0, newlines_after=0)
 
             KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
@@ -168,8 +168,8 @@ if __name__ == '__main__':
     ############################################################################
 
     if not COMMANDS:
-        # write_log('No commands given.', LFP, newlines_before=1,
-        #     newlines_after=0)
+        write_log('No commands given.', LFP, newlines_before=1,
+            newlines_after=0)
         sys.exit(0)
 
     ############################################################################
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
     FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
     FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
-    FLAT_ID_BOTTOM = 0.85
+    FLAT_ID_BOTTOM = 0.80
     FLAT_ID_TOP = 0.95
 
     # Align options
@@ -216,7 +216,11 @@ if __name__ == '__main__':
         else:
             HACKS[hack] = None
 
-    # Taxa
+    # Outgroup Taxa
+
+    msg = 'Parsing outgroup taxa.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
     out_temp = CFG.items('Outgroup Taxa')
     out_temp = [x[0] for x in out_temp]
     OUT_TAX_IDS = list()
@@ -224,10 +228,30 @@ if __name__ == '__main__':
         if out.isdigit():
             OUT_TAX_IDS.append(out)
         else:
-            out_id = list(krncbi.esearch(out, 'taxonomy', EMAIL))[0]
+
+            out_orig = out
+
+            out_id = list()
+            while not out_id:
+                out_id = list(krncbi.esearch(out, 'taxonomy', EMAIL))
+                if not out_id:
+                    out = out.replace('subsp. ', '')
+                    out = out.replace('var. ', '')
+            out_id = out_id[0]
+
             OUT_TAX_IDS.append(str(out_id))
-            # msg = 'NCBI taxonomy ID for ' + out + ' is ' + str(out_id)
-            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            msg = 'NCBI taxonomy ID for ' + out + ' is ' + str(out_id)
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            krio.replace_line_in_file(
+                file_path=CFG_FILE_PATH,
+                line_str=out_orig,
+                replace_str='# ' + out + '\n' + str(out_id))
+
+    # Main Taxa
+
+    msg = 'Parsing main taxa.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
     tax_temp = CFG.items('Main Taxa')
     tax_temp = [x[0] for x in tax_temp]
@@ -236,10 +260,57 @@ if __name__ == '__main__':
         if tax.isdigit():
             TAX_IDS.append(tax)
         else:
-            tax_id = list(krncbi.esearch(tax, 'taxonomy', EMAIL))[0]
+
+            tax_orig = tax
+
+            tax_id = list()
+            while not tax_id:
+                tax_id = list(krncbi.esearch(tax, 'taxonomy', EMAIL))
+                if not tax_id:
+                    tax = tax.replace('subsp. ', '')
+                    tax = tax.replace('var. ', '')
+            tax_id = tax_id[0]
+
             TAX_IDS.append(str(tax_id))
-            # msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
-            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            krio.replace_line_in_file(
+                file_path=CFG_FILE_PATH,
+                line_str=tax_orig,
+                replace_str='# ' + tax + '\n' + str(tax_id))
+
+    # Excluded Taxa
+
+    msg = 'Parsing excluded taxa'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+    exclude_temp = CFG.items('Excluded Taxa')
+    exclude_temp = [x[0] for x in exclude_temp]
+    EXCLUDE_TAX_IDS = list()
+    for exclude_tax in exclude_temp:
+        if exclude_tax.isdigit():
+            EXCLUDE_TAX_IDS.append(exclude_tax)
+        else:
+
+            exclude_tax_orig = exclude_tax
+
+            exclude_id = list()
+            while not exclude_id:
+                exclude_id = list(krncbi.esearch(exclude_tax, 'taxonomy', EMAIL))
+                if not exclude_id:
+                    exclude_tax = exclude_tax.replace('subsp. ', '')
+                    exclude_tax = exclude_tax.replace('var. ', '')
+            exclude_id = exclude_id[0]
+
+            EXCLUDE_TAX_IDS.append(str(exclude_id))
+            msg = 'NCBI taxonomy ID for ' + exclude_tax + ' is ' + str(exclude_id)
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            krio.replace_line_in_file(
+                file_path=CFG_FILE_PATH,
+                line_str=exclude_tax_orig,
+                replace_str='# ' + exclude_tax + '\n' + str(exclude_id))
 
     ALL_TAX_IDS = OUT_TAX_IDS + TAX_IDS
 
@@ -372,6 +443,7 @@ if __name__ == '__main__':
                 loci=LOCI,
                 locus_name=locus_name,
                 ncbi_tax_ids=ALL_TAX_IDS,
+                exclude_tax_ids=EXCLUDE_TAX_IDS,
                 max_seq_length=MAX_SEQ_LENGTH,
                 dnld_dir_path=DNLD_DIR_PATH)
 
@@ -823,27 +895,51 @@ if __name__ == '__main__':
                     file_path=ref_recs_file_path,
                     file_format='fasta',
                     ret_type='list')
+
+                for ref_rec in reference_records:
+                    ref_rec.annotations['gi'] = ref_rec.id
             else:
 
-                msg = 'Producing deduplicated set of reference sequences.'
+                msg = 'Producing dereplicated set of reference sequences, this may take a bit.'
                 write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
+                reference_records_temp = list()
+
+                ref_rec_lengths = list()
                 for record in records:
                     rec_trimmed = wf.trim_record_to_locus(
                         record=record,
                         locus_name=locus_name)
-                    reference_records.append(rec_trimmed)
+                    reference_records_temp.append(rec_trimmed)
+                    ref_rec_lengths.append(len(rec_trimmed.seq))
+                import numpy
 
-                reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
-                reference_records = reference_records[0:min(50, len(reference_records))]
+                ref_median_length = numpy.median(ref_rec_lengths)
+                ref_mean_length = numpy.mean(ref_rec_lengths)
+                ref_std_length = numpy.std(ref_rec_lengths)
+                # ref_cutoff_length = ref_mean_length - (1 * ref_std_length)
+                ref_cutoff_length = min(ref_median_length, ref_mean_length) - (0.5 * ref_std_length)
+
+                # print(len(ref_rec_lengths), ref_median_length, ref_std_length, ref_cutoff_length)
+
+                for ref_rec in reference_records_temp:
+                    if len(ref_rec.seq) >= ref_cutoff_length:
+                        reference_records.append(ref_rec)
+
+                # print(len(reference_records))
+
+                # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
+                # reference_records = reference_records[0:min(100, len(reference_records))]
                 reference_records = kralign.dereplicate(
                     records=reference_records,
-                    threshold=0.95,
+                    threshold=0.90,
                     unknown='N',
                     key='gi',
                     aln_program='mafft',
                     aln_executable='mafft',
-                    aln_options='--auto --reorder --adjustdirection')
+                    aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+                    seed_coverage=0.30,
+                    query_coverage=0.80)
 
                 krbioio.write_sequence_file(
                     records=reference_records,
