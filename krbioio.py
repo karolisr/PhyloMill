@@ -220,12 +220,22 @@ def split_fastq_file(pieces, output_dir, forward_reads_file_path,
                         log_func(msg, log_file_path)
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    # Tests
+#     # Tests
 
-    import os
+#     import os
+#     from Bio.Alphabet.IUPAC import ExtendedIUPACDNA
 
-    PS = os.path.sep
+#     PS = os.path.sep
 
-    pass
+#     seq_file_path = '/Users/karolis/Desktop/RAG1.fasta'
+
+#     records = read_sequence_file(
+#         file_path=seq_file_path,
+#         file_format='fasta',
+#         ret_type='list',
+#         alphabet=ExtendedIUPACDNA())
+
+#     for r in records:
+#         print(r)
