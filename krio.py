@@ -190,6 +190,18 @@ def write_tsv_file(l_tsv_dict, l_tsv_file_path):
         writer = csv.writer(file, delimiter='\t')
         writer.writerows(rows)
 
+
+def replace_line_in_file(file_path, line_str, replace_str):
+
+    import fileinput
+
+    for line in fileinput.input(file_path, inplace=1):
+        if line.startswith(line_str):
+            print(replace_str)
+        else:
+            print(line.strip('\n'))
+
+
 if __name__ == '__main__':
 
     # Tests
