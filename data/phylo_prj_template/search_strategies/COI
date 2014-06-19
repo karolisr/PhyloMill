@@ -3,7 +3,7 @@
 [COI]
 
 database = nuccore
-query = COI[Title] OR CO1[Title] OR "cytochrome oxidase subunit I"[Title] OR "cytochrome oxidase subunit 1"[Title]
+query = (COI[Title] OR CO1[Title] OR "cytochrome oxidase subunit I"[Title] OR "cytochrome oxidase subunit 1"[Title]) NOT ("PREDICTED:"[Title] OR "UNVERIFIED:"[Title])
 
 [1]
 

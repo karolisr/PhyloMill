@@ -3,7 +3,7 @@
 [cytb]
 
 database = nuccore
-query = cytb[Title] OR cytochrome b[Title]
+query = ("cytb"[Title] OR "cytochrome b"[Title]) NOT ("PREDICTED:"[Title] OR "UNVERIFIED:"[Title])
 
 [1]
 
@@ -28,7 +28,7 @@ regex = No
 # Yes or No
 #   Yes means: match value (not case sensitive) exactly
 #    No means: some part of the value matches
-strict_value_match = No
+strict_value_match = Yes
 
 # minimum length of the feature being extracted
 min_length = 100
@@ -59,7 +59,69 @@ regex = No
 # Yes or No
 #   Yes means: match value (not case sensitive) exactly
 #    No means: some part of the value matches
-strict_value_match = No
+strict_value_match = Yes
+
+# minimum length of the feature being extracted
+min_length = 100
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+
+[3]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 0
+
+# gene, mRNA, CDS, etc.
+feature_type = CDS
+
+# gene, product, etc.
+qualifier_label = product
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = cytb|cytochrome b|cb|skeletal muscle cytochrome b
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = Yes
+
+# minimum length of the feature being extracted
+min_length = 100
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+
+[4]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 0
+
+# gene, mRNA, CDS, etc.
+feature_type = mRNA
+
+# gene, product, etc.
+qualifier_label = product
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = cytb|cytochrome b
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = Yes
 
 # minimum length of the feature being extracted
 min_length = 100
