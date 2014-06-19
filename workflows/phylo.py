@@ -18,6 +18,7 @@ if __name__ == '__main__':
     import copy
     import random
     import ConfigParser
+    import subprocess
 
     from subprocess import call
 
@@ -164,6 +165,8 @@ if __name__ == '__main__':
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
 
     CFG_FILE_PATH = PRJ_DIR_PATH + 'config'
+
+    RAxML_CMD_FILE_PATH = ALN_DIR_PATH + 'raxml-commands.txt'
 
     ############################################################################
 
@@ -411,7 +414,7 @@ if __name__ == '__main__':
 
     # Autopilot
     if 'autopilot' in COMMANDS:
-        COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate'])
+        COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate', 'raxml'])
 
     ############################################################################
 
@@ -1645,8 +1648,8 @@ if __name__ == '__main__':
 
         rand_seed = str(random.randrange(0, 1000000000))
         raxml_dir = ALN_DIR_PATH + 'RAxML_' + rand_seed
-        raxml_commands_file = ALN_DIR_PATH + 'raxml-commands.txt'
-        f_raxml = open(raxml_commands_file, 'wb')
+        # raxml_commands_file = ALN_DIR_PATH + 'raxml-commands.txt'
+        f_raxml = open(RAxML_CMD_FILE_PATH, 'wb')
 
         raxml_line_1 = 'raxml \\\n'
         f_raxml.write(raxml_line_1)
@@ -1678,6 +1681,25 @@ if __name__ == '__main__':
         f_raxml.close()
 
         ########################################################################
+
+    ############################################################################
+
+    # Concatenate alignments
+    if 'raxml' in COMMANDS:
+        msg = 'Running RAxML.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+        cmd = ''
+        with open(RAxML_CMD_FILE_PATH, 'rb') as f:
+            cmd = f.readlines()
+            cmd = [x.replace('\n', '').replace('\\', '').strip() for x in cmd]
+            cmd = ' '.join(cmd)
+
+        subprocess.call(
+            cmd,
+            # stdout=subprocess.PIPE,
+            # stderr=subprocess.PIPE,
+            shell=True)
 
     ############################################################################
 
