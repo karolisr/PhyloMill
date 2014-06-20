@@ -135,7 +135,7 @@ if __name__ == '__main__':
             script_dir_path = os.path.dirname(os.path.abspath(script_file_path))
 
             prj_template_dir_path = script_dir_path.strip('workflows') + \
-                'data' + PS + 'phylo_prj_template'
+                'data' + PS + 'PhyloMill_template'
 
             shutil.copytree(prj_template_dir_path, PRJ_DIR_PATH, symlinks=False,
                             ignore=None)
