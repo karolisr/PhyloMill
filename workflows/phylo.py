@@ -109,8 +109,8 @@ if __name__ == '__main__':
         PRJ_DIR_PATH = ARGS.project_dir.rstrip(PS)
         PRJ_DIR_PATH = PRJ_DIR_PATH + PS
     else:
-        write_log('Project directory is required.', LFP, newlines_before=1,
-            newlines_after=0)
+        print('Project directory is required.')
+        # write_log('Project directory is required.', LFP, newlines_before=1, newlines_after=0)
         sys.exit(0)
 
     # Log file path
