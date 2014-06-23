@@ -31,6 +31,7 @@ if __name__ == '__main__':
     from krpy import krio
     from krpy import krcl
     from krpy import kralign
+    from krpy import krblast
 
     from krpy.krother import write_log
 
@@ -398,8 +399,16 @@ if __name__ == '__main__':
 
             LOCI[l] = l_dict
         else:
-            # write_log('There is no search strategy file for locus: ' + l, LFP)
+            write_log('There is no search strategy file for locus: ' + l, LFP)
             sys.exit(0)
+
+    # Blast
+
+    BLAST_LOCI = dict()
+    blast_temp = CFG.items('Blast')
+    for b in blast_temp:
+        if b[1] != '':
+            BLAST_LOCI[b[0]] = float(b[1])
 
     ############################################################################
 
@@ -449,6 +458,148 @@ if __name__ == '__main__':
                 exclude_tax_ids=EXCLUDE_TAX_IDS,
                 max_seq_length=MAX_SEQ_LENGTH,
                 dnld_dir_path=DNLD_DIR_PATH)
+
+        COMMANDS.add('resolve_org_names')
+
+    ############################################################################
+
+    # Get more sequences using BLAST
+    if 'blast' in COMMANDS:
+
+        msg = 'Will run blastn to enrich loci database.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+        for locus_name in BLAST_LOCI.keys():
+
+            msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+            locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
+            krio.prepare_directory(locus_dir_path)
+
+            e_value = BLAST_LOCI[locus_name]
+            locus_dict = LOCI[locus_name]
+
+            # Get all unflattened records for current locus
+            records = DB.get_records_with_annotations(
+                annotation_type='locus',
+                annotation=locus_name,
+                active=True,
+                inactive=False)
+
+            ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
+
+            reference_records = wf.produce_reference_sequences(
+                locus_name=locus_name,
+                records=records,
+                ref_recs_file_path=ref_recs_file_path,
+                log_file_path=LFP)
+
+            blast_databses = ['nt', 'est']
+
+            for db in blast_databses:
+
+                msg = 'Running blastn on ' + db + ' database with E-value of ' + str(e_value) + '.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+                blast_results_path = TEMP_DIR_PATH + locus_name + '__' + db + '.xml'
+
+                query_str = wf.produce_ncbi_query_string(
+                    ncbi_tax_ids=ALL_TAX_IDS,
+                    exclude_tax_ids=EXCLUDE_TAX_IDS,
+                    query_term_str=locus_dict['query'],
+                    max_seq_length=MAX_SEQ_LENGTH)
+
+                cmd = 'blastn -remote -entrez_query \'' + query_str + '\'' \
+                    ' -db ' + db + \
+                    ' -query ' + ref_recs_file_path + \
+                    ' -out ' + blast_results_path + \
+                    ' -evalue ' + str(e_value) + \
+                    ' -outfmt 5'
+
+                call(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True)
+
+                blast_gis = krblast.gis_from_blast_results(
+                    file_name=blast_results_path,
+                    min_sequence_length=-1, max_sequence_length=-1)
+
+                timestamp = krother.timestamp()
+                timestamp = timestamp.replace('-', '_')
+                timestamp = timestamp.replace(':', '_')
+                timestamp = timestamp.replace(' ', '_')
+
+                dnld_file_name = locus_name + '_blast_' + db + '_' + timestamp + '.gb'
+                dnld_file_path = DNLD_DIR_PATH + dnld_file_name
+
+                records_to_add = wf.download_new_records(
+                    locus_name=locus_name,
+                    ncbi_db=locus_dict['database'],
+                    gis=blast_gis,
+                    dnld_file_path=dnld_file_path,
+                    kr_seq_db_object=DB,
+                    email=EMAIL,
+                    log_file_path=LFP)
+
+                if len(records_to_add) > 0:
+
+                    msg = 'Annotating blast hits. This may take a bit.'
+                    write_log(msg, LFP)
+
+                    records_to_add_dict = dict()
+                    for r in records_to_add:
+                        records_to_add_dict[r.annotations['gi']] = r
+
+                    records_to_add_dict = krblast.annotate_blast_hits(
+                        blast_results_xml=blast_results_path,
+                        gb_records=records_to_add_dict,
+                        annotation_type='blast_hit')
+
+                    records_to_add_dict = krblast.merge_blast_hit_annotations(
+                        gb_records=records_to_add_dict,
+                        annotation_type_to_merge='blast_hit',
+                        annotation_type_merged='pwfx',
+                        merged_label='blast_hits_merged',
+                        qualifiers_dict={'note':locus_name + '|x'})
+
+                    msg = 'Adding downloaded records to database. This may take a bit.'
+                    write_log(msg, LFP)
+
+                    record_count = len(records_to_add)
+                    for i, record in enumerate(records_to_add_dict.values()):
+
+                        krcl.print_progress(
+                            current=i+1, total=record_count, length=0,
+                            prefix=krother.timestamp() + ' ',
+                            postfix=' - ' + record.annotations['gi'],
+                            show_bar=False)
+
+                        DB.add_genbank_record(
+                            record=record,
+                            action_str='Blast ' + db + ' search result.')
+
+                        gi = int(record.annotations['gi'])
+
+                        DB.add_record_annotation(
+                            record_reference=gi,
+                            type_str='locus',
+                            annotation_str=locus_name,
+                            record_reference_type='gi')
+
+                        DB.add_record_annotation(
+                            record_reference=gi,
+                            type_str='source_file',
+                            annotation_str=dnld_file_name,
+                            record_reference_type='gi')
+
+                    print()
+
+                DB.save()
+
+        COMMANDS.add('resolve_org_names')
 
     ############################################################################
 
@@ -887,67 +1038,12 @@ if __name__ == '__main__':
             ###
 
             ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
-            reference_records = list()
 
-            if os.path.exists(ref_recs_file_path):
-
-                msg = 'Reading previously produced reference sequences.'
-                write_log(msg, LFP, newlines_before=0, newlines_after=0)
-
-                reference_records = krbioio.read_sequence_file(
-                    file_path=ref_recs_file_path,
-                    file_format='fasta',
-                    ret_type='list')
-
-                for ref_rec in reference_records:
-                    ref_rec.annotations['gi'] = ref_rec.id
-            else:
-
-                msg = 'Producing dereplicated set of reference sequences, this may take a bit.'
-                write_log(msg, LFP, newlines_before=0, newlines_after=0)
-
-                reference_records_temp = list()
-
-                ref_rec_lengths = list()
-                for record in records:
-                    rec_trimmed = wf.trim_record_to_locus(
-                        record=record,
-                        locus_name=locus_name)
-                    reference_records_temp.append(rec_trimmed)
-                    ref_rec_lengths.append(len(rec_trimmed.seq))
-                import numpy
-
-                ref_median_length = numpy.median(ref_rec_lengths)
-                ref_mean_length = numpy.mean(ref_rec_lengths)
-                ref_std_length = numpy.std(ref_rec_lengths)
-                # ref_cutoff_length = ref_mean_length - (1 * ref_std_length)
-                ref_cutoff_length = min(ref_median_length, ref_mean_length) - (0.5 * ref_std_length)
-
-                # print(len(ref_rec_lengths), ref_median_length, ref_std_length, ref_cutoff_length)
-
-                for ref_rec in reference_records_temp:
-                    if len(ref_rec.seq) >= ref_cutoff_length:
-                        reference_records.append(ref_rec)
-
-                # print(len(reference_records))
-
-                # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
-                # reference_records = reference_records[0:min(100, len(reference_records))]
-                reference_records = kralign.dereplicate(
-                    records=reference_records,
-                    threshold=0.90,
-                    unknown='N',
-                    key='gi',
-                    aln_program='mafft',
-                    aln_executable='mafft',
-                    aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
-                    seed_coverage=0.30,
-                    query_coverage=0.80)
-
-                krbioio.write_sequence_file(
-                    records=reference_records,
-                    file_path=ref_recs_file_path,
-                    file_format='fasta')
+            reference_records = wf.produce_reference_sequences(
+                locus_name=locus_name,
+                records=records,
+                ref_recs_file_path=ref_recs_file_path,
+                log_file_path=LFP)
 
             ###
 

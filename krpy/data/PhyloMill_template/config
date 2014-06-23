@@ -25,6 +25,12 @@ COI
 RAG1
 cytb
 
+[Blast]
+
+COI = 1E-30
+RAG1 = 1E-30
+cytb = 1E-30
+
 [Flatten]
 
 resolve_ambiguities = No

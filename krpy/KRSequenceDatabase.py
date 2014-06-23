@@ -1077,10 +1077,16 @@ class KRSequenceDatabase:
 
             for qualifier in feature.qualifiers:
 
+                fqual = None
+                if isinstance(feature.qualifiers[qualifier], list):
+                    fqual = feature.qualifiers[qualifier][0]
+                else:
+                    fqual = feature.qualifiers[qualifier]
+
                 rec_feat_qual_id = self.add_record_feature_qualifier(
                     rec_feat_id=rec_feat_id[0],
                     type_str=qualifier,
-                    qualifier_str=str(feature.qualifiers[qualifier][0]))
+                    qualifier_str=str(fqual))
 
         return row_id
 

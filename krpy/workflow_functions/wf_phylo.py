@@ -3,89 +3,23 @@
 from __future__ import print_function
 
 
-def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, max_seq_length, email, log_file_path):
+def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_object, email, log_file_path):
 
     from krpy import krncbi
-
-    from krpy.krother import write_log
-
-    tax_ncbi_query_strings = list()
-    for t in ncbi_tax_ids:
-        tnqs = 'txid' + str(t) + '[Organism]'
-        tax_ncbi_query_strings.append(tnqs)
-
-    taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
-    taxa_query_str = '(' + taxa_query_str + ')'
-
-    tax_exclude_ncbi_query_strings = list()
-    for te in exclude_tax_ids:
-        tnqs = 'txid' + str(te) + '[Organism]'
-        tax_exclude_ncbi_query_strings.append(tnqs)
-
-    taxa_exclude_query_str = ' OR '.join(tax_exclude_ncbi_query_strings)
-    taxa_exclude_query_str = '(' + taxa_exclude_query_str + ')'
-
-    query_term_str = '(' + query_term_str + ')'
-    seq_length_str = '0:' + str(max_seq_length) + '[Sequence Length]'
-
-    query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
-                seq_length_str + ' NOT ' + taxa_exclude_query_str
-
-    msg = 'ENTREZ query: ' + query_str
-    write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
-        to_file=True, to_screen=False)
-
-    result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
-        email=email)
-
-    uid_list = list()
-
-    for uid in result_uids:
-        gi = int(uid)
-        uid_list.append(gi)
-
-    return uid_list
-
-
-def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncbi_tax_ids, exclude_tax_ids, max_seq_length, dnld_dir_path):
-
     from krpy import krother
-    from krpy import krncbi
     from krpy import krbioio
-    from krpy import krcl
     from krpy.krother import write_log
-
-    LOCI = loci
-    LFP = log_file_path
-    DB = kr_seq_db_object
-    TAX_IDS = ncbi_tax_ids
-    EXCLUDE_TAX_IDS = exclude_tax_ids
-    MAX_SEQ_LENGTH = max_seq_length
-    EMAIL = email
-    DNLD_DIR_PATH = dnld_dir_path
-
-    ncbi_db = LOCI[locus_name]['database']
-    query_term_str = LOCI[locus_name]['query']
-
-    msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
-          locus_name + '.'
-    write_log(msg, LFP, newlines_before=1, newlines_after=0)
-
-    gis = search_genbank(
-        ncbi_db=ncbi_db,
-        query_term_str=query_term_str,
-        ncbi_tax_ids=TAX_IDS,
-        exclude_tax_ids=EXCLUDE_TAX_IDS,
-        max_seq_length=MAX_SEQ_LENGTH,
-        email=EMAIL,
-        log_file_path=log_file_path)
-
-    gis_clean = gis
 
     # gis_clean = list()
     # for gi in gis:
     #     if gi not in LOCI[locus_name]['bad_gis']:
     #         gis_clean.append(gi)
+
+    gis_clean = gis
+    LFP = log_file_path
+    DB = kr_seq_db_object
+    # DNLD_DIR_PATH = dnld_dir_path
+    EMAIL = email
 
     msg = 'Found ' + str(len(gis_clean)) + ' records.'
     write_log(msg, LFP)
@@ -126,6 +60,7 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
           ' new records.'
     write_log(msg, LFP)
 
+    records_new = list()
     if len(gis_new) > 0:
 
         msg = 'Downloading new records.'
@@ -133,16 +68,8 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
         print('')
 
-        timestamp = krother.timestamp()
-        timestamp = timestamp.replace('-', '_')
-        timestamp = timestamp.replace(':', '_')
-        timestamp = timestamp.replace(' ', '_')
-
-        gb_file_name = locus_name + '_' + timestamp + '.gb'
-        gb_file_path = DNLD_DIR_PATH + gb_file_name
-
         krncbi.download_sequence_records(
-            file_path=gb_file_path,
+            file_path=dnld_file_path,
             uids=gis_new,
             db=ncbi_db,
             entrez_email=EMAIL)
@@ -150,46 +77,155 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         print('')
 
         records_new = krbioio.read_sequence_file(
-            file_path=gb_file_path,
+            file_path=dnld_file_path,
             file_format='gb',
             ret_type='list',
             key='gi')
 
-        records_to_add = records_new
+    return records_new
 
-        if len(records_to_add) > 0:
 
-            msg = 'Adding downloaded records to database. This may take a bit.'
-            write_log(msg, LFP)
+def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, max_seq_length):
 
-            record_count = len(records_to_add)
-            for i, record in enumerate(records_to_add):
+    tax_ncbi_query_strings = list()
+    for t in ncbi_tax_ids:
+        tnqs = 'txid' + str(t) + '[Organism]'
+        tax_ncbi_query_strings.append(tnqs)
 
-                krcl.print_progress(
-                    current=i+1, total=record_count, length=0,
-                    prefix=krother.timestamp() + ' ',
-                    postfix=' - ' + record.annotations['gi'],
-                    show_bar=False)
+    taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
+    taxa_query_str = '(' + taxa_query_str + ')'
 
-                DB.add_genbank_record(
-                    record=record,
-                    action_str='Genbank search result.')
+    tax_exclude_ncbi_query_strings = list()
+    for te in exclude_tax_ids:
+        tnqs = 'txid' + str(te) + '[Organism]'
+        tax_exclude_ncbi_query_strings.append(tnqs)
 
-                gi = int(record.annotations['gi'])
+    taxa_exclude_query_str = ' OR '.join(tax_exclude_ncbi_query_strings)
+    taxa_exclude_query_str = '(' + taxa_exclude_query_str + ')'
 
-                DB.add_record_annotation(
-                    record_reference=gi,
-                    type_str='locus',
-                    annotation_str=locus_name,
-                    record_reference_type='gi')
+    query_term_str = '(' + query_term_str + ')'
+    seq_length_str = '0:' + str(max_seq_length) + '[Sequence Length]'
 
-                DB.add_record_annotation(
-                    record_reference=gi,
-                    type_str='source_file',
-                    annotation_str=gb_file_name,
-                    record_reference_type='gi')
+    query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
+                seq_length_str + ' NOT ' + taxa_exclude_query_str
 
-            print()
+    return query_str
+
+
+def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, max_seq_length, email, log_file_path):
+
+    from krpy import krncbi
+
+    from krpy.krother import write_log
+
+    query_str = produce_ncbi_query_string(
+        ncbi_tax_ids=ncbi_tax_ids,
+        exclude_tax_ids=exclude_tax_ids,
+        query_term_str=query_term_str,
+        max_seq_length=max_seq_length
+    )
+
+    msg = 'ENTREZ query: ' + query_str
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
+        to_file=True, to_screen=False)
+
+    result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
+        email=email)
+
+    uid_list = list()
+
+    for uid in result_uids:
+        gi = int(uid)
+        uid_list.append(gi)
+
+    return uid_list
+
+
+def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncbi_tax_ids, exclude_tax_ids, max_seq_length, dnld_dir_path):
+
+    from krpy import krother
+    # from krpy import krncbi
+    # from krpy import krbioio
+    from krpy import krcl
+    from krpy.krother import write_log
+
+    LOCI = loci
+    LFP = log_file_path
+    DB = kr_seq_db_object
+    TAX_IDS = ncbi_tax_ids
+    EXCLUDE_TAX_IDS = exclude_tax_ids
+    MAX_SEQ_LENGTH = max_seq_length
+    EMAIL = email
+    DNLD_DIR_PATH = dnld_dir_path
+
+    ncbi_db = LOCI[locus_name]['database']
+    query_term_str = LOCI[locus_name]['query']
+
+    msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
+          locus_name + '.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+    gis = search_genbank(
+        ncbi_db=ncbi_db,
+        query_term_str=query_term_str,
+        ncbi_tax_ids=TAX_IDS,
+        exclude_tax_ids=EXCLUDE_TAX_IDS,
+        max_seq_length=MAX_SEQ_LENGTH,
+        email=EMAIL,
+        log_file_path=log_file_path)
+
+    # gis_clean = gis
+
+    timestamp = krother.timestamp()
+    timestamp = timestamp.replace('-', '_')
+    timestamp = timestamp.replace(':', '_')
+    timestamp = timestamp.replace(' ', '_')
+
+    gb_file_name = locus_name + '_' + timestamp + '.gb'
+    gb_file_path = DNLD_DIR_PATH + gb_file_name
+
+    records_to_add = download_new_records(
+        locus_name=locus_name,
+        ncbi_db=ncbi_db,
+        gis=gis,
+        dnld_file_path=gb_file_path,
+        kr_seq_db_object=DB,
+        email=EMAIL,
+        log_file_path=LFP)
+
+    if len(records_to_add) > 0:
+
+        msg = 'Adding downloaded records to database. This may take a bit.'
+        write_log(msg, LFP)
+
+        record_count = len(records_to_add)
+        for i, record in enumerate(records_to_add):
+
+            krcl.print_progress(
+                current=i+1, total=record_count, length=0,
+                prefix=krother.timestamp() + ' ',
+                postfix=' - ' + record.annotations['gi'],
+                show_bar=False)
+
+            DB.add_genbank_record(
+                record=record,
+                action_str='Genbank search result.')
+
+            gi = int(record.annotations['gi'])
+
+            DB.add_record_annotation(
+                record_reference=gi,
+                type_str='locus',
+                annotation_str=locus_name,
+                record_reference_type='gi')
+
+            DB.add_record_annotation(
+                record_reference=gi,
+                type_str='source_file',
+                annotation_str=gb_file_name,
+                record_reference_type='gi')
+
+        print()
 
     DB.save()
 
@@ -1301,6 +1337,80 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
         description=None,
         rec_id=rec_id)
 
+
+def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_file_path):
+
+    import os
+
+    from krpy import kralign
+    from krpy import krbioio
+    from krpy.krother import write_log
+
+    LFP = log_file_path
+
+    reference_records = list()
+
+    if os.path.exists(ref_recs_file_path):
+
+        msg = 'Reading previously produced reference sequences.'
+        write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+        reference_records = krbioio.read_sequence_file(
+            file_path=ref_recs_file_path,
+            file_format='fasta',
+            ret_type='list')
+
+        for ref_rec in reference_records:
+            ref_rec.annotations['gi'] = ref_rec.id
+    else:
+
+        msg = 'Producing dereplicated set of reference sequences, this may take a bit.'
+        write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+        reference_records_temp = list()
+
+        ref_rec_lengths = list()
+        for record in records:
+            rec_trimmed = trim_record_to_locus(
+                record=record,
+                locus_name=locus_name)
+            reference_records_temp.append(rec_trimmed)
+            ref_rec_lengths.append(len(rec_trimmed.seq))
+        import numpy
+
+        ref_median_length = numpy.median(ref_rec_lengths)
+        ref_mean_length = numpy.mean(ref_rec_lengths)
+        ref_std_length = numpy.std(ref_rec_lengths)
+        # ref_cutoff_length = ref_mean_length - (1 * ref_std_length)
+        ref_cutoff_length = min(ref_median_length, ref_mean_length) - (0.5 * ref_std_length)
+
+        # print(len(ref_rec_lengths), ref_median_length, ref_std_length, ref_cutoff_length)
+
+        for ref_rec in reference_records_temp:
+            if len(ref_rec.seq) >= ref_cutoff_length:
+                reference_records.append(ref_rec)
+
+        # print(len(reference_records))
+
+        # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
+        # reference_records = reference_records[0:min(100, len(reference_records))]
+        reference_records = kralign.dereplicate(
+            records=reference_records,
+            threshold=0.90,
+            unknown='N',
+            key='gi',
+            aln_program='mafft',
+            aln_executable='mafft',
+            aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+            seed_coverage=0.30,
+            query_coverage=0.80)
+
+        krbioio.write_sequence_file(
+            records=reference_records,
+            file_path=ref_recs_file_path,
+            file_format='fasta')
+
+    return reference_records
 
 # Hacks! -----------------------------------------------------------------------
 
