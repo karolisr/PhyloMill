@@ -3,6 +3,66 @@
 from __future__ import print_function
 
 
+def blacklist_gis(gis, kr_seq_db_object, log_file_path):
+
+    from krpy.krother import write_log
+
+    DB = kr_seq_db_object
+    LFP = log_file_path
+
+    msg = 'Inactivating blacklisted gis.'
+    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+    for gi in gis:
+
+        GI = int(gi)
+
+        blacklist_notes = 'user_deleted'
+
+        where_dict = {'ncbi_gi': GI}
+
+        row_ids = DB.db_get_row_ids(table_name='records', where_dict=where_dict)
+
+        if row_ids:
+
+            # msg = 'inactivating:' + \
+            # ' gi:' + str(GI) + ' note:' + blacklist_notes
+            # write_log(msg, LFP)
+
+            record = DB.get_record(
+                record_reference=GI,
+                record_reference_type='gi'  # gi version internal raw
+                )
+
+            del_rec_id = int(record.annotations['kr_seq_db_id'])
+
+            DB.set_inactive(
+                table_name='records',
+                where_dict=where_dict)
+
+            DB.add_record_to_blacklist(
+                ncbi_gi=GI,
+                ncbi_version=record.id,
+                internal_reference=record.annotations['internal_reference'],
+                notes=blacklist_notes)
+
+            where_dict = {'parent_rec_id': del_rec_id}
+
+            DB.db_delete(
+                table_name='record_ancestry',
+                where_dict=where_dict)
+
+        else:
+
+            DB.add_record_to_blacklist(
+                ncbi_gi=GI,
+                ncbi_version=None,
+                internal_reference=None,
+                notes=blacklist_notes)
+
+        DB.save()
+
+
 def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_object, email, log_file_path):
 
     from krpy import krncbi
@@ -442,8 +502,10 @@ def rename_organisms_using_taxids(
 
         check_syn = False
         taxonomy = org_dict['taxonomy']
+        taxonomy_list_orig = None
         if taxonomy:
             taxonomy = taxonomy.split(',')
+            taxonomy_list_orig = taxonomy
             taxonomy = krncbi.parse_lineage_string_list(taxonomy)[1]
             taxonomy_lower = [x.lower() for x in taxonomy]
             for tax_term in tax_groups_to_syn:
@@ -537,8 +599,13 @@ def rename_organisms_using_taxids(
                 # taxonomy_list = krncbi.get_lineage(
                 #     email=email, tax_term=acc_name['genus'])
                 taxonomy_list = krncbi.get_lineages(
-                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()[0]
-                taxonomy_cache[acc_name['genus']] = taxonomy_list
+                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()
+                if taxonomy_list:
+                    taxonomy_list = taxonomy_list[0]
+                elif taxonomy_list_orig:
+                    taxonomy_list = taxonomy_list_orig
+                if taxonomy_list:
+                    taxonomy_cache[acc_name['genus']] = taxonomy_list
 
             ncbi_tax_id_list = None
             if tax_id:

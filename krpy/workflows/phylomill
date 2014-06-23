@@ -166,6 +166,7 @@ if __name__ == '__main__':
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
 
     CFG_FILE_PATH = PRJ_DIR_PATH + 'config'
+    BLACKLIST_GIS_FILE_PATH = PRJ_DIR_PATH + 'blacklisted_gis.csv'
 
     RAxML_CMD_FILE_PATH = ALN_DIR_PATH + 'raxml-commands.txt'
 
@@ -221,7 +222,6 @@ if __name__ == '__main__':
             HACKS[hack] = None
 
     # Outgroup Taxa
-
     msg = 'Parsing outgroup taxa.'
     write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
@@ -236,21 +236,24 @@ if __name__ == '__main__':
             out_orig = out
 
             out_id = list()
-            while not out_id:
+            i = 0
+            while (not out_id) and i < 3:
+                i = i + 1
                 out_id = list(krncbi.esearch(out, 'taxonomy', EMAIL))
                 if not out_id:
                     out = out.replace('subsp. ', '')
                     out = out.replace('var. ', '')
-            out_id = out_id[0]
+            if out_id:
+                out_id = out_id[0]
 
-            OUT_TAX_IDS.append(str(out_id))
-            msg = 'NCBI taxonomy ID for ' + out + ' is ' + str(out_id)
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                OUT_TAX_IDS.append(str(out_id))
+                msg = 'NCBI taxonomy ID for ' + out + ' is ' + str(out_id)
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
-            krio.replace_line_in_file(
-                file_path=CFG_FILE_PATH,
-                line_str=out_orig,
-                replace_str='# ' + out + '\n' + str(out_id))
+                krio.replace_line_in_file(
+                    file_path=CFG_FILE_PATH,
+                    line_str=out_orig,
+                    replace_str='# ' + out + '\n' + str(out_id))
 
     # Main Taxa
 
@@ -268,21 +271,24 @@ if __name__ == '__main__':
             tax_orig = tax
 
             tax_id = list()
-            while not tax_id:
+            i = 0
+            while (not tax_id) and i < 3:
+                i = i + 1
                 tax_id = list(krncbi.esearch(tax, 'taxonomy', EMAIL))
                 if not tax_id:
                     tax = tax.replace('subsp. ', '')
                     tax = tax.replace('var. ', '')
-            tax_id = tax_id[0]
+            if tax_id:
+                tax_id = tax_id[0]
 
-            TAX_IDS.append(str(tax_id))
-            msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                TAX_IDS.append(str(tax_id))
+                msg = 'NCBI taxonomy ID for ' + tax + ' is ' + str(tax_id)
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
-            krio.replace_line_in_file(
-                file_path=CFG_FILE_PATH,
-                line_str=tax_orig,
-                replace_str='# ' + tax + '\n' + str(tax_id))
+                krio.replace_line_in_file(
+                    file_path=CFG_FILE_PATH,
+                    line_str=tax_orig,
+                    replace_str='# ' + tax + '\n' + str(tax_id))
 
     # Excluded Taxa
 
@@ -300,21 +306,24 @@ if __name__ == '__main__':
             exclude_tax_orig = exclude_tax
 
             exclude_id = list()
-            while not exclude_id:
+            i = 0
+            while (not exclude_id) and i < 3:
+                i = i + 1
                 exclude_id = list(krncbi.esearch(exclude_tax, 'taxonomy', EMAIL))
                 if not exclude_id:
                     exclude_tax = exclude_tax.replace('subsp. ', '')
                     exclude_tax = exclude_tax.replace('var. ', '')
-            exclude_id = exclude_id[0]
+            if exclude_id:
+                exclude_id = exclude_id[0]
 
-            EXCLUDE_TAX_IDS.append(str(exclude_id))
-            msg = 'NCBI taxonomy ID for ' + exclude_tax + ' is ' + str(exclude_id)
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                EXCLUDE_TAX_IDS.append(str(exclude_id))
+                msg = 'NCBI taxonomy ID for ' + exclude_tax + ' is ' + str(exclude_id)
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
-            krio.replace_line_in_file(
-                file_path=CFG_FILE_PATH,
-                line_str=exclude_tax_orig,
-                replace_str='# ' + exclude_tax + '\n' + str(exclude_id))
+                krio.replace_line_in_file(
+                    file_path=CFG_FILE_PATH,
+                    line_str=exclude_tax_orig,
+                    replace_str='# ' + exclude_tax + '\n' + str(exclude_id))
 
     ALL_TAX_IDS = OUT_TAX_IDS + TAX_IDS
 
@@ -427,6 +436,18 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    # Blacklist gis in blacklisted_gis.csv file
+    gis = list()
+
+    with open(BLACKLIST_GIS_FILE_PATH, 'r') as f:
+        lines = f.readlines()
+        for l in lines:
+            gis.append(l.strip('\n'))
+
+    wf.blacklist_gis(gis=gis, kr_seq_db_object=DB, log_file_path=LFP)
+
+    ############################################################################
+
     # Search genbank
     if 'search' in COMMANDS:
 
@@ -510,7 +531,7 @@ if __name__ == '__main__':
                     query_term_str=locus_dict['query'],
                     max_seq_length=MAX_SEQ_LENGTH)
 
-                cmd = 'blastn -remote -entrez_query \'' + query_str + '\'' \
+                cmd = 'blastn -remote -task blastn -entrez_query \'' + query_str + '\'' \
                     ' -db ' + db + \
                     ' -query ' + ref_recs_file_path + \
                     ' -out ' + blast_results_path + \
@@ -892,11 +913,30 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    # Export blacklisted gis
+    if 'export_blacklisted_gis' in COMMANDS:
+
+        msg = 'Exporting blacklisted gis.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+        blacklisted_gis = DB.db_select(
+            table_name_list=['blacklist'],
+            column_list=['ncbi_gi'],
+            where_dict=None,
+            join_rules_str=None,
+            order_by_column_list=['ncbi_gi'])
+
+        with open(BLACKLIST_GIS_FILE_PATH, 'wb') as f:
+            for bgi in blacklisted_gis:
+                f.write(str(bgi['ncbi_gi']) + '\n')
+
+    ############################################################################
+
     # Export active records
     if 'export_active_records' in COMMANDS:
 
-        # msg = 'Exporting active records.'
-        # write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        msg = 'Exporting active records.'
+        write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
         timestamp = krother.timestamp()
         timestamp = timestamp.replace('-', '_')
@@ -943,42 +983,11 @@ if __name__ == '__main__':
     if 'blacklist_gi' in COMMANDS:
 
         if not GI:
-            # write_log('No GI given.', LFP, newlines_before=1,
-            #     newlines_after=0)
+            write_log('No GI given.', LFP, newlines_before=1,
+                newlines_after=0)
             sys.exit(0)
 
-        record = DB.get_record(
-            record_reference=GI,
-            record_reference_type='gi'  # gi version internal raw
-            )
-
-        del_rec_id = int(record.annotations['kr_seq_db_id'])
-
-        blacklist_notes = 'user_deleted'
-
-        # msg = 'inactivating:' + \
-        # ' gi:' + str(GI) + ' note:' + blacklist_notes
-        # write_log(msg, LFP)
-
-        where_dict = {'ncbi_gi': GI}
-
-        DB.set_inactive(
-            table_name='records',
-            where_dict=where_dict)
-
-        DB.add_record_to_blacklist(
-            ncbi_gi=GI,
-            ncbi_version=record.id,
-            internal_reference=record.annotations['internal_reference'],
-            notes=blacklist_notes)
-
-        where_dict = {'parent_rec_id': del_rec_id}
-
-        DB.db_delete(
-            table_name='record_ancestry',
-            where_dict=where_dict)
-
-        DB.save()
+        wf.blacklist_gis(gis=[GI], kr_seq_db_object=DB)
 
     ############################################################################
 
@@ -986,15 +995,15 @@ if __name__ == '__main__':
     if 'whitelist_gi' in COMMANDS:
 
         if not GI:
-            # write_log('No GI given.', LFP, newlines_before=1,
-            #     newlines_after=0)
+            write_log('No GI given.', LFP, newlines_before=1,
+                newlines_after=0)
             sys.exit(0)
 
         whitelist_notes = 'user_activated'
 
-        # msg = 'activating:' + \
-        # ' gi:' + str(GI) + ' note:' + whitelist_notes
-        # write_log(msg, LFP)
+        msg = 'activating:' + \
+        ' gi:' + str(GI) + ' note:' + whitelist_notes
+        write_log(msg, LFP)
 
         where_dict = {'ncbi_gi': GI}
 
@@ -1691,13 +1700,23 @@ if __name__ == '__main__':
         ########################################################################
 
         # Concatenate alignments
-        concatenated = kralign.concatenate(
-            alignments=aln_list,
-            padding_length=0,
-            partitions=None)
 
-        aln = concatenated[0]
-        partitions = concatenated[1]
+        concatenated = None
+        aln = None
+        partitions = None
+
+        if len(aln_list) > 1:
+            concatenated = kralign.concatenate(
+                alignments=aln_list,
+                padding_length=0,
+                partitions=None)
+
+            aln = concatenated[0]
+            partitions = concatenated[1]
+
+        elif aln_list:
+            aln = aln_list[0]
+            partitions = [(1, aln.get_alignment_length())]
 
         aln_file_path = ALN_DIR_PATH + 'concatenated.phy'
 
@@ -1725,7 +1744,6 @@ if __name__ == '__main__':
         raxml_partitions_output_file = ALN_DIR_PATH + 'locus-partitions-raxml' + '.txt'
         f_part = open(partitions_output_file, 'wb')
         f_part_raxml = open(raxml_partitions_output_file, 'wb')
-        partitions = concatenated[1]
         f_part.write('locus,start,end\n')
         for i, part in enumerate(partitions):
             raxml_part_line = 'DNA, ' + name_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
@@ -1780,7 +1798,7 @@ if __name__ == '__main__':
 
     ############################################################################
 
-    # Concatenate alignments
+    # Run RAxML
     if 'raxml' in COMMANDS:
         msg = 'Running RAxML.'
         write_log(msg, LFP, newlines_before=1, newlines_after=1)
