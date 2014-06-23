@@ -1408,6 +1408,7 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
 def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_file_path):
 
     import os
+    import sys
 
     from krpy import kralign
     from krpy import krbioio
@@ -1444,6 +1445,11 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             reference_records_temp.append(rec_trimmed)
             ref_rec_lengths.append(len(rec_trimmed.seq))
         import numpy
+
+        if len(reference_records_temp) == 0:
+            msg = 'There are no annotated records for locus ' + locus_name + ". Was 'extract_loci' command run?"
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            sys.exit(1)
 
         ref_median_length = numpy.median(ref_rec_lengths)
         ref_mean_length = numpy.mean(ref_rec_lengths)

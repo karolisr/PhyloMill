@@ -632,6 +632,13 @@ if __name__ == '__main__':
         msg = 'Resolving organism names.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
+        organisms = DB.get_organisms(where_dict={'active': 1})
+
+        if len(organisms) < 2:
+            msg = 'There are only ' + str(len(organisms)) + ' organisms in the database. Was search conducted?'
+            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            sys.exit(1)
+
         ########################################################################
 
         ncbi_names_table = None
@@ -1588,6 +1595,11 @@ if __name__ == '__main__':
                 active=True,
                 inactive=False)
 
+            if len(records_flat) < 2:
+                msg = 'There are ' + str(len(records_flat)) + ' records for locus ' + locus_name + ". Was 'flatten' command run?"
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+                sys.exit(1)
+
             for r in records_flat:
 
                 binomial = r.annotations['organism'].replace(' ', '_')
@@ -1662,6 +1674,11 @@ if __name__ == '__main__':
             write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
             aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
+
+            if not os.path.exists(aln_file_path):
+                msg = 'No alignment file exists for locus ' + locus_name + '.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+                sys.exit(1)
 
             aln = krbioio.read_alignment_file(
                 file_path=aln_file_path,
@@ -1802,6 +1819,11 @@ if __name__ == '__main__':
     if 'raxml' in COMMANDS:
         msg = 'Running RAxML.'
         write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+        if not os.path.exists(RAxML_CMD_FILE_PATH):
+            msg = 'RAxML commands file does not exist. Were sequences aligned and concatenated?'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            sys.exit(1)
 
         cmd = ''
         with open(RAxML_CMD_FILE_PATH, 'rb') as f:
