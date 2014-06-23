@@ -220,7 +220,7 @@ class KRSequenceDatabase:
         db.close()
 
 
-    def _db_select(self, table_name_list, column_list, where_dict=None, join_rules_str=None, order_by_column_list=None):
+    def db_select(self, table_name_list, column_list, where_dict=None, join_rules_str=None, order_by_column_list=None):
 
         import sys
         import sqlite3
@@ -271,7 +271,7 @@ class KRSequenceDatabase:
 
     def db_get_row_ids(self, table_name, where_dict=None):
 
-        results = self._db_select(
+        results = self.db_select(
             table_name_list=[table_name],
             column_list=['id'],
             where_dict=where_dict)
@@ -534,7 +534,7 @@ class KRSequenceDatabase:
 
             org_id = org_ids[0]
 
-            org_dict = self._db_select(
+            org_dict = self.db_select(
                 table_name_list=['organisms'],
                 column_list=['taxonomy_id', 'authority', 'synonymy_check_done'],
                 where_dict={'id': org_id},
@@ -617,7 +617,7 @@ class KRSequenceDatabase:
                        'taxonomy', 'common_name', 'synonymy_check_done']
         order_by_column_list = ['genus', 'species']
 
-        orgs = self._db_select(
+        orgs = self.db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -630,7 +630,7 @@ class KRSequenceDatabase:
 
             org = dict(org)
 
-            ncbi_tax_ids = self._db_select(
+            ncbi_tax_ids = self.db_select(
                 table_name_list=['ncbi_tax_ids'],
                 column_list=['ncbi_tax_id'],
                 where_dict={'org_id': org[b'id']},
@@ -865,7 +865,7 @@ class KRSequenceDatabase:
         table_name = 'records'
         column_list = ['ncbi_gi', 'ncbi_version', 'internal_reference']
 
-        rec_ids_list = self._db_select(
+        rec_ids_list = self.db_select(
             table_name_list=[table_name],
             column_list=column_list,
             where_dict=where_dict,
@@ -1119,7 +1119,7 @@ class KRSequenceDatabase:
     #         where_dict = {'id': old_seq_rep_id}
     #         join_rules_str = None
 
-    #         results = self._db_select(
+    #         results = self.db_select(
     #             table_name_list=table_name_list,
     #             column_list=column_list,
     #             where_dict=where_dict,
@@ -1192,7 +1192,7 @@ class KRSequenceDatabase:
         # table_name_list = ['alignments']
         # column_list = ['name', 'rec_id', 'description']
         # where_dict = {'id': alignment_id}
-        # alignment_field_list = self._db_select(
+        # alignment_field_list = self.db_select(
         #     table_name_list=table_name_list,
         #     column_list=column_list,
         #     where_dict=where_dict,
@@ -1201,7 +1201,7 @@ class KRSequenceDatabase:
         table_name_list = ['sequence_representations']
         column_list = ['id', 'seq_id', 'rec_id', 'aln_id', 'representation']
         where_dict = {'aln_id': alignment_id}
-        seq_reps = self._db_select(
+        seq_reps = self.db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -1211,7 +1211,7 @@ class KRSequenceDatabase:
 
         for seq_rep in seq_reps:
 
-            rec_id = self._db_select(
+            rec_id = self.db_select(
                 table_name_list=['sequences'],
                 column_list=['rec_id'],
                 where_dict={'id': seq_rep[b'seq_id']},
@@ -1281,7 +1281,7 @@ class KRSequenceDatabase:
         where_dict = {'sequences.id': sequence_id}
         join_rules_str = 'sequences.seq_alpha_id=sequence_alphabets.id'
 
-        results = self._db_select(
+        results = self.db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -1304,7 +1304,7 @@ class KRSequenceDatabase:
         where_dict = {'id': seq_rep_id}
         join_rules_str = None
 
-        results = self._db_select(
+        results = self.db_select(
             table_name_list=table_name_list,
             column_list=column_list,
             where_dict=where_dict,
@@ -1406,7 +1406,7 @@ class KRSequenceDatabase:
             where_dict_key = 'id'
 
         where_dict = {where_dict_key: record_reference}
-        results = self._db_select(
+        results = self.db_select(
             table_name_list=['records'],
             column_list=['active', 'id', 'org_id', 'ncbi_gi', 'ncbi_version', 'internal_reference',
                          'description'],
@@ -1425,7 +1425,7 @@ class KRSequenceDatabase:
 
         seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
 
-        features_temp = self._db_select(
+        features_temp = self.db_select(
             table_name_list=['record_features', 'record_feature_types'],
             column_list=['record_features.id', 'location', 'type'],
             where_dict={'rec_id': results[b'id']},
@@ -1440,7 +1440,7 @@ class KRSequenceDatabase:
             location = krseq.location_from_string(
                 location_string=location_string)
 
-            qualifiers_temp = self._db_select(
+            qualifiers_temp = self.db_select(
                 table_name_list=['record_feature_qualifiers', 'record_feature_qualifier_types'],
                 column_list=['qualifier', 'type'],
                 where_dict={'rec_feat_id': feat_raw[b'id']},
@@ -1528,7 +1528,7 @@ class KRSequenceDatabase:
 
     def get_all_records(self, active=True, inactive=False):
 
-        # record_reference_list = self._db_select(
+        # record_reference_list = self.db_select(
         #     table_name_list=['records'],
         #     column_list=['id'],
         #     where_dict=None,
@@ -1589,7 +1589,7 @@ class KRSequenceDatabase:
         #     parent_rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE RESTRICT
         #     );
 
-        results = self._db_select(
+        results = self.db_select(
             table_name_list=['record_ancestry'],
             column_list=['parent_rec_id'],
             where_dict={'rec_id': rec_id},
