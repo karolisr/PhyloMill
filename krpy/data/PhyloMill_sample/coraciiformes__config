@@ -1,0 +1,80 @@
+# Taxa can be NCBI "Taxonomy IDs" or a recognized taxonomic name.
+
+[Outgroup Taxa]
+
+# Caprimulgus vociferus
+57400
+# Caprimulgus europaeus
+111811
+# Nyctiphrynus yucatanicus
+723274
+# Caprimulgus aegyptius
+723173
+
+[Main Taxa]
+
+# Coraciiformes
+8936
+
+[Organism Names]
+
+remove_nonspecific = Yes
+remove_hybrids = Yes
+merge_subspecies = No
+merge_varieties = No
+synonymize =
+skip_previously_synonymized = Yes
+
+[Loci]
+
+NADH2
+RAG1
+cytb
+# MYC
+TGFB2
+COI
+# ATP8
+# ATP6
+
+[Blast]
+
+NADH2 = 1E-30
+RAG1 = 1E-30
+cytb = 1E-30
+# MYC = 1E-30
+TGFB2 = 1E-30
+COI = 1E-30
+# ATP8 = 1E-30
+# ATP6 = 1E-30
+
+[Flatten]
+
+resolve_ambiguities = No
+
+align_program = mafft
+align_program_options = --genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --thread 4
+
+[Align]
+
+align_program = mafft
+align_program_options = --genafpair --bl 62 --maxiterate 1000 --nuc --reorder --thread 4
+
+taxon_name = family, scientific, common
+
+[General]
+
+# Contact email, so NCBI can inform the user if there are any problems.
+email = test@test.com
+
+# If sequence exceeds this length it will not be downloaded.
+max_seq_length = 10000
+
+mafft_executable = mafft
+muscle_executable = muscle
+clustalo_executable = clustalo
+
+[Hacks]
+
+tgrc = No
+
+[Excluded Taxa]
