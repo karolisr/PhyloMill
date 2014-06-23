@@ -239,18 +239,20 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
         tax_ids = list()
         for tax_term in tax_terms:
             tax_id = get_ncbi_tax_id_for_tax_term(email, tax_term)
-            tax_ids.append(tax_id)
+            if tax_id:
+                tax_ids.append(tax_id)
 
     clean_tax_ids = list()
     for ti in tax_ids:
         clean_tax_ids.append(str(ti))
 
-    Entrez.email = email
-    handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
-    records = Entrez.read(handle)
+    records = list()
+    if clean_tax_ids:
+        Entrez.email = email
+        handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+        records = Entrez.read(handle)
 
     results = dict()
-
     for record in records:
         lineage_list_temp = record['LineageEx']
         lineage_list = list()
