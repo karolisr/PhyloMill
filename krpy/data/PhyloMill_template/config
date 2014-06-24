@@ -56,6 +56,9 @@ max_seq_length = 10000
 mafft_executable = mafft
 muscle_executable = muscle
 clustalo_executable = clustalo
+astral_jar_file = ~/astral-code/ASTRAL/astral.4.2.0.jar
+
+cpu = 4
 
 [Hacks]
 
