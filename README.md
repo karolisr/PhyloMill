@@ -21,13 +21,13 @@ The locus definitions are simple text files and can be found in the "search_stra
 To run the pipeline first you would run the command listed below, which will create a new project directory:
 
     phylomill -p PATH_TO_PROJECT_DIR
-    
+
 This clean project directory contains a sample configuration file that will allow to construct a phylogeny of a select taxa from *Cetacea* using three loci: COI, RAG1, cytb.
 
 Now you can simply run:
 
     phylomill -p PATH_TO_PROJECT_DIR -c autopilot
-    
+
 This process takes about 7 minutes on a fairly modern MacbookPro.
 
 ## What it does
@@ -50,7 +50,7 @@ This process takes about 7 minutes on a fairly modern MacbookPro.
 
 7. Alignments for each locus will be concatenated. All alignments produced can be edited manually, PhyloMill will incorporate these changes.
 
-8. Species tree ()using partitioned concatenated alignment) and, optionally, gene trees will be constructed using [RAxML](http://sco.h-its.org/exelixis/web/software/raxml/index.html). You can use your own favorite phylogeny program at this point, simply point it to the alignments in the "output/02_alignments" directory. Trees are saved in the "output/03_trees" directory.
+8. Species tree (using partitioned concatenated alignment) and, optionally, gene trees will be constructed using [RAxML](http://sco.h-its.org/exelixis/web/software/raxml/index.html). You can use your own favorite phylogeny program at this point, simply point it to the alignments in the "output/02_alignments" directory. Trees are saved in the "output/03_trees" directory.
 
 ## Installation
 
