@@ -16,7 +16,6 @@ if __name__ == '__main__':
     import inspect
     import shutil
     import copy
-    import random
     import ConfigParser
     import subprocess
 
@@ -74,6 +73,16 @@ if __name__ == '__main__':
         type=unicode,
         help='')
 
+    PARSER.add_argument(
+        '--gene_tree',
+        action='store_true',
+        help='')
+
+    PARSER.add_argument(
+        '--species_tree',
+        action='store_true',
+        help='')
+
     ARGS = PARSER.parse_args()
 
     ############################################################################
@@ -99,6 +108,14 @@ if __name__ == '__main__':
     RAW = None
     if ARGS.raw:
         RAW = ARGS.raw
+
+    GENE_TREE = None
+    if ARGS.gene_tree:
+        GENE_TREE = ARGS.gene_tree
+
+    SPECIES_TREE = None
+    if ARGS.species_tree:
+        SPECIES_TREE = ARGS.species_tree
 
     ############################################################################
 
@@ -159,16 +176,21 @@ if __name__ == '__main__':
 
     DNLD_DIR_PATH = PRJ_DIR_PATH + 'downloaded_files' + PS
     OUT_DIR_PATH = PRJ_DIR_PATH + 'output' + PS
-    ORG_LOC_DIR_PATH = OUT_DIR_PATH + 'flatten' + PS
-    ALN_DIR_PATH = OUT_DIR_PATH + 'align' + PS
     SRCH_DIR_PATH = PRJ_DIR_PATH + 'search_strategies' + PS
     ORGN_DIR_PATH = PRJ_DIR_PATH + 'organism_name_files' + PS
     TEMP_DIR_PATH = PRJ_DIR_PATH + 'temporary_files' + PS
 
+    ORG_LOC_DIR_PATH = OUT_DIR_PATH + '01_locus_files' + PS
+    ALN_DIR_PATH = OUT_DIR_PATH + '02_alignments' + PS
+    TRE_DIR_PATH = OUT_DIR_PATH + '03_trees' + PS
+    PART_TRE_DIR_PATH = TRE_DIR_PATH + 'concat_partitioned' + PS
+    AST_TRE_DIR_PATH = TRE_DIR_PATH + 'astral' + PS
+
     CFG_FILE_PATH = PRJ_DIR_PATH + 'config'
     BLACKLIST_GIS_FILE_PATH = PRJ_DIR_PATH + 'blacklisted_gis.csv'
+    CAT_ALN_FILE_PREFIX = ALN_DIR_PATH + 'concat'
 
-    RAxML_CMD_FILE_PATH = ALN_DIR_PATH + 'raxml-commands.txt'
+    # RAxML_CMD_FILE_PATH = ALN_DIR_PATH + 'raxml-commands.txt'
 
     ############################################################################
 
@@ -186,6 +208,9 @@ if __name__ == '__main__':
 
     EMAIL = CFG.get('General', 'email')
     MAX_SEQ_LENGTH = CFG.getint('General', 'max_seq_length')
+
+    ASTRAL_JAR_FILE = CFG.get('General', 'astral_jar_file')
+    CPU = CFG.getint('General', 'cpu')
 
     # Flatten options
     FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
@@ -256,7 +281,6 @@ if __name__ == '__main__':
                     replace_str='# ' + out + '\n' + str(out_id))
 
     # Main Taxa
-
     msg = 'Parsing main taxa.'
     write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
@@ -291,7 +315,6 @@ if __name__ == '__main__':
                     replace_str='# ' + tax + '\n' + str(tax_id))
 
     # Excluded Taxa
-
     msg = 'Parsing excluded taxa'
     write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
@@ -433,6 +456,7 @@ if __name__ == '__main__':
     # Autopilot
     if 'autopilot' in COMMANDS:
         COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate', 'raxml'])
+        SPECIES_TREE = True
 
     ############################################################################
 
@@ -866,7 +890,8 @@ if __name__ == '__main__':
                 records=records,
                 log_file_path=LFP,
                 kr_seq_db_object=DB,
-                temp_dir=TEMP_DIR_PATH)
+                temp_dir=TEMP_DIR_PATH,
+                cpu=CPU)
 
             rej_gi_list = acc_rej_gi_dict['reject']
             delete_note = 'failed sequence similarity test'
@@ -1059,7 +1084,8 @@ if __name__ == '__main__':
                 locus_name=locus_name,
                 records=records,
                 ref_recs_file_path=ref_recs_file_path,
-                log_file_path=LFP)
+                log_file_path=LFP,
+                cpu=CPU)
 
             ###
 
@@ -1575,6 +1601,12 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    # ORG_LOC_DIR_PATH = OUT_DIR_PATH + '01_locus_files' + PS
+    # ALN_DIR_PATH = OUT_DIR_PATH + '02_alignments' + PS
+    # TRE_DIR_PATH = OUT_DIR_PATH + '03_trees' + PS
+    # PART_TRE_DIR_PATH = TRE_DIR_PATH + 'partitioned' + PS
+    # AST_TRE_DIR_PATH = TRE_DIR_PATH + 'astral' + PS
+
     # Align sequences
     if 'align' in COMMANDS:
 
@@ -1582,6 +1614,7 @@ if __name__ == '__main__':
         write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
         krio.prepare_directory(ALN_DIR_PATH)
+        krio.prepare_directory(TRE_DIR_PATH)
 
         for locus_name in LOCI.keys():
 
@@ -1617,7 +1650,7 @@ if __name__ == '__main__':
                 lineage_taxids = org_taxids + lineage_taxids
                 for lineage_taxid in lineage_taxids:
                     if str(lineage_taxid) in OUT_TAX_IDS:
-                        outgroup = '||OUTGROUP'
+                        outgroup = '||OUT'
 
                 name_terms = list()
                 for term in ALN_TAX_NAME_LIST:
@@ -1649,14 +1682,48 @@ if __name__ == '__main__':
                 options=ALN_ALN_PROG_OPTIONS,
                 program_executable=ALN_ALN_PROG_EXE)
 
-            aln_file_path = ALN_DIR_PATH + locus_name + '.phy'
+            aln_file_path_phy = ALN_DIR_PATH + locus_name + '.phy'
+            aln_file_path_fas = ALN_DIR_PATH + locus_name + '.fasta'
 
             krbioio.write_alignment_file(
                 alignment=aln,
-                file_path=aln_file_path,
+                file_path=aln_file_path_phy,
                 file_format='phylip-relaxed')
 
+            krbioio.write_alignment_file(
+                alignment=aln,
+                file_path=aln_file_path_fas,
+                file_format='fasta')
+
+            outgroup_taxa = wf.get_outgroup_names(alignment=aln)
+
+            ####################################################################
+
+            # Write RAxML commands file
+
+            msg = 'Writing RAxML input files for locus ' + locus_name + '.'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            loc_tre_dir_path = TRE_DIR_PATH + locus_name + PS
+            krio.prepare_directory(loc_tre_dir_path)
+
+            wf.produce_raxml_input_files(
+                name=locus_name,
+                aln_file_path=aln_file_path_phy,
+                out_dir_path=loc_tre_dir_path,
+                outgroup_taxa=outgroup_taxa,
+                partitions=None,
+                threads=CPU)
+
+            ####################################################################
+
     ############################################################################
+
+    # ORG_LOC_DIR_PATH = OUT_DIR_PATH + '01_locus_files' + PS
+    # ALN_DIR_PATH = OUT_DIR_PATH + '02_alignments' + PS
+    # TRE_DIR_PATH = OUT_DIR_PATH + '03_trees' + PS
+    # PART_TRE_DIR_PATH = TRE_DIR_PATH + 'partitioned' + PS
+    # AST_TRE_DIR_PATH = TRE_DIR_PATH + 'astral' + PS
 
     # Concatenate alignments
     if 'concatenate' in COMMANDS:
@@ -1705,7 +1772,7 @@ if __name__ == '__main__':
             for s in a[0]:
                 idx = name_list.index(a[1])
                 matrix[s.id][idx] = '1'
-        matrix_output_file = ALN_DIR_PATH + 'locus-presence' + '.csv'
+        matrix_output_file = ALN_DIR_PATH + 'concat_locus_presence' + '.csv'
         f = open(matrix_output_file, 'wb')
         f.write('taxon' + ',' + 'count' + ',' + ','.join(name_list) + '\n')
         # f.write('' + ',' + '' + ',' + ','.join(length_list) + '\n')
@@ -1717,7 +1784,6 @@ if __name__ == '__main__':
         ########################################################################
 
         # Concatenate alignments
-
         concatenated = None
         aln = None
         partitions = None
@@ -1735,20 +1801,19 @@ if __name__ == '__main__':
             aln = aln_list[0]
             partitions = [(1, aln.get_alignment_length())]
 
-        aln_file_path = ALN_DIR_PATH + 'concatenated.phy'
+        krbioio.write_alignment_file(
+            alignment=aln,
+            file_path=CAT_ALN_FILE_PREFIX + '.phy',
+            file_format='phylip-relaxed')
 
         krbioio.write_alignment_file(
             alignment=aln,
-            file_path=aln_file_path,
-            file_format='phylip-relaxed')
+            file_path=CAT_ALN_FILE_PREFIX + '.fasta',
+            file_format='fasta')
 
         ########################################################################
 
-        outgroup_taxa = list()
-        for a in aln:
-            last_id_term = a.id.split('||')[-1]
-            if last_id_term == 'OUTGROUP':
-                outgroup_taxa.append(a.id)
+        outgroup_taxa = wf.get_outgroup_names(alignment=aln)
 
         ########################################################################
 
@@ -1757,84 +1822,112 @@ if __name__ == '__main__':
         msg = 'Writing locus partition files.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
-        partitions_output_file = ALN_DIR_PATH + 'locus-partitions' + '.csv'
-        raxml_partitions_output_file = ALN_DIR_PATH + 'locus-partitions-raxml' + '.txt'
+        partitions_output_file = ALN_DIR_PATH + 'concat_locus_partitions' + '.csv'
+        # raxml_partitions_output_file = ALN_DIR_PATH + 'locus-partitions-raxml' + '.txt'
         f_part = open(partitions_output_file, 'wb')
-        f_part_raxml = open(raxml_partitions_output_file, 'wb')
+        # f_part_raxml = open(raxml_partitions_output_file, 'wb')
         f_part.write('locus,start,end\n')
         for i, part in enumerate(partitions):
-            raxml_part_line = 'DNA, ' + name_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
-            f_part_raxml.write(raxml_part_line)
+            # raxml_part_line = 'DNA, ' + name_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
+            # f_part_raxml.write(raxml_part_line)
             part_line = name_list[i] + ',' + str(part[0]) + ',' + str(part[1]) + '\n'
             f_part.write(part_line)
         f_part.close()
-        f_part_raxml.close()
+        # f_part_raxml.close()
 
         ########################################################################
 
         # Write RAxML commands file
-
         msg = 'Writing RAxML input files.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
-        rand_seed = str(random.randrange(0, 1000000000))
-        raxml_dir = ALN_DIR_PATH + 'RAxML_' + rand_seed
-        # raxml_commands_file = ALN_DIR_PATH + 'raxml-commands.txt'
-        f_raxml = open(RAxML_CMD_FILE_PATH, 'wb')
+        krio.prepare_directory(PART_TRE_DIR_PATH)
 
-        raxml_line_1 = 'raxml \\\n'
-        f_raxml.write(raxml_line_1)
-
-        raxml_line_2 = '-s ' + aln_file_path + ' \\\n'
-        f_raxml.write(raxml_line_2)
-
-        raxml_line_3 = '-q ' + raxml_partitions_output_file + ' \\\n'
-        f_raxml.write(raxml_line_3)
-
-        outgroup_taxa_raxml = ','.join(outgroup_taxa)
-        raxml_line_4 = '-o "' + outgroup_taxa_raxml + '" \\\n'
-        f_raxml.write(raxml_line_4)
-
-        krio.prepare_directory(raxml_dir)
-
-        raxml_line_5 = '-w ' + raxml_dir + ' \\\n'
-        f_raxml.write(raxml_line_5)
-
-        raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T 4 \\\n-N 1 \\\n'
-        f_raxml.write(raxml_line_6)
-
-        raxml_line_7 = '-p ' + rand_seed + ' \\\n'
-        f_raxml.write(raxml_line_7)
-
-        raxml_line_8 = '-n ' + '' + rand_seed + '\n'
-        f_raxml.write(raxml_line_8)
-
-        f_raxml.close()
+        wf.produce_raxml_input_files(
+            name='concat',
+            aln_file_path=CAT_ALN_FILE_PREFIX + '.phy',
+            out_dir_path=PART_TRE_DIR_PATH,
+            outgroup_taxa=outgroup_taxa,
+            partitions=partitions,
+            threads=CPU,
+            locus_name_list=name_list)
 
         ########################################################################
 
     ############################################################################
 
     # Run RAxML
-    if 'raxml' in COMMANDS:
-        msg = 'Running RAxML.'
-        write_log(msg, LFP, newlines_before=1, newlines_after=1)
+    if ('raxml' in COMMANDS) and (GENE_TREE or SPECIES_TREE):
 
-        if not os.path.exists(RAxML_CMD_FILE_PATH):
-            msg = 'RAxML commands file does not exist. Were sequences aligned and concatenated?'
-            write_log(msg, LFP, newlines_before=0, newlines_after=0)
-            sys.exit(1)
+        commands_file_paths = list()
 
-        cmd = ''
-        with open(RAxML_CMD_FILE_PATH, 'rb') as f:
-            cmd = f.readlines()
-            cmd = [x.replace('\n', '').replace('\\', '').strip() for x in cmd]
-            cmd = ' '.join(cmd)
+        if SPECIES_TREE:
+            commands_file_paths.append(PART_TRE_DIR_PATH + 'RAxML_commands.txt')
+
+        if GENE_TREE:
+            for locus_name in LOCI.keys():
+                commands_file_paths.append(TRE_DIR_PATH + locus_name + PS + 'RAxML_commands.txt')
+
+        for cmd_file_path in commands_file_paths:
+
+            if SPECIES_TREE:
+                msg = 'Running RAxML on concatenated and partiotioned alignment.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+            if GENE_TREE:
+                msg = 'Running RAxML on ' + cmd_file_path.split(PS)[-2] + ' alignment.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+            if not os.path.exists(cmd_file_path):
+                msg = 'RAxML commands file does not exist. Were sequences aligned, concatenated?'
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                sys.exit(1)
+
+            cmd = ''
+            with open(cmd_file_path, 'rb') as f:
+                cmd = f.readlines()
+                cmd = [x.replace('\n', '').replace('\\', '').strip() for x in cmd]
+                cmd = ' '.join(cmd)
+
+            subprocess.call(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True)
+
+    ############################################################################
+
+    # Run ASTRAL
+    if 'astral' in COMMANDS:
+
+        krio.prepare_directory(AST_TRE_DIR_PATH)
+
+        trees = list()
+        for locus_name in LOCI.keys():
+            tree_file_path = TRE_DIR_PATH + locus_name + PS + 'RAxML_' + locus_name + PS + 'RAxML_bestTree.' + locus_name
+
+            if not os.path.exists(tree_file_path):
+                msg = 'RAxML tree file does not exist for locus ' + locus_name + '.'
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                sys.exit(1)
+
+            tre = ''
+            with open(tree_file_path, 'rb') as f:
+                tre = f.readline()
+                tre = tre.replace('||', '___')
+                trees.append(tre)
+
+        input_trees_file = AST_TRE_DIR_PATH + 'gene_trees.tre'
+        with open(input_trees_file, 'w') as f:
+            f.writelines(trees)
+
+        output_tree_file = AST_TRE_DIR_PATH + 'species_tree.tre'
+        cmd = 'java -jar ' + ASTRAL_JAR_FILE + ' -i ' + input_trees_file + ' -o ' + output_tree_file
 
         subprocess.call(
             cmd,
-            # stdout=subprocess.PIPE,
-            # stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             shell=True)
 
     ############################################################################

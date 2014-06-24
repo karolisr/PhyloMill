@@ -145,7 +145,7 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
     return records_new
 
 
-def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, max_seq_length):
+def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, min_seq_length, max_seq_length):
 
     tax_ncbi_query_strings = list()
     for t in ncbi_tax_ids:
@@ -164,15 +164,17 @@ def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, max
     taxa_exclude_query_str = '(' + taxa_exclude_query_str + ')'
 
     query_term_str = '(' + query_term_str + ')'
-    seq_length_str = '0:' + str(max_seq_length) + '[Sequence Length]'
+    seq_length_str = ''
+    if max_seq_length > 0:
+        seq_length_str = ' AND ' + str(min_seq_length) + ':' + str(max_seq_length) + '[Sequence Length]'
 
-    query_str = taxa_query_str + ' AND ' + query_term_str + ' AND ' + \
+    query_str = taxa_query_str + ' AND ' + query_term_str + \
                 seq_length_str + ' NOT ' + taxa_exclude_query_str
 
     return query_str
 
 
-def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, max_seq_length, email, log_file_path):
+def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, min_seq_length, max_seq_length, email, log_file_path):
 
     from krpy import krncbi
 
@@ -182,6 +184,7 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, max_s
         ncbi_tax_ids=ncbi_tax_ids,
         exclude_tax_ids=exclude_tax_ids,
         query_term_str=query_term_str,
+        min_seq_length=min_seq_length,
         max_seq_length=max_seq_length
     )
 
@@ -221,6 +224,15 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
     ncbi_db = LOCI[locus_name]['database']
     query_term_str = LOCI[locus_name]['query']
 
+    min_seq_length = None
+    strategies = LOCI[locus_name]['strategies']
+    for s in strategies:
+        l_msl = s['min_length']
+        if not min_seq_length:
+            min_seq_length = l_msl
+        else:
+            min_seq_length = min(l_msl, min_seq_length)
+
     msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
           locus_name + '.'
     write_log(msg, LFP, newlines_before=1, newlines_after=0)
@@ -230,6 +242,7 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         query_term_str=query_term_str,
         ncbi_tax_ids=TAX_IDS,
         exclude_tax_ids=EXCLUDE_TAX_IDS,
+        min_seq_length=min_seq_length,
         max_seq_length=MAX_SEQ_LENGTH,
         email=EMAIL,
         log_file_path=log_file_path)
@@ -669,7 +682,7 @@ def rename_organisms_using_taxids(
 
 
 # def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
-def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
+def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1):
 
     from krpy import kralign
     # from krpy import krusearch
@@ -685,6 +698,16 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
 
         # if len(records) <= 500:
 
+        aln_options = ''
+        rec_lengths = list()
+        for r in records:
+            rec_lengths.append(len(r.seq))
+        mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
+        if mean_seq_length > 10000:
+            aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
+        else:
+            aln_options = '--genafpair --jtt 1 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
+
         clusters = kralign.cluster(
             records=records,
             threshold=identity_threshold,
@@ -692,7 +715,7 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85):
             key='gi',
             aln_program='mafft',
             aln_executable='mafft',
-            aln_options='--genafpair --jtt 1 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+            aln_options=aln_options,
             seeds=seeds,
             seed_coverage=0.15,
             query_coverage=0.5)
@@ -836,7 +859,7 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     return((feature, log_message))
 
 
-def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir):
+def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, cpu=1):
 
     from krpy import krcl
     from krpy import krother
@@ -1061,6 +1084,18 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
         recs = sorted(recs, key=lambda x: len(x.seq), reverse=True)
         seed_records_prelim.append(recs[0])
 
+    ###
+    aln_options = ''
+    rec_lengths = list()
+    for r in seed_records_prelim:
+        rec_lengths.append(len(r.seq))
+    mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
+    if mean_seq_length > 10000:
+        aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
+    else:
+        aln_options = '--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
+    ###
+
     clusters = kralign.cluster(
         records=seed_records_prelim,
         threshold=0.85,
@@ -1068,7 +1103,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
         key='gi',
         aln_program='mafft',
         aln_executable='mafft',
-        aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+        aln_options=aln_options,
         seeds=None,
         seed_coverage=0.5,
         query_coverage=0.5)
@@ -1088,7 +1123,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir)
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
         seeds=seed_records,
-        identity_threshold=0.80)
+        identity_threshold=0.80,
+        cpu=cpu)
 
     msg = 'Annotating sequence features in database.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
@@ -1405,7 +1441,7 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
         rec_id=rec_id)
 
 
-def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_file_path):
+def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_file_path, cpu=1):
 
     import os
     import sys
@@ -1467,6 +1503,15 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
 
         # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
         # reference_records = reference_records[0:min(100, len(reference_records))]
+
+        ###
+        aln_options = ''
+        if ref_mean_length > 10000:
+            aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
+        else:
+            aln_options = '--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
+        ###
+
         reference_records = kralign.dereplicate(
             records=reference_records,
             threshold=0.90,
@@ -1474,7 +1519,7 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             key='gi',
             aln_program='mafft',
             aln_executable='mafft',
-            aln_options='--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread 4',
+            aln_options=aln_options,
             seed_coverage=0.30,
             query_coverage=0.80)
 
@@ -1484,6 +1529,68 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             file_format='fasta')
 
     return reference_records
+
+
+def get_outgroup_names(alignment):
+
+    outgroup_taxa = list()
+    for a in alignment:
+        last_id_term = a.id.split('||')[-1]
+        if last_id_term == 'OUT':
+            outgroup_taxa.append(a.id)
+
+    return outgroup_taxa
+
+
+def produce_raxml_input_files(name, aln_file_path, out_dir_path, outgroup_taxa=None, partitions=None, threads=1, locus_name_list=None):
+
+    import random
+    from krpy import krio
+
+    part_file_path = out_dir_path + 'locus-partitions-RAxML' + '.txt'
+    if partitions and locus_name_list:
+        f_part_raxml = open(part_file_path, 'wb')
+        for i, part in enumerate(partitions):
+            raxml_part_line = 'DNA, ' + locus_name_list[i] + ' = ' + str(part[0]) + '-' + str(part[1]) + '\n'
+            f_part_raxml.write(raxml_part_line)
+        f_part_raxml.close()
+
+    rand_seed = str(random.randrange(0, 1000000000))
+    raxml_dir = out_dir_path + 'RAxML_' + name
+    raxml_commands_file = out_dir_path + 'RAxML_commands.txt'
+    f_raxml = open(raxml_commands_file, 'wb')
+
+    raxml_line_1 = 'raxml \\\n'
+    f_raxml.write(raxml_line_1)
+
+    raxml_line_2 = '-s ' + aln_file_path + ' \\\n'
+    f_raxml.write(raxml_line_2)
+
+    if partitions and locus_name_list:
+        raxml_line_3 = '-q ' + part_file_path + ' \\\n'
+        f_raxml.write(raxml_line_3)
+
+    if outgroup_taxa:
+        outgroup_taxa_raxml = ','.join(outgroup_taxa)
+        raxml_line_4 = '-o "' + outgroup_taxa_raxml + '" \\\n'
+        f_raxml.write(raxml_line_4)
+
+    krio.prepare_directory(raxml_dir)
+
+    raxml_line_5 = '-w ' + raxml_dir + ' \\\n'
+    f_raxml.write(raxml_line_5)
+
+    raxml_line_6 = '-m GTRCAT \\\n-j \\\n-T ' + str(threads) + ' \\\n-N 1 \\\n'
+    f_raxml.write(raxml_line_6)
+
+    raxml_line_7 = '-p ' + rand_seed + ' \\\n'
+    f_raxml.write(raxml_line_7)
+
+    raxml_line_8 = '-n ' + '' + name + '\n'
+    f_raxml.write(raxml_line_8)
+
+    f_raxml.close()
+
 
 # Hacks! -----------------------------------------------------------------------
 
