@@ -692,7 +692,7 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
 
     clusters = dict()
 
-    if len(records) < 5:
+    if len(records) < 3:
         pass
     else:
 
@@ -882,6 +882,9 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
 
     msg = 'Extracting records.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+
+    if len(records) < 3:
+        return {'no_feature': list(), 'accept': list(), 'reject': list()}
 
     for i, record in enumerate(records):
 
