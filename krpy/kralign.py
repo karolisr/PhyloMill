@@ -597,9 +597,14 @@ def cluster(
     seed_coverage=0.5,
     query_coverage=0.9):
 
+    from krpy import krother
+    from krpy import krcl
+
     results_dict = dict()
     consumed_ids = list()
     seed_ids = list()
+
+    record_count = len(records)
 
     records = sorted(records, key=lambda x: len(x.seq), reverse=True)
     records_seeds = records
@@ -647,6 +652,12 @@ def cluster(
             consumed_ids.append(a_id)
 
         for b_rec in records:
+
+            krcl.print_progress(
+                current=len(consumed_ids), total=record_count, length=0,
+                prefix=krother.timestamp() + ' ',
+                postfix=' Records clustered',
+                show_bar=False)
 
             # print('b_rec', b_rec)
 

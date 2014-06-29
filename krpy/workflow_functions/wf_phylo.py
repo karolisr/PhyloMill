@@ -1072,7 +1072,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
 
     # Produce seeds. Longest records from each genus.
     msg = '\tPreparing seed sequences.'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=1)
 
     seed_records_dict = dict()
     for r in trimmed_records:
@@ -1121,7 +1121,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
                     seed_records.append(sr)
 
     msg = '\tFiltering.'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    write_log(msg, log_file_path, newlines_before=1, newlines_after=1)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
@@ -1472,7 +1472,7 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
     else:
 
         msg = 'Producing dereplicated set of reference sequences, this may take a bit.'
-        write_log(msg, LFP, newlines_before=0, newlines_after=0)
+        write_log(msg, LFP, newlines_before=0, newlines_after=1)
 
         reference_records_temp = list()
 
