@@ -366,7 +366,7 @@ def identity(
 
     import sys
 
-    from scipy.special import comb
+    from scipy.misc import comb
 
     from krpy import kriupac
 
