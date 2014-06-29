@@ -1502,6 +1502,9 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             if len(ref_rec.seq) >= ref_cutoff_length:
                 reference_records.append(ref_rec)
 
+        if len(reference_records) > 200:
+            reference_records = reference_records[0:200]
+
         # print(len(reference_records))
 
         # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
