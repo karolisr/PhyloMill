@@ -373,7 +373,7 @@ def rename_organisms_with_record_taxon_mappings(
 
     kr_seq_db_object.delete_orphaned_organisms()
     kr_seq_db_object.delete_orphaned_taxonomies()
-    kr_seq_db_object.save()
+    # kr_seq_db_object.save()
 
 
 def resolve_org_name_using_synonymy(
@@ -682,11 +682,11 @@ def rename_organisms_using_taxids(
                 table_name='organisms',
                 where_dict=where_dict)
 
-        kr_seq_db_object.save()
+        # kr_seq_db_object.save()
 
     kr_seq_db_object.delete_orphaned_organisms()
     kr_seq_db_object.delete_orphaned_taxonomies()
-    kr_seq_db_object.save()
+    # kr_seq_db_object.save()
 
 
 # def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
@@ -1806,4 +1806,4 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
 
     kr_seq_db_object.delete_orphaned_organisms()
     kr_seq_db_object.delete_orphaned_taxonomies()
-    kr_seq_db_object.save()
+    # kr_seq_db_object.save()

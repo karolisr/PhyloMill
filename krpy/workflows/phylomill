@@ -656,6 +656,8 @@ if __name__ == '__main__':
         msg = 'Resolving organism names.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
+        DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
+
         organisms = DB.get_organisms(where_dict={'active': 1})
 
         if len(organisms) < 2:
@@ -856,7 +858,8 @@ if __name__ == '__main__':
                 values_dict={'org_id': org_id_new},
                 where_dict={'org_id': org_id})
 
-        DB.save()
+        DB._DB_CURSOR.execute('END TRANSACTION;')
+        # DB.save()
 
         ########################################################################
 
