@@ -105,11 +105,12 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
     gis_in_db = list()
     gis_new = list()
 
+    all_gis_in_db = DB.get_all_record_ids(
+        record_reference_type='gi')
+
     for gi in gis_good:
 
-        in_db = DB.in_db(
-            record_reference = gi,
-            record_reference_type='gi')
+        in_db = gi in all_gis_in_db
 
         if in_db:
             gis_in_db.append(gi)

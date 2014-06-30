@@ -815,6 +815,33 @@ class KRSequenceDatabase:
             return True
 
 
+    def get_all_record_ids(self,
+        record_reference_type='gi'  # gi version internal
+        ):
+
+        where_dict_key = ''
+
+        if record_reference_type == 'gi':
+            where_dict_key = 'ncbi_gi'
+        elif record_reference_type == 'version':
+            where_dict_key = 'ncbi_version'
+        elif record_reference_type == 'internal':
+            where_dict_key = 'internal_reference'
+
+        # where_dict = {where_dict_key: record_reference}
+
+        results = self.db_select(
+            table_name_list=['records'],
+            column_list=[where_dict_key],
+            where_dict=None,
+            join_rules_str=None,
+            order_by_column_list=None)
+
+        results = [x[0] for x in results]
+
+        return results
+
+
     def in_blacklist(self,
         record_reference,
         record_reference_type='gi'  # gi version internal
