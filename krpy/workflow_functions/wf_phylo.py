@@ -66,7 +66,7 @@ def blacklist_gis(gis, kr_seq_db_object, log_file_path):
 def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_object, email, log_file_path):
 
     from krpy import krncbi
-    from krpy import krother
+    # from krpy import krother
     from krpy import krbioio
     from krpy.krother import write_log
 
@@ -102,20 +102,22 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
           ' blacklisted records.'
     write_log(msg, LFP)
 
-    gis_in_db = list()
-    gis_new = list()
+    # gis_in_db = list()
+    # gis_new = list()
 
     all_gis_in_db = DB.get_all_record_ids(
         record_reference_type='gi')
 
-    for gi in gis_good:
+    gis_new = list(set(gis_good) - set(all_gis_in_db))
 
-        in_db = gi in all_gis_in_db
+    # for gi in gis_good:
 
-        if in_db:
-            gis_in_db.append(gi)
-        else:
-            gis_new.append(gi)
+    #     in_db = gi in all_gis_in_db
+
+    #     if in_db:
+    #         gis_in_db.append(gi)
+    #     else:
+    #         gis_new.append(gi)
 
     msg = 'There are ' + str(len(gis_new)) + \
           ' new records.'
@@ -273,6 +275,9 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         write_log(msg, LFP)
 
         record_count = len(records_to_add)
+
+        DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
+
         for i, record in enumerate(records_to_add):
 
             krcl.print_progress(
@@ -299,9 +304,11 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
                 annotation_str=gb_file_name,
                 record_reference_type='gi')
 
+        DB._DB_CURSOR.execute('END TRANSACTION;')
+
         print()
 
-    DB.save()
+    # DB.save()
 
 
 def rename_organisms_with_record_taxon_mappings(

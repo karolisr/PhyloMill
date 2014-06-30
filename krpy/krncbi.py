@@ -110,8 +110,8 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     uids = fixed_uids
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 1000
-    small_batch_size = 250
+    large_batch_size = 2000
+    small_batch_size = 500
 
     # Perhaps these may be function arguments?
     rettype = 'gb'

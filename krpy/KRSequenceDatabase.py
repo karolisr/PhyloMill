@@ -14,8 +14,6 @@ class KRSequenceDatabase:
 
     _DB_SCRIPT = '''
 
-    PRAGMA foreign_keys = ON;
-
     CREATE TABLE taxonomies(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         taxonomy TEXT NOT NULL UNIQUE
@@ -194,9 +192,13 @@ class KRSequenceDatabase:
         self._DB_CONN.row_factory = sqlite3.Row
         self._DB_CONN.text_factory = str
 
-        self._DB_CONN.execute('PRAGMA foreign_keys = ON;')
-
         self._DB_CURSOR = self._DB_CONN.cursor()
+
+        self._DB_CONN.execute('PRAGMA foreign_keys = ON;')
+        # self._DB_CONN.execute('PRAGMA cache_size = 100000;')
+        # self._DB_CONN.execute('PRAGMA max_page_count = 100000;')
+        self._DB_CONN.execute('PRAGMA synchronous = OFF;')
+        self._DB_CONN.execute('PRAGMA journal_mode = MEMORY;')
 
 
     ############################################################################
