@@ -70,27 +70,17 @@ class KRSequenceDatabase:
         action TEXT NOT NULL
         );
 
-    CREATE TABLE record_feature_types(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL UNIQUE
-        );
-
     CREATE TABLE record_features(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
         rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE CASCADE,
-        rec_feat_type_id INTEGER NOT NULL REFERENCES record_feature_types(id) ON DELETE CASCADE,
         location TEXT NOT NULL
-        );
-
-    CREATE TABLE record_feature_qualifier_types(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL UNIQUE
         );
 
     CREATE TABLE record_feature_qualifiers(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
         rec_feat_id INTEGER NOT NULL REFERENCES record_features(id) ON DELETE CASCADE,
-        rec_feat_qual_type_id INTEGER NOT NULL REFERENCES record_feature_qualifier_types(id) ON DELETE CASCADE,
         qualifier TEXT NOT NULL
         );
 
@@ -144,6 +134,30 @@ class KRSequenceDatabase:
 
     '''
 
+    # CREATE TABLE record_features(
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     rec_id INTEGER NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+    #     rec_feat_type_id INTEGER NOT NULL REFERENCES record_feature_types(id) ON DELETE CASCADE,
+    #     location TEXT NOT NULL
+    #     );
+
+    # CREATE TABLE record_feature_qualifiers(
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     rec_feat_id INTEGER NOT NULL REFERENCES record_features(id) ON DELETE CASCADE,
+    #     rec_feat_qual_type_id INTEGER NOT NULL REFERENCES record_feature_qualifier_types(id) ON DELETE CASCADE,
+    #     qualifier TEXT NOT NULL
+    #     );
+
+    # CREATE TABLE record_feature_types(
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     type TEXT NOT NULL UNIQUE
+    #     );
+
+    # CREATE TABLE record_feature_qualifier_types(
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     type TEXT NOT NULL UNIQUE
+    #     );
+
     ############################################################################
 
 
@@ -188,7 +202,7 @@ class KRSequenceDatabase:
         sqlite3.register_converter(b'SEQREP', self._convert_seq_edits)
 
         self._DB_CONN = sqlite3.connect(self._DB_FILE,
-            detect_types=sqlite3.PARSE_DECLTYPES)
+            detect_types=sqlite3.PARSE_DECLTYPES, isolation_level=None)
         self._DB_CONN.row_factory = sqlite3.Row
         self._DB_CONN.text_factory = str
 
@@ -691,35 +705,37 @@ class KRSequenceDatabase:
 
     def add_record_feature(self, rec_id, type_str, location_str):
 
-        values_dict = {'type': type_str}
-        rec_feat_type_id = self.db_insert('record_feature_types',
-            values_dict)[0]
+        # values_dict = {'type': type_str}
+        # rec_feat_type_id = self.db_insert('record_feature_types',
+        #     values_dict)[0]
 
         values_dict = {
+            'type': type_str,
             'rec_id': rec_id,
-            'rec_feat_type_id': rec_feat_type_id,
+            # 'rec_feat_type_id': rec_feat_type_id,
             'location': location_str
         }
 
-        row_id = self.db_insert('record_features', values_dict)
+        row_id = self.db_insert('record_features', values_dict, check_exists=False)
 
         return row_id
 
 
     def add_record_feature_qualifier(self, rec_feat_id, type_str, qualifier_str):
 
-        values_dict = {'type': type_str}
-        rec_feat_qual_type_id = self.db_insert(
-            'record_feature_qualifier_types',
-            values_dict)[0]
+        # values_dict = {'type': type_str}
+        # rec_feat_qual_type_id = self.db_insert(
+        #     'record_feature_qualifier_types',
+        #     values_dict)[0]
 
         values_dict = {
+            'type': type_str,
             'rec_feat_id': rec_feat_id,
-            'rec_feat_qual_type_id': rec_feat_qual_type_id,
+            # 'rec_feat_qual_type_id': rec_feat_qual_type_id,
             'qualifier': qualifier_str
         }
 
-        row_id = self.db_insert('record_feature_qualifiers', values_dict)
+        row_id = self.db_insert('record_feature_qualifiers', values_dict, check_exists=False)
 
         return row_id
 
@@ -1455,10 +1471,11 @@ class KRSequenceDatabase:
         seq = self._get_sequence_from_representation(seq_rep_id=seq_rep_id)
 
         features_temp = self.db_select(
-            table_name_list=['record_features', 'record_feature_types'],
+            # table_name_list=['record_features', 'record_feature_types'],
+            table_name_list=['record_features'],
             column_list=['record_features.id', 'location', 'type'],
             where_dict={'rec_id': results[b'id']},
-            join_rules_str='record_features.rec_feat_type_id=record_feature_types.id',
+            # join_rules_str='record_features.rec_feat_type_id=record_feature_types.id',
             order_by_column_list=None)
 
         features = list()
@@ -1470,10 +1487,11 @@ class KRSequenceDatabase:
                 location_string=location_string)
 
             qualifiers_temp = self.db_select(
-                table_name_list=['record_feature_qualifiers', 'record_feature_qualifier_types'],
+                # table_name_list=['record_feature_qualifiers', 'record_feature_qualifier_types'],
+                table_name_list=['record_feature_qualifiers'],
                 column_list=['qualifier', 'type'],
                 where_dict={'rec_feat_id': feat_raw[b'id']},
-                join_rules_str='record_feature_qualifiers.rec_feat_qual_type_id=record_feature_qualifier_types.id',
+                # join_rules_str='record_feature_qualifiers.rec_feat_qual_type_id=record_feature_qualifier_types.id',
                 order_by_column_list=None)
 
             qualifiers = dict()
