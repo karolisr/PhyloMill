@@ -88,7 +88,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     Will download sequence records for uids and database (db) given from NCBI.
     '''
 
-    import time
+    # import time
 
     from Bio import Entrez
     from Bio import SeqIO
@@ -133,8 +133,10 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                 print('Downloading records %i to %i of %i.'
                       % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
-                if small_batch_forced:
+                if small_batch_forced is not None:
                     small_batch = small_batch_forced
+                if len(small_batch) == 0:
+                    break
                 ##
                 to_download_uids |= set(small_batch)
                 ##
