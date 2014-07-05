@@ -362,9 +362,10 @@ def identity(
     unknown_letters=set(['N']),
     free_unknowns=True,
     free_gaps=True,
-    free_end_gaps=True):
+    free_end_gaps=True,
+    return_all_pairwise_identities=False):
 
-    import sys
+    # import sys
 
     from scipy.misc import comb
 
@@ -377,7 +378,7 @@ def identity(
     # Leading and trailing gaps will be replaced with term_gap_letter.
     aln_seq_str_list = list()
     for aln_seq in alignment:
-        aln_str = str(aln_seq.seq)
+        aln_str = str(aln_seq.seq).upper()
         aln_str_l_strip = aln_str.lstrip(kriupac.IUPAC_DNA_GAPS_STRING)
         left_gap_count = len(aln_str) - len(aln_str_l_strip)
         aln_str_l_r_strip = aln_str_l_strip.rstrip(kriupac.IUPAC_DNA_GAPS_STRING)
@@ -435,7 +436,7 @@ def identity(
 
         ident_list.append(col_ident)
 
-    # print(ident_list)
+    # print('\n', ident_list, '\n')
 
     ident_list_sum = 0.0
     if ident_list:
@@ -444,6 +445,9 @@ def identity(
     # print('\n', ident_list_sum, len(ident_list), '\n')
 
     ident = ident_list_sum / float(len(ident_list))
+
+    if return_all_pairwise_identities:
+        return (ident, ident_list)
 
     return ident
 

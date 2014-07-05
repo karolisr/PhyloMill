@@ -18,8 +18,13 @@ if __name__ == '__main__':
     import copy
     import ConfigParser
     import subprocess
+    import shlex
 
     from subprocess import call
+
+    from multiprocessing import Process
+    from multiprocessing import JoinableQueue
+    # from multiprocessing import Manager
 
     from krpy import KRSequenceDatabase
     from krpy.workflow_functions import wf_phylo as wf
@@ -210,24 +215,6 @@ if __name__ == '__main__':
     MAX_SEQ_LENGTH = CFG.getint('General', 'max_seq_length')
 
     ASTRAL_JAR_FILE = CFG.get('General', 'astral_jar_file')
-    CPU = CFG.getint('General', 'cpu')
-
-    # Flatten options
-    FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
-    FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
-    FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
-    FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
-    FLAT_ID_BOTTOM = 0.80
-    FLAT_ID_TOP = 0.95
-
-    # Align options
-    ALN_ALN_PROG = CFG.get('Align', 'align_program')
-    ALN_ALN_PROG_EXE = CFG.get('General', ALN_ALN_PROG + '_executable')
-    ALN_ALN_PROG_OPTIONS = CFG.get('Align', 'align_program_options')
-
-    ALN_TAX_NAME_LIST = CFG.get('Align', 'taxon_name')
-    ALN_TAX_NAME_LIST = ALN_TAX_NAME_LIST.split(',')
-    ALN_TAX_NAME_LIST = [x.strip() for x in ALN_TAX_NAME_LIST]
 
     # Hacks
     hacks_items = CFG.items('Hacks')
@@ -433,6 +420,64 @@ if __name__ == '__main__':
         else:
             write_log('There is no search strategy file for locus: ' + l, LFP)
             sys.exit(0)
+
+    # Efficiently utilize CPU cores
+
+    number_of_loci = len(LOCI.keys())
+
+    CPU_TOTAL = CFG.getint('General', 'cpu')
+    CPU_FOR_PYTHON = 1
+    CPU_FOR_OTHER = 1
+
+    if (CPU_TOTAL == 2) or (CPU_TOTAL == 3):
+        CPU_FOR_PYTHON = 1
+        CPU_FOR_OTHER = 2
+    else:
+        CPU_FOR_PYTHON = 2
+        CPU_FOR_OTHER = CPU_TOTAL / 2
+
+    # print('CPU_TOTAL', CPU_TOTAL)
+    # print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
+    # print('CPU_FOR_OTHER', CPU_FOR_OTHER)
+    # print('number_of_loci', number_of_loci)
+
+    # Flatten options
+    FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
+    FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
+
+    FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
+    if FLAT_ALN_PROG == 'mafft':
+        options_temp = shlex.split(FLAT_ALN_PROG_OPTIONS)
+        if '--thread' in options_temp:
+            thread_index = options_temp.index('--thread')
+            options_temp.pop(thread_index+1)
+            options_temp.pop(thread_index)
+        options_temp.append('--thread')
+        options_temp.append(str(CPU_FOR_OTHER))
+        FLAT_ALN_PROG_OPTIONS = ' '.join(options_temp)
+
+    FLAT_RESOLVE_AMBIGUITIES = CFG.getboolean('Flatten', 'resolve_ambiguities')
+    FLAT_ID_BOTTOM = 0.80
+    FLAT_ID_TOP = 0.99
+
+    # Align options
+    ALN_ALN_PROG = CFG.get('Align', 'align_program')
+    ALN_ALN_PROG_EXE = CFG.get('General', ALN_ALN_PROG + '_executable')
+
+    ALN_ALN_PROG_OPTIONS = CFG.get('Align', 'align_program_options')
+    if ALN_ALN_PROG == 'mafft':
+        options_temp = shlex.split(ALN_ALN_PROG_OPTIONS)
+        if '--thread' in options_temp:
+            thread_index = options_temp.index('--thread')
+            options_temp.pop(thread_index+1)
+            options_temp.pop(thread_index)
+        options_temp.append('--thread')
+        options_temp.append(str(CPU_TOTAL))
+        ALN_ALN_PROG_OPTIONS = ' '.join(options_temp)
+
+    ALN_TAX_NAME_LIST = CFG.get('Align', 'taxon_name')
+    ALN_TAX_NAME_LIST = ALN_TAX_NAME_LIST.split(',')
+    ALN_TAX_NAME_LIST = [x.strip() for x in ALN_TAX_NAME_LIST]
 
     # Blast
 
@@ -871,80 +916,109 @@ if __name__ == '__main__':
         msg = 'Extracting loci.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
+        ###
+
+        processes = list()
+        queue = JoinableQueue()
+
+        ###
+
+        def t(q):
+            while True:
+                locus_name = q.get()
+
+                db_thread = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
+
+                ln_split = locus_name.split('_')
+                if len(ln_split) > 1 and ln_split[1] == 'blast':
+                    continue
+
+                msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+
+                locus_dict = LOCI[locus_name]
+
+                records = db_thread.get_records_with_annotations(
+                    annotation_type='locus_not_extracted',
+                    annotation=locus_name,
+                    active=True,
+                    inactive=False)
+
+                acc_rej_gi_dict = wf.extract_loci(
+                    locus_dict=locus_dict,
+                    records=records,
+                    log_file_path=LFP,
+                    kr_seq_db_object=db_thread,
+                    temp_dir=TEMP_DIR_PATH,
+                    cpu=CPU_FOR_OTHER)
+
+                rej_gi_list = acc_rej_gi_dict['reject']
+                delete_note = 'failed sequence similarity test'
+                rej_gi_list = [[int(x[1]), delete_note] for x in rej_gi_list]
+
+                no_feature_gi_list = acc_rej_gi_dict['no_feature']
+                delete_note = 'no locus annotation'
+                no_feature_gi_list = [[x, delete_note] for x in no_feature_gi_list]
+
+                bad_list = rej_gi_list + no_feature_gi_list
+
+                print()
+
+                for bad in bad_list:
+
+                    bad_gi = bad[0]
+                    delete_note = bad[1]
+
+                    msg = 'inactivating:' + \
+                    ' gi:' + str(bad_gi) + ' note:' + delete_note
+                    write_log(msg, LFP)
+
+                    where_dict = {'ncbi_gi': bad_gi}
+
+                    blacklist_notes = delete_note
+
+                    rec_ids = db_thread.db_get_row_ids(
+                        'records',
+                        where_dict=where_dict)
+
+                    db_thread.set_inactive(
+                        table_name='records',
+                        where_dict=where_dict)
+
+                    if rec_ids:
+
+                        for rec_id in rec_ids:
+
+                            rec = db_thread.get_record(
+                                record_reference=rec_id,
+                                record_reference_type='raw'
+                                )
+
+                            db_thread.add_record_to_blacklist(
+                                ncbi_gi=int(rec.annotations['gi']),
+                                ncbi_version=rec.id,
+                                internal_reference=rec.annotations['internal_reference'],
+                                notes=blacklist_notes)
+
+                db_thread.save()
+                q.task_done()
+
+        ###
+
         for locus_name in LOCI.keys():
+            queue.put(locus_name)
 
-            ln_split = locus_name.split('_')
-            if len(ln_split) > 1 and ln_split[1] == 'blast':
-                continue
+        for i in range(CPU_FOR_PYTHON):
+            worker = Process(target=t, args=(queue,))
+            worker.start()
+            processes.append(worker)
 
-            msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        queue.join()
 
-            locus_dict = LOCI[locus_name]
+        for p in processes:
+            p.terminate()
 
-            records = DB.get_records_with_annotations(
-                annotation_type='locus',
-                annotation=locus_name,
-                active=True,
-                inactive=False)
-
-            acc_rej_gi_dict = wf.extract_loci(
-                locus_dict=locus_dict,
-                records=records,
-                log_file_path=LFP,
-                kr_seq_db_object=DB,
-                temp_dir=TEMP_DIR_PATH,
-                cpu=CPU)
-
-            rej_gi_list = acc_rej_gi_dict['reject']
-            delete_note = 'failed sequence similarity test'
-            rej_gi_list = [[int(x[1]), delete_note] for x in rej_gi_list]
-
-            no_feature_gi_list = acc_rej_gi_dict['no_feature']
-            delete_note = 'no locus annotation'
-            no_feature_gi_list = [[x, delete_note] for x in no_feature_gi_list]
-
-            bad_list = rej_gi_list + no_feature_gi_list
-
-            print()
-
-            for bad in bad_list:
-
-                bad_gi = bad[0]
-                delete_note = bad[1]
-
-                msg = 'inactivating:' + \
-                ' gi:' + str(bad_gi) + ' note:' + delete_note
-                write_log(msg, LFP)
-
-                where_dict = {'ncbi_gi': bad_gi}
-
-                blacklist_notes = delete_note
-
-                rec_ids = DB.db_get_row_ids(
-                    'records',
-                    where_dict=where_dict)
-
-                DB.set_inactive(
-                    table_name='records',
-                    where_dict=where_dict)
-
-                if rec_ids:
-
-                    for rec_id in rec_ids:
-
-                        rec = DB.get_record(
-                            record_reference=rec_id,
-                            record_reference_type='raw'
-                            )
-
-                        DB.add_record_to_blacklist(
-                            ncbi_gi=int(rec.annotations['gi']),
-                            ncbi_version=rec.id,
-                            internal_reference=rec.annotations['internal_reference'],
-                            notes=blacklist_notes)
-
-            DB.save()
+        ###
 
     ############################################################################
 
@@ -1060,547 +1134,575 @@ if __name__ == '__main__':
         msg = 'Producing one locus per organism.'
         write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
-        for locus_name in LOCI.keys():
+        ###
 
-            msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+        processes = list()
+        queue = JoinableQueue()
 
-            locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
-            krio.prepare_directory(locus_dir_path)
+        ###
 
-            locus_dict = LOCI[locus_name]
+        def t(q):
+            while True:
+                locus_name = q.get()
 
-            # Get all unflattened records for current locus
-            records = DB.get_records_with_annotations(
-                annotation_type='locus',
-                annotation=locus_name,
-                active=True,
-                inactive=False)
+                db_thread = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
-            records = sorted(records, key=lambda x: len(x.seq), reverse=True)
+                msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
+                write_log(msg, LFP, newlines_before=1, newlines_after=0)
 
-            ###
+                locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
+                krio.prepare_directory(locus_dir_path)
 
-            ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
+                locus_dict = LOCI[locus_name]
 
-            reference_records = wf.produce_reference_sequences(
-                locus_name=locus_name,
-                records=records,
-                ref_recs_file_path=ref_recs_file_path,
-                log_file_path=LFP,
-                cpu=CPU)
+                # Get all unflattened records for current locus
+                records = db_thread.get_records_with_annotations(
+                    annotation_type='locus',
+                    annotation=locus_name,
+                    active=True,
+                    inactive=False)
 
-            ###
+                records = sorted(records, key=lambda x: len(x.seq), reverse=True)
 
-            org_locus_dict = dict()
-            for record in records:
-                org_id = record.annotations['kr_seq_db_org_id']
-                if org_id not in org_locus_dict.keys():
-                    org_locus_dict[org_id] = list()
-                org_locus_dict[org_id].append(record)
+                ###
 
-            # Get all flattened records for current locus
-            records_flat = DB.get_records_with_annotations(
-                annotation_type='locus_flat',
-                annotation=locus_name,
-                active=True,
-                inactive=False)
+                ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
 
-            org_locus_flat_dict = dict()
-            for record_flat in records_flat:
-                org_id = record_flat.annotations['kr_seq_db_org_id']
-                if org_id not in org_locus_flat_dict.keys():
-                    org_locus_flat_dict[org_id] = list()
-                org_locus_flat_dict[org_id].append(record_flat)
+                reference_records = wf.produce_reference_sequences(
+                    locus_name=locus_name,
+                    records=records,
+                    ref_recs_file_path=ref_recs_file_path,
+                    log_file_path=LFP,
+                    cpu=CPU_FOR_OTHER)
 
-            ####################################################################
+                ###
 
-            org_count = len(org_locus_dict.keys())
-            for i, org_id in enumerate(org_locus_dict.keys()):
+                org_locus_dict = dict()
+                for record in records:
+                    org_id = record.annotations['kr_seq_db_org_id']
+                    if org_id not in org_locus_dict.keys():
+                        org_locus_dict[org_id] = list()
+                    org_locus_dict[org_id].append(record)
 
-                where_dict = {'organisms.id': int(org_id)}
-                org_dict = DB.get_organisms(where_dict=where_dict)[0]
-                org_flat = krbionames.flatten_organism_name(
-                    parsed_name=org_dict, sep=' ')
+                # Get all flattened records for current locus
+                records_flat = db_thread.get_records_with_annotations(
+                    annotation_type='locus_flat',
+                    annotation=locus_name,
+                    active=True,
+                    inactive=False)
 
-                org_records = org_locus_dict[org_id]
+                org_locus_flat_dict = dict()
+                for record_flat in records_flat:
+                    org_id = record_flat.annotations['kr_seq_db_org_id']
+                    if org_id not in org_locus_flat_dict.keys():
+                        org_locus_flat_dict[org_id] = list()
+                    org_locus_flat_dict[org_id].append(record_flat)
 
-                krcl.print_progress(
-                    current=i+1, total=org_count, length=0,
-                    prefix=krother.timestamp() + ' ',
-                    postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
-                    show_bar=False)
+                ####################################################################
 
-                aln_name = locus_name + '__' + org_flat.replace(' ', '_')
+                org_count = len(org_locus_dict.keys())
+                for i, org_id in enumerate(org_locus_dict.keys()):
 
-                aln_file_path = locus_dir_path + aln_name + '.phy'
-                seq_file_path = locus_dir_path + aln_name + '.fasta'
+                    where_dict = {'organisms.id': int(org_id)}
+                    org_dict = db_thread.get_organisms(where_dict=where_dict)[0]
+                    org_flat = krbionames.flatten_organism_name(
+                        parsed_name=org_dict, sep=' ')
 
-                ################################################################
+                    org_records = org_locus_dict[org_id]
 
-                deleted_rec_ids = False
-                new_rec_ids = False
+                    krcl.print_progress(
+                        current=i+1, total=org_count, length=0,
+                        prefix=krother.timestamp() + ' ',
+                        postfix=' - ' + org_flat + ' - ' + str(len(org_records)) + ' records.',
+                        show_bar=False)
 
-                seq_match = True
-                aln_match = True
+                    aln_name = locus_name + '__' + org_flat.replace(' ', '_')
 
-                seq_file_exists = False
-                aln_file_exists = False
+                    aln_file_path = locus_dir_path + aln_name + '.phy'
+                    seq_file_path = locus_dir_path + aln_name + '.fasta'
 
-                ################################################################
+                    ################################################################
 
-                # Check if there already is a flat record for this organism
-                if org_id in org_locus_flat_dict:
-                    # print('flat_record_exists', org_flat)
-                    flat_rec_list = org_locus_flat_dict[org_id]
-                    flat_rec = flat_rec_list[0]
-                    flat_rec_id = int(flat_rec.annotations['kr_seq_db_id'])
+                    deleted_rec_ids = False
+                    new_rec_ids = False
 
-                    db_aln = None
+                    seq_match = True
+                    aln_match = True
 
-                    redo_aln = False
+                    seq_file_exists = False
+                    aln_file_exists = False
 
-                    if len(flat_rec_list) > 1:
-                        print('More than one flat record!')
-                        pass
-                    else:
+                    ################################################################
 
-                        parent_rec_ids = DB.get_parent_rec_ids(rec_id=flat_rec_id)
+                    # Check if there already is a flat record for this organism
+                    if org_id in org_locus_flat_dict:
+                        # print('flat_record_exists', org_flat)
+                        flat_rec_list = org_locus_flat_dict[org_id]
+                        flat_rec = flat_rec_list[0]
+                        flat_rec_id = int(flat_rec.annotations['kr_seq_db_id'])
+
+                        db_aln = None
+
+                        redo_aln = False
+
+                        if len(flat_rec_list) > 1:
+                            print('More than one flat record!')
+                            pass
+                        else:
+
+                            parent_rec_ids = db_thread.get_parent_rec_ids(rec_id=flat_rec_id)
+
+                            rec_ids_in_db = [int(x.annotations['kr_seq_db_id']) for x in org_records]
+                            rec_ids_in_db = sorted(rec_ids_in_db, reverse=False)
+
+                            # Check if there is a locus alignment/sequence file
+                            seq_file_exists = os.path.exists(seq_file_path)
+                            aln_file_exists = os.path.exists(aln_file_path)
+
+                            if (not seq_file_exists) and (not aln_file_exists):
+                                redo_aln = True
+
+                            existing_record_list = list()
+
+                            if seq_file_exists:
+                                existing_record_list = krbioio.read_sequence_file(
+                                    file_path=seq_file_path,
+                                    file_format='fasta',
+                                    ret_type='list',
+                                    key='gi')
+
+                            elif aln_file_exists:
+                                existing_record_list = krbioio.read_alignment_file(
+                                    file_path=aln_file_path,
+                                    file_format='phylip-relaxed')
+
+                            gis_in_file = list()
+                            if existing_record_list:
+                                gis_in_file = [int(x.id) for x in existing_record_list]
+
+                            rec_id_gi_dict = dict()
+                            rec_ids_in_file = list()
+                            for gi_in_file in gis_in_file:
+                                rec_id_in_file = db_thread.db_get_row_ids(
+                                    table_name='records',
+                                    where_dict={'ncbi_gi': gi_in_file})[0]
+                                rec_ids_in_file.append(rec_id_in_file)
+                                rec_id_gi_dict[str(rec_id_in_file)] = gi_in_file
+                            rec_ids_in_file = sorted(rec_ids_in_file, reverse=False)
+
+                            ########################################################
+
+                            # Check if there are any deleted records
+                            if seq_file_exists or aln_file_exists:
+                                if set(rec_ids_in_file) == set(parent_rec_ids):
+                                    # print('no records were deleted')
+                                    pass
+                                else:
+                                    deleted_rec_ids = list(set(rec_ids_in_file) - set(parent_rec_ids))
+                                    # if not (len(deleted_rec_ids) > 0):
+                                    deleted_rec_ids = deleted_rec_ids + list(set(parent_rec_ids) - set(rec_ids_in_file))
+                                    # print(len(deleted_rec_ids), 'deleted_rec_ids:', deleted_rec_ids)
+
+                            # Check if there are any new records
+                            if set(rec_ids_in_db) == set(parent_rec_ids):
+                                # print('no new records')
+                                pass
+                            else:
+                                new_rec_ids = list(set(rec_ids_in_db) - set(parent_rec_ids))
+                                # print(len(new_rec_ids), 'new_rec_ids:', new_rec_ids)
+
+                            # print(len(parent_rec_ids), 'parent_rec_ids:', parent_rec_ids)
+                            # print(len(rec_ids_in_db), 'rec_ids_in_db:', rec_ids_in_db)
+                            # print(len(rec_ids_in_file), 'rec_ids_in_file:', rec_ids_in_file)
+                            # print('gis_in_file', gis_in_file)
+
+                            ########################################################
+
+                            # Check if there is an alignment associated with this
+                            # record
+                            aln_id = db_thread.db_get_row_ids(
+                                table_name='alignments',
+                                where_dict={'rec_id': flat_rec_id})
+
+                            if aln_id:
+                                aln_id = aln_id[0]
+                                db_aln = db_thread.get_alignment(
+                                    alignment_id=aln_id)
+
+                            # print('aln_id', aln_id)
+
+                            # If there is a locus alignment/sequence file,
+                            # get all the sequences from this file and compare to
+                            # the sequences in the database
+                            if (seq_file_exists or aln_file_exists) and existing_record_list:
+                                if db_aln:
+                                    for a in db_aln:
+                                        if str(a.id) in rec_id_gi_dict.keys():
+                                            gi = str(rec_id_gi_dict[str(a.id)])
+                                            for er in existing_record_list:
+                                                if er.id == gi:
+                                                    er_seq_str = str(er.seq).upper()
+                                                    db_seq_str = str(a.seq).upper()
+                                                    if er_seq_str != db_seq_str:
+                                                        aln_match = False
+                                    # print('aln_match', aln_match)
+                                else:
+                                    er = existing_record_list[0]
+                                    er_seq_str = str(er.seq).upper()
+                                    db_seq_str = str(flat_rec.seq).upper()
+                                    if er_seq_str != db_seq_str:
+                                        seq_match = False
+                                    # print('seq_match', seq_match)
+
+                        ############################################################
+
+                        if deleted_rec_ids:
+                            for del_rec_id in deleted_rec_ids:
+                                del_rec = None
+
+                                for r in org_records:
+                                    if int(r.annotations['kr_seq_db_id']) == del_rec_id:
+                                        del_rec = r
+                                        break
+
+                                if del_rec:
+                                    org_records.remove(del_rec)
+
+                                    blacklist_notes = 'user_deleted'
+
+                                    ncbi_gi=int(del_rec.annotations['gi'])
+
+                                    #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
+
+                                    msg = 'inactivating:' + \
+                                    ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
+                                    write_log(msg, LFP)
+
+                                    where_dict = {'id': del_rec_id}
+
+                                    db_thread.set_inactive(
+                                        table_name='records',
+                                        where_dict=where_dict)
+
+                                    db_thread.add_record_to_blacklist(
+                                        ncbi_gi=ncbi_gi,
+                                        ncbi_version=del_rec.id,
+                                        internal_reference=del_rec.annotations['internal_reference'],
+                                        notes=blacklist_notes)
+
+                                    where_dict = {'parent_rec_id': del_rec_id}
+
+                                    db_thread.db_delete(
+                                        table_name='record_ancestry',
+                                        where_dict=where_dict)
+
+                                    ####
 
                         rec_ids_in_db = [int(x.annotations['kr_seq_db_id']) for x in org_records]
                         rec_ids_in_db = sorted(rec_ids_in_db, reverse=False)
+                        parent_rec_id_list = rec_ids_in_db
 
-                        # Check if there is a locus alignment/sequence file
-                        seq_file_exists = os.path.exists(seq_file_path)
-                        aln_file_exists = os.path.exists(aln_file_path)
-
-                        if (not seq_file_exists) and (not aln_file_exists):
-                            redo_aln = True
-
-                        existing_record_list = list()
-
-                        if seq_file_exists:
-                            existing_record_list = krbioio.read_sequence_file(
-                                file_path=seq_file_path,
-                                file_format='fasta',
-                                ret_type='list',
-                                key='gi')
-
-                        elif aln_file_exists:
-                            existing_record_list = krbioio.read_alignment_file(
-                                file_path=aln_file_path,
-                                file_format='phylip-relaxed')
-
-                        gis_in_file = list()
-                        if existing_record_list:
-                            gis_in_file = [int(x.id) for x in existing_record_list]
-
-                        rec_id_gi_dict = dict()
-                        rec_ids_in_file = list()
-                        for gi_in_file in gis_in_file:
-                            rec_id_in_file = DB.db_get_row_ids(
-                                table_name='records',
-                                where_dict={'ncbi_gi': gi_in_file})[0]
-                            rec_ids_in_file.append(rec_id_in_file)
-                            rec_id_gi_dict[str(rec_id_in_file)] = gi_in_file
-                        rec_ids_in_file = sorted(rec_ids_in_file, reverse=False)
-
-                        ########################################################
-
-                        # Check if there are any deleted records
-                        if seq_file_exists or aln_file_exists:
-                            if set(rec_ids_in_file) == set(parent_rec_ids):
-                                # print('no records were deleted')
-                                pass
-                            else:
-                                deleted_rec_ids = list(set(rec_ids_in_file) - set(parent_rec_ids))
-                                # if not (len(deleted_rec_ids) > 0):
-                                deleted_rec_ids = deleted_rec_ids + list(set(parent_rec_ids) - set(rec_ids_in_file))
-                                # print(len(deleted_rec_ids), 'deleted_rec_ids:', deleted_rec_ids)
-
-                        # Check if there are any new records
-                        if set(rec_ids_in_db) == set(parent_rec_ids):
-                            # print('no new records')
-                            pass
-                        else:
-                            new_rec_ids = list(set(rec_ids_in_db) - set(parent_rec_ids))
-                            # print(len(new_rec_ids), 'new_rec_ids:', new_rec_ids)
-
-                        # print(len(parent_rec_ids), 'parent_rec_ids:', parent_rec_ids)
-                        # print(len(rec_ids_in_db), 'rec_ids_in_db:', rec_ids_in_db)
-                        # print(len(rec_ids_in_file), 'rec_ids_in_file:', rec_ids_in_file)
-                        # print('gis_in_file', gis_in_file)
-
-                        ########################################################
-
-                        # Check if there is an alignment associated with this
-                        # record
-                        aln_id = DB.db_get_row_ids(
-                            table_name='alignments',
-                            where_dict={'rec_id': flat_rec_id})
-
-                        if aln_id:
-                            aln_id = aln_id[0]
-                            db_aln = DB.get_alignment(
-                                alignment_id=aln_id)
-
-                        # print('aln_id', aln_id)
-
-                        # If there is a locus alignment/sequence file,
-                        # get all the sequences from this file and compare to
-                        # the sequences in the database
-                        if (seq_file_exists or aln_file_exists) and existing_record_list:
-                            if db_aln:
-                                for a in db_aln:
-                                    if str(a.id) in rec_id_gi_dict.keys():
-                                        gi = str(rec_id_gi_dict[str(a.id)])
-                                        for er in existing_record_list:
-                                            if er.id == gi:
-                                                er_seq_str = str(er.seq).upper()
-                                                db_seq_str = str(a.seq).upper()
-                                                if er_seq_str != db_seq_str:
-                                                    aln_match = False
-                                # print('aln_match', aln_match)
-                            else:
-                                er = existing_record_list[0]
-                                er_seq_str = str(er.seq).upper()
-                                db_seq_str = str(flat_rec.seq).upper()
-                                if er_seq_str != db_seq_str:
-                                    seq_match = False
-                                # print('seq_match', seq_match)
-
-                    ############################################################
-
-                    if deleted_rec_ids:
-                        for del_rec_id in deleted_rec_ids:
-                            del_rec = None
-
-                            for r in org_records:
-                                if int(r.annotations['kr_seq_db_id']) == del_rec_id:
-                                    del_rec = r
-                                    break
-
-                            if del_rec:
-                                org_records.remove(del_rec)
-
-                                blacklist_notes = 'user_deleted'
-
-                                ncbi_gi=int(del_rec.annotations['gi'])
-
-                                #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
-
-                                msg = 'inactivating:' + \
-                                ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
-                                write_log(msg, LFP)
-
-                                where_dict = {'id': del_rec_id}
-
-                                DB.set_inactive(
-                                    table_name='records',
-                                    where_dict=where_dict)
-
-                                DB.add_record_to_blacklist(
-                                    ncbi_gi=ncbi_gi,
-                                    ncbi_version=del_rec.id,
-                                    internal_reference=del_rec.annotations['internal_reference'],
-                                    notes=blacklist_notes)
-
-                                where_dict = {'parent_rec_id': del_rec_id}
-
-                                DB.db_delete(
-                                    table_name='record_ancestry',
-                                    where_dict=where_dict)
-
-                                ####
-
-                    rec_ids_in_db = [int(x.annotations['kr_seq_db_id']) for x in org_records]
-                    rec_ids_in_db = sorted(rec_ids_in_db, reverse=False)
-                    parent_rec_id_list = rec_ids_in_db
-
-                    new_seq_str = None
-                    flat_locus_produced = False
-                    if (len(org_records) > 1) and (redo_aln or ((not aln_match) or new_rec_ids or deleted_rec_ids)):
-
-                        if seq_file_exists:
-                            os.remove(seq_file_path)
-                        if aln_file_exists:
-                            os.remove(aln_file_path)
-
-                        new_aln = existing_record_list
-                        if new_rec_ids or deleted_rec_ids or redo_aln:
-                            records_to_align = list(existing_record_list)
-                            for r in org_records:
-                                if redo_aln or (new_rec_ids and int(r.annotations['kr_seq_db_id']) in new_rec_ids):
-                                    trimmed_rec = wf.trim_record_to_locus(
-                                        record=r,
-                                        locus_name=locus_name)
-                                    records_to_align.append(trimmed_rec)
-
-                            new_aln = wf.flatten_locus(
-                                records=records_to_align,
-                                reference_records=reference_records,
-                                locus_dict=locus_dict,
-                                log_file_path=LFP,
-                                already_trimmed=True,
-                                aln_program=FLAT_ALN_PROG,
-                                aln_program_executable=FLAT_ALN_PROG_EXE,
-                                aln_options=FLAT_ALN_PROG_OPTIONS,
-                                min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
-
-                            if new_aln[1] < FLAT_ID_BOTTOM:
-                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
-                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
-
-                                if 'align' in COMMANDS:
-                                    COMMANDS.remove('align')
-                                if 'concatenate' in COMMANDS:
-                                    COMMANDS.remove('concatenate')
-
-                            new_aln = new_aln[0]
-
-                        wf.update_record_alignment(
-                            rec_id=flat_rec_id,
-                            new_aln=new_aln,
-                            aln_name=aln_name,
-                            kr_seq_db_object=DB)
-
-                        consensus = kralign.consensus(
-                            alignment=new_aln,
-                            threshold=0.4,
-                            unknown='',
-                            resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
-
-                        new_seq_str = str(consensus).upper()
-
-                        flat_locus_produced = True
-
-                        krbioio.write_alignment_file(
-                            alignment=new_aln,
-                            file_path=aln_file_path,
-                            file_format='phylip-relaxed')
-
-                    elif (len(org_records) == 1):
-
-                        DB.db_delete(
-                            table_name='alignments',
-                            where_dict={'rec_id': flat_rec_id})
-
-                        new_rec = None
-
-                        if not seq_match:
-                            er = existing_record_list[0]
-                            new_seq_str = str(er.seq).upper()
-                            new_rec = er
-
-                        elif deleted_rec_ids or redo_aln:
-                            trimmed_rec = wf.trim_record_to_locus(
-                                record=org_records[0],
-                                locus_name=locus_name)
-                            if trimmed_rec:
-                                new_seq_str = str(trimmed_rec.seq)
-                                new_rec = trimmed_rec
-                                db_seq_str = str(flat_rec.seq).upper()
-                                if (new_seq_str.upper() != db_seq_str) or redo_aln:
-                                    seq_match = False
-
-                        if not seq_match:
-
-                            flat_locus_produced = True
+                        new_seq_str = None
+                        flat_locus_produced = False
+                        if (len(org_records) > 1) and (redo_aln or ((not aln_match) or new_rec_ids or deleted_rec_ids)):
 
                             if seq_file_exists:
                                 os.remove(seq_file_path)
                             if aln_file_exists:
                                 os.remove(aln_file_path)
 
-                            krbioio.write_sequence_file(
-                                records=[new_rec],
-                                file_path=seq_file_path,
-                                file_format='fasta')
+                            new_aln = existing_record_list
+                            if new_rec_ids or deleted_rec_ids or redo_aln:
+                                records_to_align = list(existing_record_list)
+                                for r in org_records:
+                                    if redo_aln or (new_rec_ids and int(r.annotations['kr_seq_db_id']) in new_rec_ids):
+                                        trimmed_rec = wf.trim_record_to_locus(
+                                            record=r,
+                                            locus_name=locus_name)
+                                        records_to_align.append(trimmed_rec)
 
-                    if flat_locus_produced:
+                                new_aln = wf.flatten_locus(
+                                    records=records_to_align,
+                                    reference_records=reference_records,
+                                    locus_dict=locus_dict,
+                                    log_file_path=LFP,
+                                    already_trimmed=True,
+                                    aln_program=FLAT_ALN_PROG,
+                                    aln_program_executable=FLAT_ALN_PROG_EXE,
+                                    aln_options=FLAT_ALN_PROG_OPTIONS,
+                                    min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
 
-                        where_dict = {'rec_id': flat_rec_id}
-                        DB.db_delete(
-                            table_name='record_ancestry',
-                            where_dict=where_dict)
+                                if new_aln[1] < FLAT_ID_BOTTOM:
+                                    msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
+                                    write_log(msg, LFP, newlines_before=1, newlines_after=1)
 
-                        for parent_rec_id in parent_rec_id_list:
-                            values_dict = {
-                                'rec_id': flat_rec_id,
-                                'parent_rec_id': parent_rec_id
-                                }
-                            DB.db_insert('record_ancestry', values_dict)
+                                    if 'align' in COMMANDS:
+                                        COMMANDS.remove('align')
+                                    if 'concatenate' in COMMANDS:
+                                        COMMANDS.remove('concatenate')
 
-                        DB.db_delete(
-                            table_name='sequences',
-                            where_dict={'rec_id': flat_rec_id})
+                                new_aln = new_aln[0]
 
-                        sequence_alphabet_str = DB.bio_alphabet_to_string(
-                            bio_alphabet=flat_rec.seq.alphabet)
-
-                        seq_id = DB.add_sequence(
-                            rec_id=flat_rec_id,
-                            sequence_str=new_seq_str,
-                            sequence_alphabet_str=sequence_alphabet_str)[0]
-
-                        repr_list = DB.produce_seq_edits(new_seq_str, new_seq_str)
-
-                        seq_rep_id = DB.add_sequence_representation(
-                            rec_id=flat_rec_id,
-                            seq_id=seq_id,
-                            repr_list=repr_list)[0]
-
-                    if len(org_records) == 0:
-
-                        if seq_file_exists:
-                            os.remove(seq_file_path)
-                        if aln_file_exists:
-                            os.remove(aln_file_path)
-
-                        DB.db_delete(
-                            table_name='records',
-                            where_dict={'id': flat_rec_id})
-
-                    ############################################################
-
-                org_records_count = len(org_records)
-                if (org_records_count > 0) and (org_id not in org_locus_flat_dict):
-
-                    # print('flat_record_does_not_exist')
-
-                    flat_locus_produced = False
-
-                    seq_rep_id_list = list()
-                    # print(org_id, org_flat, org_records_count)
-
-                    new_seq_str = ''
-                    sequence_alphabet_str = DB.bio_alphabet_to_string(
-                        bio_alphabet=org_records[0].seq.alphabet)
-
-                    ############################################################
-
-                    if org_records_count > 1:
-
-                        aln = wf.flatten_locus(
-                            records=org_records,
-                            reference_records=reference_records,
-                            locus_dict=locus_dict,
-                            log_file_path=LFP,
-                            aln_program=FLAT_ALN_PROG,
-                            aln_program_executable=FLAT_ALN_PROG_EXE,
-                            aln_options=FLAT_ALN_PROG_OPTIONS,
-                            min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
-
-                        if aln:
-
-                            if aln[1] < FLAT_ID_BOTTOM:
-                                msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
-                                write_log(msg, LFP, newlines_before=1, newlines_after=1)
-
-                                if 'align' in COMMANDS:
-                                    COMMANDS.remove('align')
-                                if 'concatenate' in COMMANDS:
-                                    COMMANDS.remove('concatenate')
-
-                            aln = aln[0]
-
-                            flat_locus_produced = True
-
-                            krbioio.write_alignment_file(
-                                alignment=aln,
-                                file_path=aln_file_path,
-                                file_format='phylip-relaxed')
-
-                            for ar in aln:
-
-                                seq = DB.get_sequence_for_record(
-                                    record_reference=int(ar.id),
-                                    record_reference_type='gi'
-                                    )
-
-                                seq_rep_list = DB.produce_seq_edits(
-                                    s1=str(seq).upper(),
-                                    s2=str(ar.seq).upper())
-
-                                rec_id = DB.db_get_row_ids(
-                                    table_name='records',
-                                    where_dict={'ncbi_gi': int(ar.id)})[0]
-
-                                seq_id = DB.db_get_row_ids(
-                                    table_name='sequences',
-                                    where_dict={'rec_id': rec_id})[0]
-
-                                seq_rep_id = DB.add_sequence_representation(
-                                    seq_id=seq_id,
-                                    repr_list=seq_rep_list,
-                                    rec_id=None,
-                                    aln_id=None)[0]
-
-                                seq_rep_id_list.append(seq_rep_id)
+                            wf.update_record_alignment(
+                                rec_id=flat_rec_id,
+                                new_aln=new_aln,
+                                aln_name=aln_name,
+                                kr_seq_db_object=db_thread)
 
                             consensus = kralign.consensus(
-                                alignment=aln,
+                                alignment=new_aln,
                                 threshold=0.4,
                                 unknown='',
                                 resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
 
-                            new_seq_str = str(consensus)
-
-                    else:
-
-                        trimmed_rec = wf.trim_record_to_locus(
-                            record=org_records[0],
-                            locus_name=locus_name)
-
-                        if trimmed_rec:
+                            new_seq_str = str(consensus).upper()
 
                             flat_locus_produced = True
 
-                            new_seq_str = str(trimmed_rec.seq)
-                            krbioio.write_sequence_file(
-                                records=[trimmed_rec],
-                                file_path=seq_file_path,
-                                file_format='fasta')
+                            krbioio.write_alignment_file(
+                                alignment=new_aln,
+                                file_path=aln_file_path,
+                                file_format='phylip-relaxed')
 
-                    ############################################################
+                        elif (len(org_records) == 1):
 
-                    if flat_locus_produced:
+                            db_thread.db_delete(
+                                table_name='alignments',
+                                where_dict={'rec_id': flat_rec_id})
 
-                        internal_reference = locus_name + '_' + krother.random_id(6)
-                        parent_rec_id_list = [int(x.annotations['kr_seq_db_id']) for x in org_records]
+                            new_rec = None
 
-                        rec_id = DB.add_record(
-                            org_id=org_id,
-                            ncbi_gi=None,
-                            ncbi_version=None,
-                            internal_reference=internal_reference,
-                            description=None,
-                            sequence_str=new_seq_str,
-                            sequence_alphabet_str=sequence_alphabet_str,
-                            parent_rec_id_list=parent_rec_id_list,
-                            active=True,
-                            action_str='Record for locus')
+                            if not seq_match:
+                                er = existing_record_list[0]
+                                new_seq_str = str(er.seq).upper()
+                                new_rec = er
 
-                        DB.add_record_annotation(
-                            record_reference=rec_id,
-                            type_str='locus_flat',
-                            annotation_str=locus_name,
-                            record_reference_type='raw')
+                            elif deleted_rec_ids or redo_aln:
+                                trimmed_rec = wf.trim_record_to_locus(
+                                    record=org_records[0],
+                                    locus_name=locus_name)
+                                if trimmed_rec:
+                                    new_seq_str = str(trimmed_rec.seq)
+                                    new_rec = trimmed_rec
+                                    db_seq_str = str(flat_rec.seq).upper()
+                                    if (new_seq_str.upper() != db_seq_str) or redo_aln:
+                                        seq_match = False
 
-                        if len(seq_rep_id_list) > 1:
-                            DB.add_alignment(
-                                name=aln_name,
-                                seq_rep_id_list=seq_rep_id_list,
+                            if not seq_match:
+
+                                flat_locus_produced = True
+
+                                if seq_file_exists:
+                                    os.remove(seq_file_path)
+                                if aln_file_exists:
+                                    os.remove(aln_file_path)
+
+                                krbioio.write_sequence_file(
+                                    records=[new_rec],
+                                    file_path=seq_file_path,
+                                    file_format='fasta')
+
+                        if flat_locus_produced:
+
+                            where_dict = {'rec_id': flat_rec_id}
+                            db_thread.db_delete(
+                                table_name='record_ancestry',
+                                where_dict=where_dict)
+
+                            for parent_rec_id in parent_rec_id_list:
+                                values_dict = {
+                                    'rec_id': flat_rec_id,
+                                    'parent_rec_id': parent_rec_id
+                                    }
+                                db_thread.db_insert('record_ancestry', values_dict)
+
+                            db_thread.db_delete(
+                                table_name='sequences',
+                                where_dict={'rec_id': flat_rec_id})
+
+                            sequence_alphabet_str = db_thread.bio_alphabet_to_string(
+                                bio_alphabet=flat_rec.seq.alphabet)
+
+                            seq_id = db_thread.add_sequence(
+                                rec_id=flat_rec_id,
+                                sequence_str=new_seq_str,
+                                sequence_alphabet_str=sequence_alphabet_str)[0]
+
+                            repr_list = db_thread.produce_seq_edits(new_seq_str, new_seq_str)
+
+                            seq_rep_id = db_thread.add_sequence_representation(
+                                rec_id=flat_rec_id,
+                                seq_id=seq_id,
+                                repr_list=repr_list)[0]
+
+                        if len(org_records) == 0:
+
+                            if seq_file_exists:
+                                os.remove(seq_file_path)
+                            if aln_file_exists:
+                                os.remove(aln_file_path)
+
+                            db_thread.db_delete(
+                                table_name='records',
+                                where_dict={'id': flat_rec_id})
+
+                        ############################################################
+
+                    org_records_count = len(org_records)
+                    if (org_records_count > 0) and (org_id not in org_locus_flat_dict):
+
+                        # print('flat_record_does_not_exist')
+
+                        flat_locus_produced = False
+
+                        seq_rep_id_list = list()
+                        # print(org_id, org_flat, org_records_count)
+
+                        new_seq_str = ''
+                        sequence_alphabet_str = db_thread.bio_alphabet_to_string(
+                            bio_alphabet=org_records[0].seq.alphabet)
+
+                        ############################################################
+
+                        if org_records_count > 1:
+
+                            aln = wf.flatten_locus(
+                                records=org_records,
+                                reference_records=reference_records,
+                                locus_dict=locus_dict,
+                                log_file_path=LFP,
+                                aln_program=FLAT_ALN_PROG,
+                                aln_program_executable=FLAT_ALN_PROG_EXE,
+                                aln_options=FLAT_ALN_PROG_OPTIONS,
+                                min_locus_sequence_identity_range=[FLAT_ID_BOTTOM, FLAT_ID_TOP])
+
+                            if aln:
+
+                                if aln[1] < FLAT_ID_BOTTOM:
+                                    msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
+                                    write_log(msg, LFP, newlines_before=1, newlines_after=1)
+
+                                    if 'align' in COMMANDS:
+                                        COMMANDS.remove('align')
+                                    if 'concatenate' in COMMANDS:
+                                        COMMANDS.remove('concatenate')
+
+                                aln = aln[0]
+
+                                flat_locus_produced = True
+
+                                krbioio.write_alignment_file(
+                                    alignment=aln,
+                                    file_path=aln_file_path,
+                                    file_format='phylip-relaxed')
+
+                                for ar in aln:
+
+                                    seq = db_thread.get_sequence_for_record(
+                                        record_reference=int(ar.id),
+                                        record_reference_type='gi'
+                                        )
+
+                                    seq_rep_list = db_thread.produce_seq_edits(
+                                        s1=str(seq).upper(),
+                                        s2=str(ar.seq).upper())
+
+                                    rec_id = db_thread.db_get_row_ids(
+                                        table_name='records',
+                                        where_dict={'ncbi_gi': int(ar.id)})[0]
+
+                                    seq_id = db_thread.db_get_row_ids(
+                                        table_name='sequences',
+                                        where_dict={'rec_id': rec_id})[0]
+
+                                    seq_rep_id = db_thread.add_sequence_representation(
+                                        seq_id=seq_id,
+                                        repr_list=seq_rep_list,
+                                        rec_id=None,
+                                        aln_id=None)[0]
+
+                                    seq_rep_id_list.append(seq_rep_id)
+
+                                consensus = kralign.consensus(
+                                    alignment=aln,
+                                    threshold=0.4,
+                                    unknown='',
+                                    resolve_ambiguities=FLAT_RESOLVE_AMBIGUITIES)
+
+                                new_seq_str = str(consensus)
+
+                        else:
+
+                            trimmed_rec = wf.trim_record_to_locus(
+                                record=org_records[0],
+                                locus_name=locus_name)
+
+                            if trimmed_rec:
+
+                                flat_locus_produced = True
+
+                                new_seq_str = str(trimmed_rec.seq)
+                                krbioio.write_sequence_file(
+                                    records=[trimmed_rec],
+                                    file_path=seq_file_path,
+                                    file_format='fasta')
+
+                        ############################################################
+
+                        if flat_locus_produced:
+
+                            internal_reference = locus_name + '_' + krother.random_id(6)
+                            parent_rec_id_list = [int(x.annotations['kr_seq_db_id']) for x in org_records]
+
+                            rec_id = db_thread.add_record(
+                                org_id=org_id,
+                                ncbi_gi=None,
+                                ncbi_version=None,
+                                internal_reference=internal_reference,
                                 description=None,
-                                rec_id=rec_id)
+                                sequence_str=new_seq_str,
+                                sequence_alphabet_str=sequence_alphabet_str,
+                                parent_rec_id_list=parent_rec_id_list,
+                                active=True,
+                                action_str='Record for locus')
 
-                DB.save()
+                            db_thread.add_record_annotation(
+                                record_reference=rec_id,
+                                type_str='locus_flat',
+                                annotation_str=locus_name,
+                                record_reference_type='raw')
+
+                            if len(seq_rep_id_list) > 1:
+                                db_thread.add_alignment(
+                                    name=aln_name,
+                                    seq_rep_id_list=seq_rep_id_list,
+                                    description=None,
+                                    rec_id=rec_id)
+
+                    db_thread.save()
+
+                q.task_done()
 
             ####################################################################
 
-            DB.save()
-
             print()
+
+        ###
+
+        for locus_name in LOCI.keys():
+            queue.put(locus_name)
+
+        for i in range(CPU_FOR_PYTHON):
+            worker = Process(target=t, args=(queue,))
+            worker.start()
+            processes.append(worker)
+
+        queue.join()
+
+        for p in processes:
+            p.terminate()
+
+        ###
 
     ############################################################################
 
@@ -1716,7 +1818,7 @@ if __name__ == '__main__':
                 out_dir_path=loc_tre_dir_path,
                 outgroup_taxa=outgroup_taxa,
                 partitions=None,
-                threads=CPU)
+                threads=CPU_TOTAL)
 
             ####################################################################
 
@@ -1852,7 +1954,7 @@ if __name__ == '__main__':
             out_dir_path=PART_TRE_DIR_PATH,
             outgroup_taxa=outgroup_taxa,
             partitions=partitions,
-            threads=CPU,
+            threads=CPU_TOTAL,
             locus_name_list=name_list)
 
         ########################################################################

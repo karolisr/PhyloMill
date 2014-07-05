@@ -80,7 +80,7 @@ def export_records(records, file_format, file_path, seq_id=None, seq_id_prefix='
             record.description = ''
         write_sequence_file(records_copy, file_path, file_format)
     elif file_format == 'genbank':
-        write_sequence_file(records_copy, file_path, file_format)
+        write_sequence_file(records, file_path, file_format)
 
 # ToDo: File formats should be listed for convenience.
 # https://github.com/biopython/biopython/blob/master/Bio/SeqIO/QualityIO.py

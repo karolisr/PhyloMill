@@ -794,6 +794,70 @@ class KRSequenceDatabase:
         return row_id
 
 
+    def _remove_record_annotation(self, rec_id, type_str, annotation_str):
+
+        values_dict = {'type': type_str}
+        rec_ann_type_id = self.db_insert('record_annotation_types',
+            values_dict)[0]
+
+        values_dict = {'value': annotation_str}
+        rec_ann_value_id = self.db_insert('record_annotation_values',
+            values_dict)[0]
+
+        values_dict = {
+            'rec_id': rec_id,
+            'rec_ann_type_id': rec_ann_type_id,
+            'rec_ann_value_id': rec_ann_value_id
+        }
+
+        # row_id = self.db_insert('record_annotations', values_dict)
+        self.db_delete(
+            table_name='record_annotations',
+            where_dict=values_dict)
+
+        # return row_id
+        return
+
+
+    def remove_record_annotation(
+        self,
+        record_reference,
+        type_str,
+        annotation_str,
+        record_reference_type='gi'  # gi version internal raw
+        ):
+
+        where_dict_key = ''
+
+        if record_reference_type == 'gi':
+            where_dict_key = 'ncbi_gi'
+        elif record_reference_type == 'version':
+            where_dict_key = 'ncbi_version'
+        elif record_reference_type == 'internal':
+            where_dict_key = 'internal_reference'
+        elif record_reference_type == 'raw':
+            where_dict_key = 'id'
+
+        where_dict = {where_dict_key: record_reference}
+
+        rec_id = self.db_get_row_ids(
+            table_name='records',
+            where_dict=where_dict)[0]
+
+        # row_id = self._add_record_annotation(
+        #     rec_id=rec_id,
+        #     type_str=type_str,
+        #     annotation_str=annotation_str)
+
+        self._remove_record_annotation(
+            rec_id=rec_id,
+            type_str=type_str,
+            annotation_str=annotation_str)
+
+        # return row_id
+        return
+
+
 
     def _add_record_action(self, rec_id, action_str):
 

@@ -300,6 +300,12 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
             DB.add_record_annotation(
                 record_reference=gi,
+                type_str='locus_not_extracted',
+                annotation_str=locus_name,
+                record_reference_type='gi')
+
+            DB.add_record_annotation(
+                record_reference=gi,
                 type_str='source_file',
                 annotation_str=gb_file_name,
                 record_reference_type='gi')
@@ -670,8 +676,22 @@ def rename_organisms_using_taxids(
                         record_reference_type='raw'
                         )
 
+                    ###
+
+                    # Have to check if the record is 'flattened', then it will
+                    # not have an associated GI
+
+                    rec_gi = rec.annotations['gi']
+                    # print()
+                    # print(rec_gi, type(rec_gi))
+                    # print()
+                    if rec_gi and rec_gi != 'None':
+                        rec_gi = int(rec_gi)
+
+                    ###
+
                     kr_seq_db_object.add_record_to_blacklist(
-                        ncbi_gi=int(rec.annotations['gi']),
+                        ncbi_gi=rec_gi,
                         ncbi_version=rec.id,
                         internal_reference=rec.annotations['internal_reference'],
                         notes=blacklist_notes)
@@ -778,6 +798,8 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
 
     from krpy import krseq
 
+    from Bio.SeqFeature import SeqFeature
+
     feature_indexes = list()
     loose_matching = False
     if match_stringency.lower() == 'loose':
@@ -797,74 +819,110 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     if len(feature_indexes) == 0:
         log_message = 'No locus annotation.'
     elif len(feature_indexes) > 1:
-        # Let user pick which of the indexes to use
-        print("\n\n\tFound more than one annotation for "+str(locus_name_list)+" please pick the correct index:")
+
+        # print('MORE THAN ONE', record.annotations['gi'])
+
+        loc_list_temp = list()
+        # strand_list_temp = list()
 
         for fi in feature_indexes:
-
             # print("\n\t\tIndex: "+str(fi))
-            print("\n\t\t"+str(record.id))
-            print()
-
-            rng = range(1, 6)
-            rng.reverse()
-            for n in rng:
-                if fi-n >= 0:
-                    f = record.features[fi-n]
-                    if f.type == feature_type:
-                        for fq in f.qualifiers.keys():
-                            if fq == qualifier_label:
-                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
-
-            print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
-
+            # print("\n\t\t"+str(record.id))
             f = record.features[fi]
-            for fq in f.qualifiers.keys():
-                if fq == qualifier_label:
-                    print("\t\t" + str(fi) + " > " + fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+            if f.type == feature_type:
+                for fq in f.qualifiers.keys():
+                    if fq == qualifier_label:
+                        # print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+                        loc_list_temp.append(int(f.location.start))
+                        loc_list_temp.append(int(f.location.end))
+                        # strand_list_temp.append(f.location.strand)
 
-            print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+        # print(loc_list_temp)
+        # print(strand_list_temp)
 
-            rng.reverse()
-            for n in rng:
-                if fi+n < len(record.features):
-                    f = record.features[fi+n]
-                    if f.type == feature_type:
-                        for fq in f.qualifiers.keys():
-                            if fq == qualifier_label:
-                                print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+        location_string = '[' + str(min(loc_list_temp)) + ':' + str(max(loc_list_temp)) + '](' + '+' + ')'
 
-            print('\n\t\t==== ==== ==== ==== ==== ==== ==== ==== ==== ==== ====')
+        # print(location_string)
 
-        class BadChoiceException(Exception):
-            pass
+        location = krseq.location_from_string(
+            location_string=location_string)
 
-        while True:
-            picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
-            # picked_fi = 1
-            try:
-                if str(picked_fi).lower().startswith('exclude'):
-                    print()
-                    log_message = 'More than one locus annotation. User excluded.'
-                    break
-                else:
-                    try:
-                        int(picked_fi)
-                    except ValueError:
-                        print("\n\tBad choice.")
-                        continue
-                    if int(picked_fi) in feature_indexes:
-                        feature = record.features[int(picked_fi)]
-                        print()
-                        break
-                    else:
-                        raise(BadChoiceException)
-            except BadChoiceException:
-                print("\n\tBad choice.")
+        feature = SeqFeature(
+            location=location,
+            type='fet_type',
+            qualifiers=None)
+
+        # ### THIS BREAKS IN A MULTITHREADED VERSION. While one thread waits for input
+        # ### others print log messages and the pipeline crashes.
+
+        # # Let user pick which of the indexes to use
+        # print("\n\n\tFound more than one annotation for "+str(locus_name_list)+" please pick the correct index:")
+
+        # for fi in feature_indexes:
+
+        #     # print("\n\t\tIndex: "+str(fi))
+        #     print("\n\t\t"+str(record.id))
+        #     print()
+
+        #     rng = range(1, 6)
+        #     rng.reverse()
+        #     for n in rng:
+        #         if fi-n >= 0:
+        #             f = record.features[fi-n]
+        #             if f.type == feature_type:
+        #                 for fq in f.qualifiers.keys():
+        #                     if fq == qualifier_label:
+        #                         print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+        #     print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+
+        #     f = record.features[fi]
+        #     for fq in f.qualifiers.keys():
+        #         if fq == qualifier_label:
+        #             print("\t\t" + str(fi) + " > " + fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+        #     print('\t\t---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----')
+
+        #     rng.reverse()
+        #     for n in rng:
+        #         if fi+n < len(record.features):
+        #             f = record.features[fi+n]
+        #             if f.type == feature_type:
+        #                 for fq in f.qualifiers.keys():
+        #                     if fq == qualifier_label:
+        #                         print("\t\t"+fq + ': ' + str(f.qualifiers[fq]) + ' ' + str(f.location))
+
+        #     print('\n\t\t==== ==== ==== ==== ==== ==== ==== ==== ==== ==== ====')
+
+        # class BadChoiceException(Exception):
+        #     pass
+
+        # while True:
+        #     picked_fi = raw_input("\n\tPick index or type 'exclude' to not use this sequence: ")
+        #     # picked_fi = 1
+        #     try:
+        #         if str(picked_fi).lower().startswith('exclude'):
+        #             print()
+        #             log_message = 'More than one locus annotation. User excluded.'
+        #             break
+        #         else:
+        #             try:
+        #                 int(picked_fi)
+        #             except ValueError:
+        #                 print("\n\tBad choice.")
+        #                 continue
+        #             if int(picked_fi) in feature_indexes:
+        #                 feature = record.features[int(picked_fi)]
+        #                 print()
+        #                 break
+        #             else:
+        #                 raise(BadChoiceException)
+        #     except BadChoiceException:
+        #         print("\n\tBad choice.")
     else:
         feature = record.features[feature_indexes[0]]
 
-    return((feature, log_message))
+    return (feature, log_message)
 
 
 def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, cpu=1):
@@ -1147,6 +1205,14 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     acc_gi_list = acc_rej_gi_dict['accept']
     rev_comp_gi_list = list()
     for acc in acc_gi_list:
+
+        kr_seq_db_object.remove_record_annotation(
+            record_reference=int(acc[1]),
+            type_str='locus_not_extracted',
+            annotation_str=locus_name,
+            record_reference_type='gi'  # gi version internal raw
+            )
+
         if acc[0] == '-':
             rev_comp_gi_list.append(int(acc[1]))
 
@@ -1244,6 +1310,8 @@ def improve_alignment_using_reference_records(
     aln_options='--auto',
     min_locus_sequence_identity_range=[0.90, 0.95]):
 
+    import numpy
+
     from Bio.Align import MultipleSeqAlignment
 
     from Bio.SeqRecord import SeqRecord
@@ -1254,16 +1322,16 @@ def improve_alignment_using_reference_records(
 
     new_aln = None
 
-    ident_step = 0.01
+    ident_step = 0.005
 
     bottom_ident = min_locus_sequence_identity_range[0]
     max_ident = min_locus_sequence_identity_range[1]
     current_ident = max_ident
 
     ref_alignments = list()
-    # ref_alignments.append(current_aln)
+    ref_alignments.append(current_aln)
 
-    for ref_rec in reference_records:
+    for i, ref_rec in enumerate(reference_records):
         ref_rec_original_gi = ref_rec.annotations['gi']
         # ref_rec_trimmed = trim_record_to_locus(
         #     record=ref_rec, locus_name=locus_name)
@@ -1287,22 +1355,46 @@ def improve_alignment_using_reference_records(
         #     end_gap_id=0.0,
         #     free_end_gaps=True)
 
-        ident = kralign.identity(
+        ident_with_ref = kralign.identity(
             alignment=ref_aln,
             unknown_letters=set(['N']),
             free_unknowns=True,
             free_gaps=True,
-            free_end_gaps=True)
-
-        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
-        write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
-            to_file=True, to_screen=True)
+            free_end_gaps=True,
+            return_all_pairwise_identities=False)
 
         ref_aln_record_list = list()
         for r in ref_aln:
             if r.id != ref_rec_trimmed.id:
                 ref_aln_record_list.append(r)
         ref_aln = MultipleSeqAlignment(ref_aln_record_list)
+
+        ident_without_ref = kralign.identity(
+            alignment=ref_aln,
+            unknown_letters=set(['N']),
+            free_unknowns=True,
+            free_gaps=True,
+            free_end_gaps=True,
+            return_all_pairwise_identities=False)
+
+        # print(ident_with_ref, ident_without_ref)
+
+        ident = max(ident_with_ref, ident_without_ref)
+
+        # print(ident)
+
+        # ident = ident[1]
+        # if ident:
+        #     median_ident = numpy.median(ident)
+        #     ident = median_ident
+        #     # mean_ident = numpy.mean(ident)
+        #     # std_ident = numpy.std(ident)
+        # else:
+        #     ident = ident[0]
+
+        msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+            to_file=True, to_screen=True)
 
         if ident < current_ident:
 
@@ -1317,6 +1409,9 @@ def improve_alignment_using_reference_records(
         else:
 
             new_aln = [ref_aln, ident]
+
+            # Move the successful reference sequence to the top of the list
+            reference_records.insert(0, reference_records.pop(i))
 
             break
 
@@ -1340,6 +1435,7 @@ def flatten_locus(
 
     from krpy.krother import write_log
     from krpy import kralign
+    import numpy
 
     locus_name = locus_dict['name']
 
@@ -1382,7 +1478,19 @@ def flatten_locus(
             unknown_letters=set(['N']),
             free_unknowns=True,
             free_gaps=True,
-            free_end_gaps=True)
+            free_end_gaps=True,
+            return_all_pairwise_identities=False)
+
+        # print(ident)
+
+        # ident = ident[1]
+        # if ident:
+        #     median_ident = numpy.median(ident)
+        #     ident = median_ident
+        #     # mean_ident = numpy.mean(ident)
+        #     # std_ident = numpy.std(ident)
+        # else:
+        #     ident = ident[0]
 
         msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
         write_log(msg, log_file_path, newlines_before=1, newlines_after=0,
@@ -1390,7 +1498,8 @@ def flatten_locus(
 
         aln = [aln, ident]
 
-        if (ident < min_locus_sequence_identity_range[1]) and (len(records_trimmed) <= 40):
+        # if (ident < min_locus_sequence_identity_range[1]) and (len(records_trimmed) <= 40):
+        if (ident < min_locus_sequence_identity_range[1]):
 
             new_aln = improve_alignment_using_reference_records(
                 records=records_trimmed,
@@ -1457,6 +1566,8 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
     import os
     import sys
 
+    import numpy
+
     from krpy import kralign
     from krpy import krbioio
     from krpy.krother import write_log
@@ -1491,7 +1602,6 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
                 locus_name=locus_name)
             reference_records_temp.append(rec_trimmed)
             ref_rec_lengths.append(len(rec_trimmed.seq))
-        import numpy
 
         if len(reference_records_temp) == 0:
             msg = 'There are no annotated records for locus ' + locus_name + ". Was 'extract_loci' command run?"
@@ -1500,15 +1610,21 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
 
         ref_median_length = numpy.median(ref_rec_lengths)
         ref_mean_length = numpy.mean(ref_rec_lengths)
-        ref_std_length = numpy.std(ref_rec_lengths)
+        # ref_std_length = numpy.std(ref_rec_lengths)
         # ref_cutoff_length = ref_mean_length - (1 * ref_std_length)
-        ref_cutoff_length = min(ref_median_length, ref_mean_length) - (0.5 * ref_std_length)
+        # ref_cutoff_length = min(ref_median_length, ref_mean_length) - (0.5 * ref_std_length)
+        ref_cutoff_length = min(ref_median_length, ref_mean_length)
 
         # print(len(ref_rec_lengths), ref_median_length, ref_std_length, ref_cutoff_length)
 
         for ref_rec in reference_records_temp:
-            if len(ref_rec.seq) >= ref_cutoff_length:
-                reference_records.append(ref_rec)
+            ref_rec_len = len(ref_rec.seq)
+            if ref_rec_len >= ref_cutoff_length:
+                unk_in_ref_rec = str(ref_rec.seq).upper().count('N')
+                prop_unk = float(unk_in_ref_rec) / float(ref_rec_len)
+                # print(prop_unk, ref_rec.annotations['gi'])
+                if prop_unk < 0.1:
+                    reference_records.append(ref_rec)
 
         if len(reference_records) > 200:
             reference_records = reference_records[0:200]

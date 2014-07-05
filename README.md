@@ -1,7 +1,5 @@
 # PhyloMill
 
-<!--Available on [GitHub](https://github.com/karolisr/krpy)-->
-
 Using sequence alignments of multiple loci to build phylogenies is a common practice. Aligning sequences and reconstructing phylogeny are mostly automated steps, however the acquisition and filtering of raw sequence data is tedious. Often sequences at public databases are mislabeled in some way. Organism names may be inaccurate, sequence direction may be misannotated, or worse, sequences may be labeled entirely incorrect. Even when none of these problems occur, the increasing number of sequences available at public databases makes it very difficult to manually download and inspect all of them.
 
 PhyloMill automates the process of multi-locus dataset construction so the researcher can spend more time focusing on the biological questions and not the frustrating technical details.
@@ -54,4 +52,4 @@ This process takes about 7 minutes on a fairly modern MacbookPro.
 
 ## Installation
 
-Currently (as of June 24th, 2014) I am working on the detailed installation instructions. This should be a relatively simple process on MacOSX and Linux, however, PhyloMill depends on a few other Python packages and a couple of external alignment/phylogeny programs which may confuse the matter. I will make installation instructions available as soon as possible.
+I am working on the detailed installation instructions. This should be a relatively simple process on MacOSX and Linux, however, PhyloMill depends on a few other Python packages and a couple of external alignment/phylogeny programs which may confuse the matter. I will make installation instructions available as soon as possible. If you wish to try PhyloMill before these instructions are available, please email me at <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#107;&#114;&#97;&#109;&#97;&#110;&#50;&#64;&#117;&#105;&#99;&#46;&#101;&#100;&#117;">&#107;&#114;&#97;&#109;&#97;&#110;&#50;&#64;&#117;&#105;&#99;&#46;&#101;&#100;&#117;</a> and I will help you get the pipeline running.

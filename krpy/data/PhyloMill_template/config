@@ -23,25 +23,33 @@ skip_previously_synonymized = Yes
 
 COI
 RAG1
+RAG2
 cytb
+TGFB2
 
 [Blast]
 
 COI = 1E-30
 RAG1 = 1E-30
+RAG2 = 1E-30
 cytb = 1E-30
+TGFB2 = 1E-30
 
 [Flatten]
 
 resolve_ambiguities = No
 
 align_program = mafft
-align_program_options = --genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --thread 4
+
+# Thread options will be overwritten based cpu setting in the section [General]
+align_program_options = --genafpair --jtt 100 --maxiterate 1000 --nuc --reorder
 
 [Align]
 
 align_program = mafft
-align_program_options = --genafpair --bl 62 --maxiterate 1000 --nuc --reorder --thread 4
+
+# Thread options will be overwritten based cpu setting in the section [General]
+align_program_options = --genafpair --bl 62 --maxiterate 1000 --nuc --reorder
 
 taxon_name = family, scientific, common
 
