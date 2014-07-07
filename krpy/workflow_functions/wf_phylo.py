@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+LOG_LINE_SEP = '################################################################################'
 
 def blacklist_gis(gis, kr_seq_db_object, log_file_path):
 
@@ -11,7 +12,7 @@ def blacklist_gis(gis, kr_seq_db_object, log_file_path):
     LFP = log_file_path
 
     msg = 'Inactivating blacklisted gis.'
-    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
     for gi in gis:
 
@@ -129,7 +130,7 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
         msg = 'Downloading new records.'
         write_log(msg, LFP)
 
-        print('')
+        # print('')
 
         krncbi.download_sequence_records(
             file_path=dnld_file_path,
@@ -137,7 +138,7 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
             db=ncbi_db,
             entrez_email=EMAIL)
 
-        print('')
+        # print('')
 
         records_new = krbioio.read_sequence_file(
             file_path=dnld_file_path,
@@ -192,7 +193,7 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, min_s
     )
 
     msg = 'ENTREZ query: ' + query_str
-    write_log(msg, log_file_path, newlines_before=1, newlines_after=1,
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
         to_file=True, to_screen=False)
 
     result_uids = krncbi.esearch(esearch_terms=query_str, db=ncbi_db,
@@ -236,9 +237,11 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
         else:
             min_seq_length = min(l_msl, min_seq_length)
 
+    write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
+
     msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
           locus_name + '.'
-    write_log(msg, LFP, newlines_before=1, newlines_after=0)
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
     gis = search_genbank(
         ncbi_db=ncbi_db,
@@ -946,11 +949,14 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
 
     prelim_record_feat_loc_list = list()
 
-    msg = 'Extracting records.'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    msg = 'Extracting sequences for locus ' + locus_name + ' from downloaded records.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=True)
 
-    if len(records) < 3:
+    if records_count < 3:
         return {'no_feature': list(), 'accept': list(), 'reject': list()}
+
+    msg = 'There are ' + str(records_count) + ' records for locus ' + locus_name + '.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=True)
 
     for i, record in enumerate(records):
 
@@ -1133,12 +1139,12 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
                 # trimmed_rec.name = record.name
                 trimmed_records.append(trimmed_rec)
 
-    msg = 'Filtering extracted records.'
-    write_log(msg, log_file_path, newlines_before=1, newlines_after=0)
+    msg = 'Filtering extracted records for locus ' + locus_name + '.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     # Produce seeds. Longest records from each genus.
-    msg = '\tPreparing seed sequences.'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=1)
+    msg = '\tPreparing seed sequences for locus ' + locus_name + ' .'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     seed_records_dict = dict()
     for r in trimmed_records:
@@ -1186,8 +1192,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
                 if gi in clusters[key]:
                     seed_records.append(sr)
 
-    msg = '\tFiltering.'
-    write_log(msg, log_file_path, newlines_before=1, newlines_after=1)
+    msg = '\tFiltering records for locus ' + locus_name + '.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         records=trimmed_records,
@@ -1195,8 +1201,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
         identity_threshold=0.80,
         cpu=cpu)
 
-    msg = 'Annotating sequence features in database.'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=0)
+    msg = 'Annotating sequence features in database for locus ' + locus_name + '.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
 
@@ -1300,6 +1306,7 @@ def trim_record_to_locus(record, locus_name):
 
 
 def improve_alignment_using_reference_records(
+    org_name,
     records,
     reference_records,
     locus_name,
@@ -1310,7 +1317,7 @@ def improve_alignment_using_reference_records(
     aln_options='--auto',
     min_locus_sequence_identity_range=[0.90, 0.95]):
 
-    import numpy
+    # import numpy
 
     from Bio.Align import MultipleSeqAlignment
 
@@ -1392,9 +1399,10 @@ def improve_alignment_using_reference_records(
         # else:
         #     ident = ident[0]
 
+        # print()
         msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(current_ident) + ') ref: ' + ref_rec_original_gi
         write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
-            to_file=True, to_screen=True)
+            to_file=True, to_screen=False)
 
         if ident < current_ident:
 
@@ -1423,6 +1431,7 @@ def improve_alignment_using_reference_records(
 
 
 def flatten_locus(
+    org_name,
     records,
     reference_records,
     locus_dict,
@@ -1435,7 +1444,7 @@ def flatten_locus(
 
     from krpy.krother import write_log
     from krpy import kralign
-    import numpy
+    # import numpy
 
     locus_name = locus_dict['name']
 
@@ -1453,6 +1462,10 @@ def flatten_locus(
                 records_trimmed.append(rec_trimmed)
 
     aln = None
+
+    msg = org_name + ' - ' + str(len(records_trimmed)) + ' records.'
+    write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+        to_file=True, to_screen=False)
 
     if len(records_trimmed) > 1:
 
@@ -1492,9 +1505,10 @@ def flatten_locus(
         # else:
         #     ident = ident[0]
 
+        # print()
         msg = '\tLocus alignment identity: ' + str(ident) + ' (threshold=' + str(min_locus_sequence_identity_range[1]) + ')'
-        write_log(msg, log_file_path, newlines_before=1, newlines_after=0,
-            to_file=True, to_screen=True)
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0,
+            to_file=True, to_screen=False)
 
         aln = [aln, ident]
 
@@ -1502,6 +1516,7 @@ def flatten_locus(
         if (ident < min_locus_sequence_identity_range[1]):
 
             new_aln = improve_alignment_using_reference_records(
+                org_name=org_name,
                 records=records_trimmed,
                 reference_records=reference_records,
                 locus_name=locus_name,
@@ -1578,7 +1593,7 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
 
     if os.path.exists(ref_recs_file_path):
 
-        msg = 'Reading previously produced reference sequences.'
+        msg = 'Reading previously produced reference sequences for locus ' + locus_name + '.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
         reference_records = krbioio.read_sequence_file(
@@ -1590,8 +1605,8 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             ref_rec.annotations['gi'] = ref_rec.id
     else:
 
-        msg = 'Producing dereplicated set of reference sequences, this may take a bit.'
-        write_log(msg, LFP, newlines_before=0, newlines_after=1)
+        msg = 'Producing dereplicated set of reference sequences for locus ' + locus_name + ', this may take a bit.'
+        write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
         reference_records_temp = list()
 
@@ -1605,7 +1620,7 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
 
         if len(reference_records_temp) == 0:
             msg = 'There are no annotated records for locus ' + locus_name + ". Was 'extract_loci' command run?"
-            write_log(msg, LFP, newlines_before=1, newlines_after=0)
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
             sys.exit(1)
 
         ref_median_length = numpy.median(ref_rec_lengths)
