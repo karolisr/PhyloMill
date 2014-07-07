@@ -3,7 +3,7 @@
 [rbcL]
 
 database = nuccore
-query = rbcL[Title]
+query = rbcL[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

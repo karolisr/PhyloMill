@@ -3,7 +3,7 @@
 [EGR1]
 
 database = nuccore
-query = EGR1[Title]
+query = EGR1[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

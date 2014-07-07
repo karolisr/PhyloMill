@@ -3,7 +3,7 @@
 [MYC]
 
 database = nuccore
-query = MYC[Title]
+query = MYC[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

@@ -5,7 +5,7 @@
 [trnS-trnG]
 
 database = nuccore
-query = "trnS-trnG"[Title] OR "trnS-trnG"[Gene Name] OR ((trnS OR "tRNA-Ser") AND (trnG OR "tRNA-Gly"))
+query = "trnS-trnG"[Title] OR "trnS-trnG"[Gene Name] OR ((trnS OR "tRNA-Ser") AND (trnG OR "tRNA-Gly")) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

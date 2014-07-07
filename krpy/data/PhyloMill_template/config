@@ -25,7 +25,6 @@ COI
 RAG1
 RAG2
 cytb
-TGFB2
 
 [Blast]
 
@@ -33,7 +32,6 @@ COI = 1E-30
 RAG1 = 1E-30
 RAG2 = 1E-30
 cytb = 1E-30
-TGFB2 = 1E-30
 
 [Flatten]
 
@@ -42,7 +40,7 @@ resolve_ambiguities = No
 align_program = mafft
 
 # Thread options will be overwritten based cpu setting in the section [General]
-align_program_options = --genafpair --jtt 100 --maxiterate 1000 --nuc --reorder
+align_program_options = --genafpair --op 3.0 --jtt 1 --maxiterate 1000 --nuc --reorder
 
 [Align]
 

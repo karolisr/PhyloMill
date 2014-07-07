@@ -3,7 +3,7 @@
 [FGB]
 
 database = nuccore
-query = FGB[Title]
+query = FGB[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

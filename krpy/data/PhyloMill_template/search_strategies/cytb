@@ -3,7 +3,7 @@
 [cytb]
 
 database = nuccore
-query = ("cytb"[Title] OR "cytochrome b"[Title]) NOT ("PREDICTED:"[Title] OR "UNVERIFIED:"[Title])
+query = ("cytb"[Title] OR "cytochrome b"[Title]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

@@ -3,7 +3,7 @@
 [GBSSI]
 
 database = nuccore
-query = waxy[Title] OR GBSSI[Title] OR GBSS[Title] OR waxy[Gene Name] OR GBSSI[Gene Name] OR GBSS[Gene Name]
+query = (waxy[Title] OR GBSSI[Title] OR GBSS[Title] OR waxy[Gene Name] OR GBSSI[Gene Name] OR GBSS[Gene Name]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

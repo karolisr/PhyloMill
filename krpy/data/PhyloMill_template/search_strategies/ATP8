@@ -3,7 +3,7 @@
 [ATP8]
 
 database = nuccore
-query = ATP8[Title]
+query = ATP8[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

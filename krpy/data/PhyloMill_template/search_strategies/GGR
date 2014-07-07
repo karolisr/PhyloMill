@@ -3,7 +3,7 @@
 [GGR]
 
 database = nuccore
-query = "GGR"[Title] OR "geranylgeranyl reductase"[Title] OR "CHLP"[Title]
+query = ("GGR"[Title] OR "geranylgeranyl reductase"[Title] OR "CHLP"[Title]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

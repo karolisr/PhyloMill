@@ -3,7 +3,7 @@
 [ndhF]
 
 database = nuccore
-query = ndhF[Title] OR ndhF[Gene Name]
+query = (ndhF[Title] OR ndhF[Gene Name]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

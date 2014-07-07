@@ -3,7 +3,7 @@
 [matK]
 
 database = nuccore
-query = matK[Title] OR matK[Gene Name] OR trnK[Title] OR trnK[Gene Name]
+query = (matK[Title] OR matK[Gene Name] OR trnK[Title] OR trnK[Gene Name]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

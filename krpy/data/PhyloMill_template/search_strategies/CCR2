@@ -3,7 +3,7 @@
 [CCR2]
 
 database = nuccore
-query = CCR2[Title] NOT "promoter region"[Title]
+query = CCR2[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title] OR "promoter region"[Title])
 
 [1]
 

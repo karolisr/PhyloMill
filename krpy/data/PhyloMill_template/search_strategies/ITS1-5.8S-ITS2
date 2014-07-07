@@ -3,7 +3,7 @@
 [ITS1-5.8S-ITS2]
 
 database = nuccore
-query = ("18S"[Title] AND "5.8S"[Title]) OR ("5.8S"[Title] AND "26S"[Title]) OR ("internal transcribed spacer"[Title] OR "ITS"[Title] OR "ITS1"[Title] OR "ITS2"[Title] OR "5.8S"[Title]) NOT ("mitochondrial")
+query = ("18S"[Title] AND "5.8S"[Title]) OR ("5.8S"[Title] AND "26S"[Title]) OR ("internal transcribed spacer"[Title] OR "ITS"[Title] OR "ITS1"[Title] OR "ITS2"[Title] OR "5.8S"[Title]) NOT ("mitochondrial" OR "UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

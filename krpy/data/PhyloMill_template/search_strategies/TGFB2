@@ -3,7 +3,7 @@
 [TGFB2]
 
 database = nuccore
-query = TGFB2[Title]
+query = TGFB2[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 

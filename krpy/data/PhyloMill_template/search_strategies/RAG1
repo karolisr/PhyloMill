@@ -3,7 +3,7 @@
 [RAG1]
 
 database = nuccore
-query = ("RAG-1"[Title] OR "RAG1"[Title] OR "recombination activating protein 1"[Title] OR "recombination activating gene 1"[Title]) NOT ("promoter region" OR "ribonuclease A G" OR "UNVERIFIED:"[Title])
+query = ("RAG-1"[Title] OR "RAG1"[Title] OR "recombination activating protein 1"[Title] OR "recombination activating gene 1"[Title]) NOT ("promoter region" OR "ribonuclease A G" OR "UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 
