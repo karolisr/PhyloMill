@@ -137,7 +137,8 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Log file path
-    LFP = PRJ_DIR_PATH + 'log.txt'
+    LOGS_DIR = PRJ_DIR_PATH + 'logs' + PS
+    LFP = LOGS_DIR + 'main_log.txt'
 
     if ARGS.project_dir:
 
@@ -848,6 +849,7 @@ if __name__ == '__main__':
 
         common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
         lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+        all_org_tax_id_dict = krncbi.get_taxids(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
 
         for i, org_dict in enumerate(organisms):
 
@@ -856,10 +858,17 @@ if __name__ == '__main__':
             org_flat = krbionames.flatten_organism_name(
                 parsed_name=org_dict, sep=' ')
 
-            org_tax_id_list = org_dict['ncbi_tax_ids']
+            org_tax_id_list_temp = org_dict['ncbi_tax_ids']
+            org_tax_id_list = list()
+
+            for org_tax_id in org_tax_id_list_temp:
+                org_tax_id_list = org_tax_id_list + all_org_tax_id_dict[str(org_tax_id)]
+
+            org_tax_id_list_str = list()
             org_common_names = list()
             org_lineage = None
             for ti in org_tax_id_list:
+                org_tax_id_list_str.append(str(ti))
                 if str(ti) in common_names.keys():
                     org_common_names.append(common_names[str(ti)])
                 if str(ti) in lineages.keys():
@@ -871,10 +880,12 @@ if __name__ == '__main__':
             else:
                 common_names_str = org_flat
 
+            org_tax_id_str = ', '.join(org_tax_id_list_str)
+
             krcl.print_progress(
                 current=i+1, total=organism_count, length=0,
                 prefix=krother.timestamp() + ' ',
-                postfix=' - ' + org_flat + ' -> ' + common_names_str + '\n',
+                postfix=' - ' + org_flat + ' -> ' + common_names_str + ' ' + org_tax_id_str + '\n',
                 show_bar=False)
 
             DB.db_update(
@@ -896,7 +907,7 @@ if __name__ == '__main__':
             org_id_new = DB.add_organism(
                 organism_dict=values_dict,
                 taxonomy_list=org_lineage,
-                ncbi_tax_id_list=org_dict['ncbi_tax_ids'],
+                ncbi_tax_id_list=org_tax_id_list,
                 synonymy_check_done=org_dict['synonymy_check_done'])[0]
 
             DB.update_records(
@@ -927,6 +938,8 @@ if __name__ == '__main__':
             while True:
                 locus_name = q.get()
 
+                lfp = LOGS_DIR + locus_name + '_log.txt'
+
                 db_thread = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
                 ln_split = locus_name.split('_')
@@ -934,7 +947,7 @@ if __name__ == '__main__':
                     continue
 
                 msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
-                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+                write_log(msg, lfp, newlines_before=1, newlines_after=0)
 
                 locus_dict = LOCI[locus_name]
 
@@ -947,7 +960,7 @@ if __name__ == '__main__':
                 acc_rej_gi_dict = wf.extract_loci(
                     locus_dict=locus_dict,
                     records=records,
-                    log_file_path=LFP,
+                    log_file_path=lfp,
                     kr_seq_db_object=db_thread,
                     temp_dir=TEMP_DIR_PATH,
                     cpu=CPU_FOR_OTHER)
@@ -971,7 +984,7 @@ if __name__ == '__main__':
 
                     msg = 'inactivating:' + \
                     ' gi:' + str(bad_gi) + ' note:' + delete_note
-                    write_log(msg, LFP)
+                    write_log(msg, lfp)
 
                     where_dict = {'ncbi_gi': bad_gi}
 
@@ -1145,10 +1158,12 @@ if __name__ == '__main__':
             while True:
                 locus_name = q.get()
 
+                lfp = LOGS_DIR + locus_name + '_log.txt'
+
                 db_thread = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
                 msg = 'Loading records for locus ' + locus_name + ', this may take a bit.'
-                write_log(msg, LFP, newlines_before=1, newlines_after=0)
+                write_log(msg, lfp, newlines_before=1, newlines_after=0)
 
                 locus_dir_path = ORG_LOC_DIR_PATH + locus_name + PS
                 krio.prepare_directory(locus_dir_path)
@@ -1172,7 +1187,7 @@ if __name__ == '__main__':
                     locus_name=locus_name,
                     records=records,
                     ref_recs_file_path=ref_recs_file_path,
-                    log_file_path=LFP,
+                    log_file_path=lfp,
                     cpu=CPU_FOR_OTHER)
 
                 ###
@@ -1376,7 +1391,7 @@ if __name__ == '__main__':
 
                                     msg = 'inactivating:' + \
                                     ' gi:' + str(ncbi_gi) + ' note:' + blacklist_notes
-                                    write_log(msg, LFP)
+                                    write_log(msg, lfp)
 
                                     where_dict = {'id': del_rec_id}
 
@@ -1425,7 +1440,7 @@ if __name__ == '__main__':
                                     records=records_to_align,
                                     reference_records=reference_records,
                                     locus_dict=locus_dict,
-                                    log_file_path=LFP,
+                                    log_file_path=lfp,
                                     already_trimmed=True,
                                     aln_program=FLAT_ALN_PROG,
                                     aln_program_executable=FLAT_ALN_PROG_EXE,
@@ -1434,7 +1449,7 @@ if __name__ == '__main__':
 
                                 if new_aln[1] < FLAT_ID_BOTTOM:
                                     msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(new_aln[1])
-                                    write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                    write_log(msg, lfp, newlines_before=1, newlines_after=1)
 
                                     if 'align' in COMMANDS:
                                         COMMANDS.remove('align')
@@ -1570,7 +1585,7 @@ if __name__ == '__main__':
                                 records=org_records,
                                 reference_records=reference_records,
                                 locus_dict=locus_dict,
-                                log_file_path=LFP,
+                                log_file_path=lfp,
                                 aln_program=FLAT_ALN_PROG,
                                 aln_program_executable=FLAT_ALN_PROG_EXE,
                                 aln_options=FLAT_ALN_PROG_OPTIONS,
@@ -1580,7 +1595,7 @@ if __name__ == '__main__':
 
                                 if aln[1] < FLAT_ID_BOTTOM:
                                     msg = 'Please review the ' + locus_name + ' alignment for ' + org_flat + '. Identity value: ' + str(aln[1])
-                                    write_log(msg, LFP, newlines_before=1, newlines_after=1)
+                                    write_log(msg, lfp, newlines_before=1, newlines_after=1)
 
                                     if 'align' in COMMANDS:
                                         COMMANDS.remove('align')
@@ -1748,6 +1763,8 @@ if __name__ == '__main__':
                     lineage_string_list=lineage)[0]
 
                 outgroup = ''
+                # print(lineage_parsed)
+                # print(binomial)
                 lineage_taxids = [x['taxid'] for x in lineage_parsed]
                 org_id = int(r.annotations['kr_seq_db_org_id'])
                 org_dict = DB.get_organisms(where_dict={'organisms.id': org_id})[0]
