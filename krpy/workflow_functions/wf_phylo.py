@@ -26,9 +26,9 @@ def blacklist_gis(gis, kr_seq_db_object, log_file_path):
 
         if row_ids:
 
-            # msg = 'inactivating:' + \
-            # ' gi:' + str(GI) + ' note:' + blacklist_notes
-            # write_log(msg, LFP)
+            msg = 'inactivating:' + \
+            ' gi:' + str(GI) + ' note:' + blacklist_notes
+            write_log(msg, LFP)
 
             record = DB.get_record(
                 record_reference=GI,

@@ -528,7 +528,8 @@ if __name__ == '__main__':
     with open(BLACKLIST_GIS_FILE_PATH, 'r') as f:
         lines = f.readlines()
         for l in lines:
-            gis.append(l.strip('\n'))
+            if not l.startswith('#'):
+                gis.append(l.strip('\n'))
 
     wf.blacklist_gis(gis=gis, kr_seq_db_object=DB, log_file_path=LFP)
 
