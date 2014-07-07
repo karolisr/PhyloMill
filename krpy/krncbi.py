@@ -233,6 +233,54 @@ def get_ncbi_tax_id_for_tax_term(email, tax_term):
     return taxid
 
 
+def get_taxids(email, tax_terms=None, tax_ids=None):
+
+    from Bio import Entrez
+
+    if not tax_ids:
+        tax_ids = list()
+        for tax_term in tax_terms:
+            tax_id = get_ncbi_tax_id_for_tax_term(email, tax_term)
+            if tax_id:
+                tax_ids.append(tax_id)
+
+    clean_tax_ids = list()
+    for ti in tax_ids:
+        clean_tax_ids.append(str(ti))
+
+    records = list()
+    if clean_tax_ids:
+        Entrez.email = email
+        handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+        records = Entrez.read(handle)
+
+    results = dict()
+    for i, record in enumerate(records):
+        ###
+        # for kk in record.keys():
+        #     print(kk, '  ::  ', record[kk])
+        #     print('\n\n')
+        ###
+        # lineage_list_temp = record['LineageEx']
+        # lineage_list = list()
+        # for l in lineage_list_temp:
+        #     lin_item = 'name=' + l['ScientificName'] + ';' + 'rank=' + l['Rank'] + ';' + 'taxid=' + l['TaxId'] + ';'
+        #     lineage_list.append(lin_item)
+        results_rec = list()
+        tax_id_main = record['TaxId']
+        results_rec.append(tax_id_main)
+        if 'AkaTaxIds' in record.keys():
+            other_tax_ids = record['AkaTaxIds']
+            results_rec = results_rec + other_tax_ids
+        results_rec = [int(x) for x in results_rec]
+        if tax_terms:
+            results[str(tax_terms[i])] = results_rec
+        if tax_ids:
+            results[str(tax_ids[i])] = results_rec
+
+    return results
+
+
 def get_lineages(email, tax_terms=None, tax_ids=None):
 
     from Bio import Entrez
@@ -256,6 +304,11 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
 
     results = dict()
     for record in records:
+        ###
+        # for kk in record.keys():
+        #     print(kk, '  ::  ', record[kk])
+        #     print('\n\n')
+        ###
         lineage_list_temp = record['LineageEx']
         lineage_list = list()
         for l in lineage_list_temp:
@@ -343,7 +396,7 @@ def get_common_name(email, tax_term=None, tax_id=None):
     return common_name
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
     # Tests
 
@@ -358,10 +411,23 @@ def get_common_name(email, tax_term=None, tax_id=None):
     # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
     #      'test@test.com'))
 
-    # lineages = get_lineages(email='test@test.com', tax_ids=['52231', '9483'])
+    taxids = get_taxids(
+        email='test@test.com',
+        # tax_terms=['Dendrocopos minor']
+        tax_ids=['345735']
+    )
+
+    print(taxids)
+
     # for key in lineages.keys():
     #     parsed = parse_lineage_string_list(lineages[key])
-    #     print(parsed[1])
+    #     print(parsed)
+
+    # taxid = get_ncbi_tax_id_for_tax_term(
+    #     email='test@test.com',
+    #     tax_term='Dendrocopos minor')
+
+    # print(taxid)
 
     # common_name = get_common_name(email='test@test.com', tax_term='Callithrix geoffroyi')
     # print(common_name)
