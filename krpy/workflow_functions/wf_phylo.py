@@ -18,50 +18,56 @@ def blacklist_gis(gis, kr_seq_db_object, log_file_path):
 
         GI = int(gi)
 
-        blacklist_notes = 'user_deleted'
+        in_blacklist = kr_seq_db_object.in_blacklist(
+            record_reference=GI,
+            record_reference_type='gi')
 
-        where_dict = {'ncbi_gi': GI}
+        if not in_blacklist:
 
-        row_ids = DB.db_get_row_ids(table_name='records', where_dict=where_dict)
+            blacklist_notes = 'user_deleted'
 
-        if row_ids:
+            where_dict = {'ncbi_gi': GI}
 
-            msg = 'inactivating:' + \
-            ' gi:' + str(GI) + ' note:' + blacklist_notes
-            write_log(msg, LFP)
+            row_ids = DB.db_get_row_ids(table_name='records', where_dict=where_dict)
 
-            record = DB.get_record(
-                record_reference=GI,
-                record_reference_type='gi'  # gi version internal raw
-                )
+            if row_ids:
 
-            del_rec_id = int(record.annotations['kr_seq_db_id'])
+                msg = 'inactivating:' + \
+                ' gi:' + str(GI) + ' note:' + blacklist_notes
+                write_log(msg, LFP)
 
-            DB.set_inactive(
-                table_name='records',
-                where_dict=where_dict)
+                record = DB.get_record(
+                    record_reference=GI,
+                    record_reference_type='gi'  # gi version internal raw
+                    )
 
-            DB.add_record_to_blacklist(
-                ncbi_gi=GI,
-                ncbi_version=record.id,
-                internal_reference=record.annotations['internal_reference'],
-                notes=blacklist_notes)
+                del_rec_id = int(record.annotations['kr_seq_db_id'])
 
-            where_dict = {'parent_rec_id': del_rec_id}
+                DB.set_inactive(
+                    table_name='records',
+                    where_dict=where_dict)
 
-            DB.db_delete(
-                table_name='record_ancestry',
-                where_dict=where_dict)
+                DB.add_record_to_blacklist(
+                    ncbi_gi=GI,
+                    ncbi_version=record.id,
+                    internal_reference=record.annotations['internal_reference'],
+                    notes=blacklist_notes)
 
-        else:
+                where_dict = {'parent_rec_id': del_rec_id}
 
-            DB.add_record_to_blacklist(
-                ncbi_gi=GI,
-                ncbi_version=None,
-                internal_reference=None,
-                notes=blacklist_notes)
+                DB.db_delete(
+                    table_name='record_ancestry',
+                    where_dict=where_dict)
 
-        DB.save()
+            else:
+
+                DB.add_record_to_blacklist(
+                    ncbi_gi=GI,
+                    ncbi_version=None,
+                    internal_reference=None,
+                    notes=blacklist_notes)
+
+            DB.save()
 
 
 def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_object, email, log_file_path):
@@ -279,7 +285,7 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
         record_count = len(records_to_add)
 
-        DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
+        # DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
 
         for i, record in enumerate(records_to_add):
 
@@ -313,11 +319,11 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
                 annotation_str=gb_file_name,
                 record_reference_type='gi')
 
-        DB._DB_CURSOR.execute('END TRANSACTION;')
+        # DB._DB_CURSOR.execute('END TRANSACTION;')
 
         print()
 
-    # DB.save()
+    DB.save()
 
 
 def rename_organisms_with_record_taxon_mappings(
@@ -534,7 +540,7 @@ def rename_organisms_using_taxids(
         taxonomy = org_dict['taxonomy']
         taxonomy_list_orig = None
         if taxonomy:
-            taxonomy = taxonomy.split(',')
+            taxonomy = taxonomy.split('$$$')
             taxonomy_list_orig = taxonomy
             taxonomy = krncbi.parse_lineage_string_list(taxonomy)[1]
             taxonomy_lower = [x.lower() for x in taxonomy]
@@ -1894,9 +1900,9 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
             tgrc_resolved = resolve_org_name_using_tgrc(voucher)
             tgrc_cache[voucher] = tgrc_resolved
 
-        old_name = tgrc_resolved[0]
-        old_name_flat = krbionames.flatten_organism_name(
-            parsed_name=old_name, sep=' ')
+        # old_name = tgrc_resolved[0]
+        # old_name_flat = krbionames.flatten_organism_name(
+            # parsed_name=old_name, sep=' ')
         new_name = tgrc_resolved[1]
         new_name_flat = krbionames.flatten_organism_name(
             parsed_name=new_name, sep=' ')
@@ -1914,7 +1920,7 @@ def rename_tgrc_organisms(kr_seq_db_object, taxonomy_cache, log_file_path,
             # taxonomy_list = krncbi.get_lineage(
             #     email=email, tax_term=new_name['genus'])
             taxonomy_list = krncbi.get_lineages(
-                    email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()[0]
+                    email=email, tax_terms=[new_name['genus']], tax_ids=None).values()[0]
             taxonomy_cache[new_name['genus']] = taxonomy_list
 
         org_id_new = kr_seq_db_object.add_organism(

@@ -721,7 +721,9 @@ if __name__ == '__main__':
         msg = 'Resolving organism names.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
-        DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
+        # DB._DB_CURSOR.execute('BEGIN TRANSACTION;')
+
+        ########################################################################
 
         organisms = DB.get_organisms(where_dict={'active': 1})
 
@@ -729,6 +731,110 @@ if __name__ == '__main__':
             msg = 'There are only ' + str(len(organisms)) + ' organisms in the database. Was search conducted?'
             write_log(msg, LFP, newlines_before=0, newlines_after=0)
             sys.exit(1)
+
+        ########################################################################
+
+        # Get common names and full lineage information
+
+        write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
+
+        msg = 'Downloading lineage information and common names.'
+        write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+        organism_count = len(organisms)
+        tax_id_list = list()
+
+        for org_dict in organisms:
+            org_tax_id_list = org_dict['ncbi_tax_ids']
+            tax_id_list = tax_id_list + org_tax_id_list
+
+        # print('tax_id_list BEFORE', len(tax_id_list))
+
+        tax_id_list = list(set(tax_id_list))
+
+        # print('tax_id_list AFTER', len(tax_id_list))
+
+        common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
+        lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+        all_org_tax_id_dict = krncbi.get_taxids(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+
+        # print('all_org_tax_id_dict', len(all_org_tax_id_dict.keys()))
+
+        for i, org_dict in enumerate(organisms):
+
+            org_id = org_dict['id']
+
+            org_flat = krbionames.flatten_organism_name(
+                parsed_name=org_dict, sep=' ')
+
+            org_tax_id_list_temp = org_dict['ncbi_tax_ids']
+            org_tax_id_list = list()
+
+            for org_tax_id in org_tax_id_list_temp:
+                org_tax_id_list = org_tax_id_list + all_org_tax_id_dict[str(org_tax_id)]
+
+            org_tax_id_list_str = list()
+            org_common_names = list()
+            org_lineage = None
+            for ti in org_tax_id_list:
+                org_tax_id_list_str.append(str(ti))
+                if str(ti) in common_names.keys():
+                    org_common_names.append(common_names[str(ti)])
+                if str(ti) in lineages.keys():
+                    org_lineage = lineages[str(ti)]
+
+            common_names_str = ''
+            if org_common_names:
+                common_names_str = ', '.join(org_common_names)
+            else:
+                common_names_str = org_flat
+
+            org_tax_id_str = ', '.join(org_tax_id_list_str)
+
+            print_str = org_flat + ' -> ' + common_names_str + ' : ' + org_tax_id_str
+
+            krcl.print_progress(
+                current=i+1, total=organism_count, length=0,
+                prefix=krother.timestamp() + ' ',
+                postfix=' - ' + print_str + '\n',
+                show_bar=False)
+
+            msg = print_str
+            write_log(msg, LFP, newlines_before=0, newlines_after=0,
+            to_file=True, to_screen=False)
+
+            DB.db_update(
+                table_name='organisms',
+                values_dict={'common_name': common_names_str},
+                where_dict={'id': org_id})
+
+            values_dict = {
+                'genus': org_dict['genus'],
+                'species': org_dict['species'],
+                'subspecies': org_dict['subspecies'],
+                'variety': org_dict['variety'],
+                'hybrid': org_dict['hybrid'],
+                'other': org_dict['other'],
+                'authority': org_dict['authority'],
+                'common_name': common_names_str
+                }
+
+            org_id_new = DB.add_organism(
+                organism_dict=values_dict,
+                taxonomy_list=org_lineage,
+                ncbi_tax_id_list=org_tax_id_list,
+                synonymy_check_done=org_dict['synonymy_check_done'])[0]
+
+            DB.update_records(
+                values_dict={'org_id': org_id_new},
+                where_dict={'org_id': org_id})
+
+        # DB._DB_CURSOR.execute('END TRANSACTION;')
+        DB.save()
+        DB.delete_orphaned_organisms()
+        DB.save()
+        DB.delete_orphaned_taxonomies()
+        DB.save()
 
         ########################################################################
 
@@ -853,102 +959,11 @@ if __name__ == '__main__':
 
         ########################################################################
 
+        DB.save()
+
         krcl.clear_line()
         msg = 'Organism name check: done.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
-
-        ########################################################################
-
-        # Get common names and full lineage information
-
-        write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
-
-        msg = 'Downloading lineage information and common names.'
-        write_log(msg, LFP, newlines_before=0, newlines_after=0)
-
-        organisms = DB.get_organisms(where_dict={'active': 1})
-        organism_count = len(organisms)
-        tax_id_list = list()
-
-        for org_dict in organisms:
-            org_tax_id_list = org_dict['ncbi_tax_ids']
-            tax_id_list = tax_id_list + org_tax_id_list
-
-        common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
-        lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
-        all_org_tax_id_dict = krncbi.get_taxids(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
-
-        for i, org_dict in enumerate(organisms):
-
-            org_id = org_dict['id']
-
-            org_flat = krbionames.flatten_organism_name(
-                parsed_name=org_dict, sep=' ')
-
-            org_tax_id_list_temp = org_dict['ncbi_tax_ids']
-            org_tax_id_list = list()
-
-            for org_tax_id in org_tax_id_list_temp:
-                org_tax_id_list = org_tax_id_list + all_org_tax_id_dict[str(org_tax_id)]
-
-            org_tax_id_list_str = list()
-            org_common_names = list()
-            org_lineage = None
-            for ti in org_tax_id_list:
-                org_tax_id_list_str.append(str(ti))
-                if str(ti) in common_names.keys():
-                    org_common_names.append(common_names[str(ti)])
-                if str(ti) in lineages.keys():
-                    org_lineage = lineages[str(ti)]
-
-            common_names_str = ''
-            if org_common_names:
-                common_names_str = ', '.join(org_common_names)
-            else:
-                common_names_str = org_flat
-
-            org_tax_id_str = ', '.join(org_tax_id_list_str)
-
-            print_str = org_flat + ' -> ' + common_names_str + ' : ' + org_tax_id_str
-
-            krcl.print_progress(
-                current=i+1, total=organism_count, length=0,
-                prefix=krother.timestamp() + ' ',
-                postfix=' - ' + print_str + '\n',
-                show_bar=False)
-
-            msg = print_str
-            write_log(msg, LFP, newlines_before=0, newlines_after=0,
-            to_file=True, to_screen=False)
-
-            DB.db_update(
-                table_name='organisms',
-                values_dict={'common_name': common_names_str},
-                where_dict={'id': org_id})
-
-            values_dict = {
-                'genus': org_dict['genus'],
-                'species': org_dict['species'],
-                'subspecies': org_dict['subspecies'],
-                'variety': org_dict['variety'],
-                'hybrid': org_dict['hybrid'],
-                'other': org_dict['other'],
-                'authority': org_dict['authority'],
-                'common_name': common_names_str
-                }
-
-            org_id_new = DB.add_organism(
-                organism_dict=values_dict,
-                taxonomy_list=org_lineage,
-                ncbi_tax_id_list=org_tax_id_list,
-                synonymy_check_done=org_dict['synonymy_check_done'])[0]
-
-            DB.update_records(
-                values_dict={'org_id': org_id_new},
-                where_dict={'org_id': org_id})
-
-        DB._DB_CURSOR.execute('END TRANSACTION;')
-        # DB.save()
 
         ########################################################################
 
@@ -1806,7 +1821,7 @@ if __name__ == '__main__':
                 binomial = r.annotations['organism'].replace(' ', '_')
                 common = r.annotations['common_name'].replace(', ', '|').replace(' ', '_').replace('\'', '')
 
-                lineage = r.annotations['lineage'].split(',')
+                lineage = r.annotations['lineage'].split('$$$')
                 lineage_parsed = krncbi.parse_lineage_string_list(
                     lineage_string_list=lineage)[0]
 

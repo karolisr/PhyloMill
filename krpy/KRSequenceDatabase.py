@@ -202,17 +202,15 @@ class KRSequenceDatabase:
         sqlite3.register_converter(b'SEQREP', self._convert_seq_edits)
 
         self._DB_CONN = sqlite3.connect(self._DB_FILE,
-            detect_types=sqlite3.PARSE_DECLTYPES, isolation_level=None)
+            detect_types=sqlite3.PARSE_DECLTYPES)
         self._DB_CONN.row_factory = sqlite3.Row
         self._DB_CONN.text_factory = str
 
         self._DB_CURSOR = self._DB_CONN.cursor()
 
         self._DB_CONN.execute('PRAGMA foreign_keys = ON;')
-        # self._DB_CONN.execute('PRAGMA cache_size = 100000;')
-        # self._DB_CONN.execute('PRAGMA max_page_count = 100000;')
-        self._DB_CONN.execute('PRAGMA synchronous = OFF;')
-        self._DB_CONN.execute('PRAGMA journal_mode = MEMORY;')
+        self._DB_CONN.execute('PRAGMA synchronous = NORMAL;')
+        self._DB_CONN.execute('PRAGMA journal_mode = WAL;')
 
 
     ############################################################################
