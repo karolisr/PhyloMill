@@ -82,7 +82,7 @@ def esearch(esearch_terms, db, email):
     return uid_set
 
 
-def download_sequence_records(file_path, uids, db, entrez_email):
+def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000, small_batch_size=500, genbank_mode=False):
 
     '''
     Will download sequence records for uids and database (db) given from NCBI.
@@ -91,7 +91,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     # import time
 
     from Bio import Entrez
-    from Bio import SeqIO
+    # from Bio import SeqIO
     import krbioio
 
     if isinstance(uids, set):
@@ -101,7 +101,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
         uids = [uids]
 
     Entrez.email = entrez_email
-    out_handle = open(file_path, 'w')
+    # out_handle = open(file_path, 'w')
     uid_count = len(uids)
 
     fixed_uids = list()
@@ -110,22 +110,27 @@ def download_sequence_records(file_path, uids, db, entrez_email):
     uids = fixed_uids
 
     # Not sure if these should be input as function arguments.
-    large_batch_size = 2000
-    small_batch_size = 500
+    # large_batch_size = 2000
+    # small_batch_size = 500
 
     # Perhaps these may be function arguments?
-    rettype = 'gb'
-    retmode = 'text'
+    # rettype = 'gb'
+    retmode = 'xml'
 
-    missing_uids = set()
-    small_batch_forced = None
+    if genbank_mode:
+        retmode = 'text'
+
+    # missing_uids = set()
+    # small_batch_forced = None
+
+    all_results = list()
 
     for uid_start in range(0, uid_count, large_batch_size):
         # if uid_start < 1:
         #     continue
         while True:
             # ##
-            downloaded_uids = set()
+            # downloaded_uids = set()
             to_download_uids = set()
             # ##
             try:
@@ -133,8 +138,8 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                 print('Downloading records %i to %i of %i.'
                       % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
-                if small_batch_forced is not None:
-                    small_batch = small_batch_forced
+                # if small_batch_forced is not None:
+                #     small_batch = small_batch_forced
                 if len(small_batch) == 0:
                     break
                 ##
@@ -161,15 +166,21 @@ def download_sequence_records(file_path, uids, db, entrez_email):
                         retstart=start, retmax=small_batch_size,
                         webenv=webenv, query_key=query_key)
 
-                    batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
-                    temp_records = temp_records + batch_data
+                    batch_data = None
+                    if retmode == 'xml':
+                        batch_data = Entrez.read(fetch_handle)
+                    elif genbank_mode:
+                        batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
+                    fetch_handle.close()
+                    if batch_data:
+                        temp_records = temp_records + batch_data
 
                 # n_rec_to_download = uid_end - uid_start
                 n_rec_to_download = len(small_batch)
                 rec_downloaded = len(temp_records)
                 ##
-                for tr in temp_records:
-                    downloaded_uids.add(tr.annotations['gi'])
+                # for tr in temp_records:
+                #     downloaded_uids.add(tr.annotations['gi'])
                 ##
             except Exception as err:
                 # print(rec_downloaded, n_rec_to_download)
@@ -191,27 +202,174 @@ def download_sequence_records(file_path, uids, db, entrez_email):
             if rec_downloaded == n_rec_to_download:
                 print('    Downloaded', rec_downloaded, 'of',
                       n_rec_to_download, 'records.')
-                SeqIO.write(temp_records, out_handle, 'gb')
-                fetch_handle.close()
-                small_batch_forced = None
+                # SeqIO.write(temp_records, out_handle, 'gb')
+                all_results = all_results + temp_records
+                # small_batch_forced = None
                 break
-            else:
-                fetch_handle.close()
-                missing_uids_now = to_download_uids - downloaded_uids
-                if len(missing_uids_now & missing_uids) > 0:
-                    print('    Excluding uids:', ', '.join(list(missing_uids_now)))
-                    small_batch_forced = list(set(small_batch) - missing_uids_now)
-                    continue
-                # print('    Downloaded', rec_downloaded, 'of',
-                #       n_rec_to_download, 'records.')
-                print('    Download corrupted, retrying...')
-                print('    Missing uids:', ', '.join(list(missing_uids_now)))
-                missing_uids |= missing_uids_now
-                continue
+            # else:
+            #     missing_uids_now = to_download_uids - downloaded_uids
+            #     if len(missing_uids_now & missing_uids) > 0:
+            #         print('    Excluding uids:', ', '.join(list(missing_uids_now)))
+            #         small_batch_forced = list(set(small_batch) - missing_uids_now)
+            #         continue
+            #     # print('    Downloaded', rec_downloaded, 'of',
+            #     #       n_rec_to_download, 'records.')
+            #     print('    Download corrupted, retrying...')
+            #     print('    Missing uids:', ', '.join(list(missing_uids_now)))
+            #     missing_uids |= missing_uids_now
+            #     continue
 
-    out_handle.close()
+    # out_handle.close()
 
-    return
+    return all_results
+
+
+def download_sequence_records(file_path, uids, db, entrez_email):
+
+    '''
+    Will download sequence records for uids and database (db) given from NCBI.
+    '''
+
+    from Bio import SeqIO
+
+    records = download_ncbi_records(
+        uids, db, entrez_email, rettype='gb',
+        large_batch_size=2000, small_batch_size=500, genbank_mode=True)
+
+    with open(file_path, 'w') as out_handle:
+        SeqIO.write(records, out_handle, 'gb')
+
+
+# def download_sequence_records(file_path, uids, db, entrez_email):
+
+#     '''
+#     Will download sequence records for uids and database (db) given from NCBI.
+#     '''
+
+#     # import time
+
+#     from Bio import Entrez
+#     from Bio import SeqIO
+#     import krbioio
+
+#     if isinstance(uids, set):
+#         uids = list(uids)
+
+#     if isinstance(uids, basestring):
+#         uids = [uids]
+
+#     Entrez.email = entrez_email
+#     out_handle = open(file_path, 'w')
+#     uid_count = len(uids)
+
+#     fixed_uids = list()
+#     for uid in uids:
+#         fixed_uids.append(str(uid))
+#     uids = fixed_uids
+
+#     # Not sure if these should be input as function arguments.
+#     large_batch_size = 2000
+#     small_batch_size = 500
+
+#     # Perhaps these may be function arguments?
+#     rettype = 'gb'
+#     retmode = 'text'
+
+#     missing_uids = set()
+#     small_batch_forced = None
+
+#     for uid_start in range(0, uid_count, large_batch_size):
+#         # if uid_start < 1:
+#         #     continue
+#         while True:
+#             # ##
+#             downloaded_uids = set()
+#             to_download_uids = set()
+#             # ##
+#             try:
+#                 uid_end = min(uid_count, uid_start + large_batch_size)
+#                 print('Downloading records %i to %i of %i.'
+#                       % (uid_start + 1, uid_end, uid_count))
+#                 small_batch = uids[uid_start:uid_end]
+#                 if small_batch_forced is not None:
+#                     small_batch = small_batch_forced
+#                 if len(small_batch) == 0:
+#                     break
+#                 ##
+#                 to_download_uids |= set(small_batch)
+#                 ##
+#                 small_batch_count = len(small_batch)
+#                 small_batch_text = ','.join(small_batch)
+#                 epost = Entrez.read(Entrez.epost(db, id=small_batch_text))
+#                 webenv = epost['WebEnv']
+#                 query_key = epost['QueryKey']
+
+#                 temp_records = []
+
+#                 for start in range(0, small_batch_count, small_batch_size):
+#                     end = min(small_batch_count, start + small_batch_size)
+#                     print ('  Going to download record %i to %i of %i.'
+#                            % (start + 1, end, small_batch_count))
+
+#                     # for i, j in enumerate(range(start, end)):
+#                     #     print(i, small_batch[j])
+
+#                     fetch_handle = Entrez.efetch(
+#                         db=db, rettype=rettype, retmode=retmode,
+#                         retstart=start, retmax=small_batch_size,
+#                         webenv=webenv, query_key=query_key)
+
+#                     batch_data = krbioio.read_sequence_data(fetch_handle, rettype)
+#                     temp_records = temp_records + batch_data
+
+#                 # n_rec_to_download = uid_end - uid_start
+#                 n_rec_to_download = len(small_batch)
+#                 rec_downloaded = len(temp_records)
+#                 ##
+#                 for tr in temp_records:
+#                     downloaded_uids.add(tr.annotations['gi'])
+#                 ##
+#             except Exception as err:
+#                 # print(rec_downloaded, n_rec_to_download)
+#                 # print(len(downloaded_uids), len(to_download_uids))
+#                 # print(downloaded_uids - to_download_uids)
+#                 # print(to_download_uids - downloaded_uids)
+
+#                 print(err)
+
+#                 # print('    HTTP problem, retrying...')
+#                 # time.sleep(5)
+#                 # continue
+
+#             # print(rec_downloaded, n_rec_to_download)
+#             # print(len(downloaded_uids), len(to_download_uids))
+#             # print(downloaded_uids - to_download_uids)
+#             # print(to_download_uids - downloaded_uids)
+
+#             if rec_downloaded == n_rec_to_download:
+#                 print('    Downloaded', rec_downloaded, 'of',
+#                       n_rec_to_download, 'records.')
+#                 SeqIO.write(temp_records, out_handle, 'gb')
+#                 fetch_handle.close()
+#                 small_batch_forced = None
+#                 break
+#             else:
+#                 fetch_handle.close()
+#                 missing_uids_now = to_download_uids - downloaded_uids
+#                 if len(missing_uids_now & missing_uids) > 0:
+#                     print('    Excluding uids:', ', '.join(list(missing_uids_now)))
+#                     small_batch_forced = list(set(small_batch) - missing_uids_now)
+#                     continue
+#                 # print('    Downloaded', rec_downloaded, 'of',
+#                 #       n_rec_to_download, 'records.')
+#                 print('    Download corrupted, retrying...')
+#                 print('    Missing uids:', ', '.join(list(missing_uids_now)))
+#                 missing_uids |= missing_uids_now
+#                 continue
+
+#     out_handle.close()
+
+#     return
 
 
 def get_ncbi_tax_id_for_record(record):
@@ -399,4 +557,19 @@ def get_common_name(email, tax_term=None, tax_id=None):
 # if __name__ == '__main__':
 
     # Tests
+
+    # download_ncbi_records(
+    #     uids=[379142464, 31281443, 31281445],
+    #     db='nuccore',
+    #     entrez_email='test@test.com',
+    #     rettype='gb',
+    #     large_batch_size=2000,
+    #     small_batch_size=500,
+    #     genbank_mode=False)
+
+    # download_sequence_records(
+    #     file_path='/Users/karolis/Desktop/test.gb',
+    #     uids=[379142464, 31281443, 31281445],
+    #     db='nuccore',
+    #     entrez_email='test@test.com')
 
