@@ -131,8 +131,11 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
         while True:
             # ##
             # downloaded_uids = set()
-            to_download_uids = set()
+            # to_download_uids = set()
             # ##
+            temp_records = list()
+            n_rec_to_download = 0
+            rec_downloaded = 0
             try:
                 uid_end = min(uid_count, uid_start + large_batch_size)
                 print('Downloading records %i to %i of %i.'
@@ -143,7 +146,7 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
                 if len(small_batch) == 0:
                     break
                 ##
-                to_download_uids |= set(small_batch)
+                # to_download_uids |= set(small_batch)
                 ##
                 small_batch_count = len(small_batch)
                 small_batch_text = ','.join(small_batch)
@@ -151,7 +154,7 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
                 webenv = epost['WebEnv']
                 query_key = epost['QueryKey']
 
-                temp_records = []
+                temp_records = list()
 
                 for start in range(0, small_batch_count, small_batch_size):
                     end = min(small_batch_count, start + small_batch_size)
@@ -199,13 +202,13 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
             # print(downloaded_uids - to_download_uids)
             # print(to_download_uids - downloaded_uids)
 
-            if rec_downloaded == n_rec_to_download:
-                print('    Downloaded', rec_downloaded, 'of',
-                      n_rec_to_download, 'records.')
-                # SeqIO.write(temp_records, out_handle, 'gb')
-                all_results = all_results + temp_records
-                # small_batch_forced = None
-                break
+            # if rec_downloaded == n_rec_to_download:
+            print('    Downloaded', rec_downloaded, 'of',
+                  n_rec_to_download, 'records.')
+            # SeqIO.write(temp_records, out_handle, 'gb')
+            all_results = all_results + temp_records
+            # small_batch_forced = None
+            break
             # else:
             #     missing_uids_now = to_download_uids - downloaded_uids
             #     if len(missing_uids_now & missing_uids) > 0:
@@ -393,7 +396,7 @@ def get_ncbi_tax_id_for_tax_term(email, tax_term):
 
 def get_taxids(email, tax_terms=None, tax_ids=None):
 
-    from Bio import Entrez
+    # from Bio import Entrez
 
     if not tax_ids:
         tax_ids = list()
@@ -402,15 +405,24 @@ def get_taxids(email, tax_terms=None, tax_ids=None):
             if tax_id:
                 tax_ids.append(tax_id)
 
-    clean_tax_ids = list()
-    for ti in tax_ids:
-        clean_tax_ids.append(str(ti))
+    # clean_tax_ids = list()
+    # for ti in tax_ids:
+    #     clean_tax_ids.append(str(ti))
 
     records = list()
-    if clean_tax_ids:
-        Entrez.email = email
-        handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
-        records = Entrez.read(handle)
+    if tax_ids:
+        # Entrez.email = email
+        # handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+        # records = Entrez.read(handle)
+
+        records = download_ncbi_records(
+            uids=tax_ids,
+            db='taxonomy',
+            entrez_email=email,
+            rettype=None,
+            large_batch_size=2000,
+            small_batch_size=500,
+            genbank_mode=False)
 
     results = dict()
     for i, record in enumerate(records):
@@ -441,7 +453,7 @@ def get_taxids(email, tax_terms=None, tax_ids=None):
 
 def get_lineages(email, tax_terms=None, tax_ids=None):
 
-    from Bio import Entrez
+    # from Bio import Entrez
 
     if not tax_ids:
         tax_ids = list()
@@ -450,15 +462,24 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
             if tax_id:
                 tax_ids.append(tax_id)
 
-    clean_tax_ids = list()
-    for ti in tax_ids:
-        clean_tax_ids.append(str(ti))
+    # clean_tax_ids = list()
+    # for ti in tax_ids:
+    #     clean_tax_ids.append(str(ti))
 
     records = list()
-    if clean_tax_ids:
-        Entrez.email = email
-        handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
-        records = Entrez.read(handle)
+    if tax_ids:
+        # Entrez.email = email
+        # handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+        # records = Entrez.read(handle)
+
+        records = download_ncbi_records(
+            uids=tax_ids,
+            db='taxonomy',
+            entrez_email=email,
+            rettype=None,
+            large_batch_size=2000,
+            small_batch_size=500,
+            genbank_mode=False)
 
     results = dict()
     for record in records:
@@ -505,15 +526,24 @@ def parse_lineage_string_list(lineage_string_list):
 
 def get_common_names(email, tax_ids=None):
 
-    from Bio import Entrez
+    # from Bio import Entrez
 
-    clean_tax_ids = list()
-    for ti in tax_ids:
-        clean_tax_ids.append(str(ti))
+    # clean_tax_ids = list()
+    # for ti in tax_ids:
+    #     clean_tax_ids.append(str(ti))
 
-    Entrez.email = email
-    handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
-    records = Entrez.read(handle)
+    # Entrez.email = email
+    # handle = Entrez.efetch('taxonomy', id=','.join(clean_tax_ids), retmode="xml")
+    # records = Entrez.read(handle)
+
+    records = download_ncbi_records(
+        uids=tax_ids,
+        db='taxonomy',
+        entrez_email=email,
+        rettype=None,
+        large_batch_size=2000,
+        small_batch_size=500,
+        genbank_mode=False)
 
     results = dict()
     for record in records:
@@ -531,7 +561,7 @@ def get_common_names(email, tax_ids=None):
 
 def get_common_name(email, tax_term=None, tax_id=None):
 
-    from Bio import Entrez
+    # from Bio import Entrez
 
     taxid = None
     if not tax_id:
@@ -541,9 +571,18 @@ def get_common_name(email, tax_term=None, tax_id=None):
 
     common_name = None
     if taxid:
-        Entrez.email = email
-        handle = Entrez.efetch('taxonomy', id=str(taxid), retmode="xml")
-        record = Entrez.read(handle)[0]
+        # Entrez.email = email
+        # handle = Entrez.efetch('taxonomy', id=str(taxid), retmode="xml")
+        # record = Entrez.read(handle)[0]
+
+        record = download_ncbi_records(
+            uids=[taxid],
+            db='taxonomy',
+            entrez_email=email,
+            rettype=None,
+            large_batch_size=2000,
+            small_batch_size=500,
+            genbank_mode=False)[0]
 
         # for k in record['OtherNames'].keys():
         #     print(k, ' :: ', record['OtherNames'][k])
@@ -557,6 +596,9 @@ def get_common_name(email, tax_term=None, tax_id=None):
 # if __name__ == '__main__':
 
     # Tests
+
+    # dbs = entrez_db_list(email='test@test.com')
+    # print(dbs)
 
     # download_ncbi_records(
     #     uids=[379142464, 31281443, 31281445],
@@ -572,4 +614,16 @@ def get_common_name(email, tax_term=None, tax_id=None):
     #     uids=[379142464, 31281443, 31281445],
     #     db='nuccore',
     #     entrez_email='test@test.com')
+
+    # taxids = get_taxids(
+    #     email='test@test.com',
+    #     tax_terms=None,
+    #     tax_ids=[9606])
+    # print(taxids)
+
+    # common_name = get_common_name(email='test@test.com', tax_term='Callithrix geoffroyi')
+    # print(common_name)
+
+    # common_names = get_common_names(email='test@test.com', tax_ids=['52231', '9483'])
+    # print(common_names)
 
