@@ -37,7 +37,8 @@ class KRSequenceDatabase:
         other TEXT,
         authority TEXT,
         common_name TEXT,
-        synonymy_check_done INTEGER NOT NULL
+        synonymy_check_done INTEGER NOT NULL,
+        taxonomy_check_done INTEGER NOT NULL
         );
 
     CREATE TABLE blacklist(
@@ -489,7 +490,8 @@ class KRSequenceDatabase:
 
 
     def add_organism(self, organism_dict, taxonomy_list=None,
-        ncbi_tax_id_list=None, synonymy_check_done=False, active=True):
+        ncbi_tax_id_list=None, synonymy_check_done=False,
+        taxonomy_check_done=False, active=True):
 
         taxonomy_id = None
         taxonomy_str = None
@@ -508,21 +510,23 @@ class KRSequenceDatabase:
         else:
             synonymy_check_done = 0
 
+        if taxonomy_check_done:
+            taxonomy_check_done = 1
+        else:
+            taxonomy_check_done = 0
+
         if active:
             active = 1
         else:
             active = 0
 
         where_dict = {
-            # 'taxonomy_id': taxonomy_id,
             'genus': organism_dict['genus'],
             'species': organism_dict['species'],
             'subspecies': organism_dict['subspecies'],
             'variety': organism_dict['variety'],
             'hybrid': organism_dict['hybrid'],
             'other': organism_dict['other']
-            # 'authority': organism_dict['authority'],
-            # 'synonymy_check_done': synonymy_check_done
         }
 
         values_dict = {
@@ -536,7 +540,8 @@ class KRSequenceDatabase:
             'other': organism_dict['other'],
             'authority': organism_dict['authority'],
             'common_name': organism_dict['common_name'],
-            'synonymy_check_done': synonymy_check_done
+            'synonymy_check_done': synonymy_check_done,
+            'taxonomy_check_done': taxonomy_check_done
         }
 
         already_in_db = False
@@ -550,7 +555,7 @@ class KRSequenceDatabase:
 
             org_dict = self.db_select(
                 table_name_list=['organisms'],
-                column_list=['taxonomy_id', 'authority', 'synonymy_check_done'],
+                column_list=['taxonomy_id', 'authority', 'synonymy_check_done', 'taxonomy_check_done'],
                 where_dict={'id': org_id},
                 join_rules_str=None,
                 order_by_column_list=None)[0]
@@ -561,6 +566,8 @@ class KRSequenceDatabase:
                 values_dict[b'authority'] = org_dict[b'authority']
             if not values_dict[b'synonymy_check_done']:
                 values_dict[b'synonymy_check_done'] = org_dict[b'synonymy_check_done']
+            if not values_dict[b'taxonomy_check_done']:
+                values_dict[b'taxonomy_check_done'] = org_dict[b'taxonomy_check_done']
 
             self.db_update('organisms',
                 values_dict=values_dict,
