@@ -396,41 +396,7 @@ def get_common_name(email, tax_term=None, tax_id=None):
     return common_name
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
     # Tests
 
-    # import os
-
-    # PS = os.path.sep
-
-    # entrez_db_list
-    # print(entrez_db_list('test@test.com'))
-
-    # esearch
-    # print(esearch('GBSSI[Gene Name] AND txid4070[Organism]', 'nuccore',
-    #      'test@test.com'))
-
-    taxids = get_taxids(
-        email='test@test.com',
-        # tax_terms=['Dendrocopos minor']
-        tax_ids=['345735']
-    )
-
-    print(taxids)
-
-    # for key in lineages.keys():
-    #     parsed = parse_lineage_string_list(lineages[key])
-    #     print(parsed)
-
-    # taxid = get_ncbi_tax_id_for_tax_term(
-    #     email='test@test.com',
-    #     tax_term='Dendrocopos minor')
-
-    # print(taxid)
-
-    # common_name = get_common_name(email='test@test.com', tax_term='Callithrix geoffroyi')
-    # print(common_name)
-
-    # common_names = get_common_names(email='test@test.com', tax_ids=['52231', '9483'])
-    # print(common_names)
