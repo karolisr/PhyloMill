@@ -82,7 +82,7 @@ def esearch(esearch_terms, db, email):
     return uid_set
 
 
-def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000, small_batch_size=500, genbank_mode=False):
+def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000, small_batch_size=500, genbank_mode=False, verbose=False):
 
     '''
     Will download sequence records for uids and database (db) given from NCBI.
@@ -138,8 +138,9 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
             rec_downloaded = 0
             try:
                 uid_end = min(uid_count, uid_start + large_batch_size)
-                print('Downloading records %i to %i of %i.'
-                      % (uid_start + 1, uid_end, uid_count))
+                if verbose:
+                    print('Downloading records %i to %i of %i.'
+                          % (uid_start + 1, uid_end, uid_count))
                 small_batch = uids[uid_start:uid_end]
                 # if small_batch_forced is not None:
                 #     small_batch = small_batch_forced
@@ -158,8 +159,9 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
 
                 for start in range(0, small_batch_count, small_batch_size):
                     end = min(small_batch_count, start + small_batch_size)
-                    print ('  Going to download record %i to %i of %i.'
-                           % (start + 1, end, small_batch_count))
+                    if verbose:
+                        print ('  Going to download record %i to %i of %i.'
+                               % (start + 1, end, small_batch_count))
 
                     # for i, j in enumerate(range(start, end)):
                     #     print(i, small_batch[j])
@@ -203,8 +205,9 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
             # print(to_download_uids - downloaded_uids)
 
             # if rec_downloaded == n_rec_to_download:
-            print('    Downloaded', rec_downloaded, 'of',
-                  n_rec_to_download, 'records.')
+            if verbose:
+                print('    Downloaded', rec_downloaded, 'of',
+                      n_rec_to_download, 'records.')
             # SeqIO.write(temp_records, out_handle, 'gb')
             all_results = all_results + temp_records
             # small_batch_forced = None
@@ -227,7 +230,7 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
     return all_results
 
 
-def download_sequence_records(file_path, uids, db, entrez_email):
+def download_sequence_records(file_path, uids, db, entrez_email, verbose=True):
 
     '''
     Will download sequence records for uids and database (db) given from NCBI.
@@ -237,7 +240,7 @@ def download_sequence_records(file_path, uids, db, entrez_email):
 
     records = download_ncbi_records(
         uids, db, entrez_email, rettype='gb',
-        large_batch_size=2000, small_batch_size=500, genbank_mode=True)
+        large_batch_size=2000, small_batch_size=500, genbank_mode=True, verbose=verbose)
 
     with open(file_path, 'w') as out_handle:
         SeqIO.write(records, out_handle, 'gb')

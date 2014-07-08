@@ -150,7 +150,8 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
             file_path=dnld_file_path,
             uids=gis_new,
             db=ncbi_db,
-            entrez_email=EMAIL)
+            entrez_email=EMAIL,
+            verbose=True)
 
         # print('')
 
