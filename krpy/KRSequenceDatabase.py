@@ -497,7 +497,7 @@ class KRSequenceDatabase:
         taxonomy_str = None
 
         if taxonomy_list:
-            taxonomy_str = ','.join(taxonomy_list)
+            taxonomy_str = '$$$'.join(taxonomy_list)
             values_dict = {'taxonomy': taxonomy_str}
             taxonomy_id = self.db_insert('taxonomies', values_dict)[0]
 
@@ -601,6 +601,9 @@ class KRSequenceDatabase:
 
     def delete_orphaned_organisms(self):
 
+        import sys
+        import sqlite3
+
         delete_string = 'DELETE FROM organisms WHERE id NOT IN \
             (SELECT org_id FROM records WHERE org_id IS NOT NULL)'
 
@@ -613,6 +616,9 @@ class KRSequenceDatabase:
 
 
     def delete_orphaned_taxonomies(self):
+
+        import sys
+        import sqlite3
 
         delete_string = 'DELETE FROM taxonomies WHERE id NOT IN \
             (SELECT taxonomy_id FROM organisms WHERE taxonomy_id IS NOT NULL)'
