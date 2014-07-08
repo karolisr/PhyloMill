@@ -115,6 +115,14 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
     all_gis_in_db = DB.get_all_record_ids(
         record_reference_type='gi')
 
+    # print('all_gis_in_db', len(all_gis_in_db))
+    # print('gis_good', len(gis_good))
+
+    # gis_new = list()
+    # for gi in gis_good:
+    #     if gi not in all_gis_in_db:
+    #         gis_new.append(gi)
+
     gis_new = list(set(gis_good) - set(all_gis_in_db))
 
     # for gi in gis_good:
@@ -146,11 +154,21 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
 
         # print('')
 
-        records_new = krbioio.read_sequence_file(
+        records_new_temp = krbioio.read_sequence_file(
             file_path=dnld_file_path,
             file_format='gb',
-            ret_type='list',
+            ret_type='dict',
             key='gi')
+
+        downloaded_gis = records_new_temp.keys()
+        downloaded_gis = [int(x) for x in downloaded_gis]
+
+        gis_new_after_dnld = list(set(downloaded_gis) - set(all_gis_in_db))
+
+        for gi in gis_new_after_dnld:
+            records_new.append(records_new_temp[str(gi)])
+
+        # print('gis_new_after_dnld', len(gis_new_after_dnld))
 
     return records_new
 
@@ -323,6 +341,139 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
 
         print()
 
+    DB.save()
+
+
+def update_lineage_info(kr_seq_db_object, log_file_path, email):
+
+    from krpy import krbionames
+    from krpy import krncbi
+    from krpy import krcl
+    from krpy import krother
+    from krpy.krother import write_log
+
+    ########################################################################
+
+    # Get common names and full lineage information
+
+    LFP = log_file_path
+    DB = kr_seq_db_object
+    EMAIL = email
+
+    write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
+
+    msg = 'Updating lineage information, common names, and NCBI taxids.'
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+    organisms = DB.get_organisms(where_dict={'active': 1, 'taxonomy_check_done': 0})
+
+    if not organisms:
+        return
+
+    organism_count = len(organisms)
+    tax_id_list = list()
+
+    for org_dict in organisms:
+        org_tax_id_list = org_dict['ncbi_tax_ids']
+        tax_id_list = tax_id_list + org_tax_id_list
+
+    # print('tax_id_list BEFORE', len(tax_id_list))
+
+    tax_id_list = list(set(tax_id_list))
+
+    # print('tax_id_list AFTER', len(tax_id_list))
+
+    msg = 'Downloading lineage information.'
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
+    lineages = krncbi.get_lineages(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+
+    msg = 'Downloading common names.'
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
+    common_names = krncbi.get_common_names(email=EMAIL, tax_ids=tax_id_list)
+
+    msg = 'Downloading NCBI taxids.'
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
+    all_org_tax_id_dict = krncbi.get_taxids(email=EMAIL, tax_terms=None, tax_ids=tax_id_list)
+
+    # print('all_org_tax_id_dict', len(all_org_tax_id_dict.keys()))
+
+    for i, org_dict in enumerate(organisms):
+
+        org_id = org_dict['id']
+
+        org_flat = krbionames.flatten_organism_name(
+            parsed_name=org_dict, sep=' ')
+
+        org_tax_id_list_temp = org_dict['ncbi_tax_ids']
+        org_tax_id_list = list()
+
+        for org_tax_id in org_tax_id_list_temp:
+            org_tax_id_list = org_tax_id_list + all_org_tax_id_dict[str(org_tax_id)]
+
+        org_tax_id_list = list(set(org_tax_id_list))
+
+        org_tax_id_list_str = list()
+        org_common_names = list()
+        org_lineage = None
+        for ti in org_tax_id_list:
+            org_tax_id_list_str.append(str(ti))
+            if str(ti) in common_names.keys():
+                org_common_names.append(common_names[str(ti)])
+            if str(ti) in lineages.keys():
+                org_lineage = lineages[str(ti)]
+
+        common_names_str = ''
+        if org_common_names:
+            common_names_str = ', '.join(org_common_names)
+        else:
+            common_names_str = org_flat
+
+        org_tax_id_str = ', '.join(org_tax_id_list_str)
+
+        print_str = org_flat + ' -> ' + common_names_str + ' (' + org_tax_id_str + ')'
+
+        krcl.print_progress(
+            current=i+1, total=organism_count, length=0,
+            prefix=krother.timestamp() + ' ',
+            postfix=' - ' + print_str + '\n',
+            show_bar=False)
+
+        msg = print_str
+        write_log(msg, LFP, newlines_before=0, newlines_after=0,
+        to_file=True, to_screen=False)
+
+        DB.db_update(
+            table_name='organisms',
+            values_dict={'common_name': common_names_str},
+            where_dict={'id': org_id})
+
+        values_dict = {
+            'genus': org_dict['genus'],
+            'species': org_dict['species'],
+            'subspecies': org_dict['subspecies'],
+            'variety': org_dict['variety'],
+            'hybrid': org_dict['hybrid'],
+            'other': org_dict['other'],
+            'authority': org_dict['authority'],
+            'common_name': common_names_str
+            }
+
+        org_id_new = DB.add_organism(
+            organism_dict=values_dict,
+            taxonomy_list=org_lineage,
+            ncbi_tax_id_list=org_tax_id_list,
+            synonymy_check_done=org_dict['synonymy_check_done'],
+            taxonomy_check_done=True)[0]
+
+        DB.update_records(
+            values_dict={'org_id': org_id_new},
+            where_dict={'org_id': org_id})
+
+    # DB._DB_CURSOR.execute('END TRANSACTION;')
+    DB.save()
+    DB.delete_orphaned_organisms()
+    DB.save()
+    DB.delete_orphaned_taxonomies()
     DB.save()
 
 
