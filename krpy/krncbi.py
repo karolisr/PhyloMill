@@ -275,7 +275,7 @@ def get_taxids(email, tax_terms=None, tax_ids=None):
         results_rec = [int(x) for x in results_rec]
         if tax_terms:
             results[str(tax_terms[i])] = results_rec
-        if tax_ids:
+        else:
             results[str(tax_ids[i])] = results_rec
 
     return results
