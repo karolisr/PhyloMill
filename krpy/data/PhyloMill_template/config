@@ -64,7 +64,7 @@ muscle_executable = muscle
 clustalo_executable = clustalo
 astral_jar_file = ~/astral-code/ASTRAL/astral.4.2.0.jar
 
-cpu = 4
+cpu = auto
 
 [Hacks]
 
