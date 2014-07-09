@@ -23,9 +23,9 @@ if __name__ == '__main__':
 
     from subprocess import call
 
+    import multiprocessing
     from multiprocessing import Process
     from multiprocessing import JoinableQueue
-    # from multiprocessing import Manager
 
     from krpy import KRSequenceDatabase
     from krpy.workflow_functions import wf_phylo as wf
@@ -170,14 +170,14 @@ if __name__ == '__main__':
             write_log(msg=msg, log_file_path=LFP, append=False,
                 newlines_before=0, newlines_after=0)
 
-            KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
+            DB = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
             wd = os.getcwd()
             os.chdir(PRJ_DIR_PATH+'organism_name_files')
             call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
             os.chdir(wd)
 
-            sys.exit(0)
+            # sys.exit(0)
 
     ############################################################################
 
@@ -427,7 +427,13 @@ if __name__ == '__main__':
 
     number_of_loci = len(LOCI.keys())
 
-    CPU_TOTAL = CFG.getint('General', 'cpu')
+    CPU_TOTAL = CFG.get('General', 'cpu')
+
+    if CPU_TOTAL == 'auto':
+        CPU_TOTAL = multiprocessing.cpu_count()
+    else:
+        CPU_TOTAL = int(CPU_TOTAL)
+
     CPU_FOR_PYTHON = 1
     CPU_FOR_OTHER = 1
 
@@ -452,10 +458,10 @@ if __name__ == '__main__':
         CPU_FOR_PYTHON = c-1
         CPU_FOR_OTHER = o
 
-    # print('CPU_TOTAL', CPU_TOTAL)
-    # print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
-    # print('CPU_FOR_OTHER', CPU_FOR_OTHER)
-    # print('number_of_loci', number_of_loci)
+    print('CPU_TOTAL', CPU_TOTAL)
+    print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
+    print('CPU_FOR_OTHER', CPU_FOR_OTHER)
+    print('number_of_loci', number_of_loci)
 
     # Flatten options
     FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
@@ -509,8 +515,8 @@ if __name__ == '__main__':
     if 'reset' in COMMANDS:
         msg = 'Resetting database.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
+        DB.close()
         os.remove(PRJ_DIR_PATH + 'db.sqlite3')
-        KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
         DB = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
     ############################################################################
@@ -888,6 +894,8 @@ if __name__ == '__main__':
         msg = 'Extracting loci.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
+        krio.prepare_directory(ORG_LOC_DIR_PATH)
+
         ###
 
         processes = list()
@@ -920,12 +928,15 @@ if __name__ == '__main__':
                     active=True,
                     inactive=False)
 
+                seed_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__seeds.fasta'
+
                 acc_rej_gi_dict = wf.extract_loci(
                     locus_dict=locus_dict,
                     records=records,
                     log_file_path=lfp,
                     kr_seq_db_object=db_thread,
                     temp_dir=TEMP_DIR_PATH,
+                    seed_recs_file_path=seed_recs_file_path,
                     cpu=CPU_FOR_OTHER)
 
                 rej_gi_list = acc_rej_gi_dict['reject']
@@ -1712,6 +1723,14 @@ if __name__ == '__main__':
 
         for locus_name in LOCI.keys():
 
+            aln_file_path_phy = ALN_DIR_PATH + locus_name + '.phy'
+            aln_file_path_fas = ALN_DIR_PATH + locus_name + '.fasta'
+
+            if os.path.exists(aln_file_path_phy) or os.path.exists(aln_file_path_fas):
+                msg = 'Alignment file for locus ' + locus_name + ' already exists.'
+                write_log(msg, LFP, newlines_before=0, newlines_after=0)
+                continue
+
             msg = 'Aligning locus ' + locus_name + '.'
             write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
@@ -1777,9 +1796,6 @@ if __name__ == '__main__':
                 program=ALN_ALN_PROG,
                 options=ALN_ALN_PROG_OPTIONS,
                 program_executable=ALN_ALN_PROG_EXE)
-
-            aln_file_path_phy = ALN_DIR_PATH + locus_name + '.phy'
-            aln_file_path_fas = ALN_DIR_PATH + locus_name + '.fasta'
 
             krbioio.write_alignment_file(
                 alignment=aln,
@@ -2038,5 +2054,8 @@ if __name__ == '__main__':
     ############################################################################
 
     DB.close()
+
+    msg = 'Done.'
+    write_log(msg, LFP, newlines_before=0, newlines_after=0)
 
     ############################################################################

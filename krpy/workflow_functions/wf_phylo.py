@@ -723,7 +723,7 @@ def rename_organisms_using_taxids(
             if (acc_name['genus'] is None) or (acc_name['genus'] == ''):
                 resolved = False
                 deleted = False
-                not_in_synonymy = True
+                # not_in_synonymy = True
                 # print('\n\n\nnot_in_synonymy', org_flat, '->', acc_name_flat, '\n\n\n')
             else:
                 acc_name['status'] = 'synonymy'
@@ -784,8 +784,6 @@ def rename_organisms_using_taxids(
             if acc_name['genus'] in taxonomy_cache.keys():
                 taxonomy_list = taxonomy_cache[acc_name['genus']]
             else:
-                # taxonomy_list = krncbi.get_lineage(
-                #     email=email, tax_term=acc_name['genus'])
                 taxonomy_list = krncbi.get_lineages(
                     email=email, tax_terms=[acc_name['genus']], tax_ids=None).values()
                 if taxonomy_list:
@@ -837,19 +835,12 @@ def rename_organisms_using_taxids(
                         record_reference_type='raw'
                         )
 
-                    ###
-
                     # Have to check if the record is 'flattened', then it will
                     # not have an associated GI
 
                     rec_gi = rec.annotations['gi']
-                    # print()
-                    # print(rec_gi, type(rec_gi))
-                    # print()
                     if rec_gi and rec_gi != 'None':
                         rec_gi = int(rec_gi)
-
-                    ###
 
                     kr_seq_db_object.add_record_to_blacklist(
                         ncbi_gi=rec_gi,
@@ -870,7 +861,6 @@ def rename_organisms_using_taxids(
     # kr_seq_db_object.save()
 
 
-# def accept_records_by_similarity(records, temp_dir, min_clust_size=10, identity_threshold=0.80):
 def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1):
 
     from krpy import kralign
@@ -892,10 +882,10 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
         for r in records:
             rec_lengths.append(len(r.seq))
         mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
-        if mean_seq_length > 10000:
+        if mean_seq_length >= 10000:
             aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
         else:
-            aln_options = '--genafpair --jtt 1 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
+            aln_options = '--genafpair --jtt 10 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
 
         clusters = kralign.cluster(
             records=records,
@@ -906,7 +896,7 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
             aln_executable='mafft',
             aln_options=aln_options,
             seeds=seeds,
-            seed_coverage=0.15,
+            seed_coverage=0.1,
             query_coverage=0.5)
 
         # else:
@@ -930,7 +920,7 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
         #         seq_id='gi',
         #         cluster_key='centroid')
 
-        min_clust_size = 3
+        min_clust_size = 5
 
         for key in clusters.keys():
 
@@ -946,6 +936,8 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
             # else:
             #     reject = reject + clusters[key]
 
+            # print()
+            # print()
             # print(key, clust_size)
             # print('--- --- --- --- ---')
             # print(clusters[key])
@@ -1086,11 +1078,15 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     return (feature, log_message)
 
 
-def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, cpu=1):
+def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, seed_recs_file_path, cpu=1):
+
+    import os
+    import copy
 
     from krpy import krcl
     from krpy import krother
     from krpy import kralign
+    from krpy import krbioio
     from krpy.krother import write_log
 
     strategies = locus_dict['strategies']
@@ -1301,54 +1297,81 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     # Produce seeds. Longest records from each genus.
-    msg = '\tPreparing seed sequences for locus ' + locus_name + ' .'
-    write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
-
-    seed_records_dict = dict()
-    for r in trimmed_records:
-        genus = r.annotations['organism'].split(' ')[0]
-        if genus not in seed_records_dict.keys():
-            seed_records_dict[genus] = list()
-        seed_records_dict[genus].append(r)
-
-    seed_records_prelim = list()
-    for key in seed_records_dict.keys():
-        recs = seed_records_dict[key]
-        recs = sorted(recs, key=lambda x: len(x.seq), reverse=True)
-        seed_records_prelim.append(recs[0])
-
-    ###
-    aln_options = ''
-    rec_lengths = list()
-    for r in seed_records_prelim:
-        rec_lengths.append(len(r.seq))
-    mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
-    if mean_seq_length > 10000:
-        aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
-    else:
-        aln_options = '--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
-    ###
-
-    clusters = kralign.cluster(
-        records=seed_records_prelim,
-        threshold=0.85,
-        unknown='N',
-        key='gi',
-        aln_program='mafft',
-        aln_executable='mafft',
-        aln_options=aln_options,
-        seeds=None,
-        seed_coverage=0.5,
-        query_coverage=0.5)
 
     seed_records = list()
-    for key in clusters.keys():
-        clust_size = len(clusters[key])
-        if clust_size > 3:
-            for sr in seed_records_prelim:
-                gi = sr.annotations['gi']
-                if gi in clusters[key]:
-                    seed_records.append(sr)
+
+    if os.path.exists(seed_recs_file_path):
+
+        msg = '\tReading previously produced seed sequences for locus ' + locus_name + ' .'
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
+
+        seed_records = krbioio.read_sequence_file(
+            file_path=seed_recs_file_path,
+            file_format='fasta',
+            ret_type='list')
+
+        for seed_rec in seed_records:
+            seed_rec.annotations['gi'] = seed_rec.id
+
+    else:
+
+        msg = '\tPreparing seed sequences for locus ' + locus_name + ' .'
+        write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
+
+        seed_records_dict = dict()
+        for r in trimmed_records:
+            genus = r.annotations['organism'].split(' ')[0]
+            if genus not in seed_records_dict.keys():
+                seed_records_dict[genus] = list()
+            seed_records_dict[genus].append(r)
+
+        seed_records_prelim = list()
+        for key in seed_records_dict.keys():
+            recs = seed_records_dict[key]
+            recs = sorted(recs, key=lambda x: len(x.seq), reverse=True)
+            seed_records_prelim = seed_records_prelim + recs[0:min(2, len(recs))]
+
+        aln_options = ''
+        rec_lengths = list()
+        for r in seed_records_prelim:
+            rec_lengths.append(len(r.seq))
+        mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
+        if mean_seq_length >= 10000:
+            aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
+        else:
+            aln_options = '--genafpair --jtt 10 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
+
+        clusters = kralign.cluster(
+            records=seed_records_prelim,
+            threshold=0.90,
+            unknown='N',
+            key='gi',
+            aln_program='mafft',
+            aln_executable='mafft',
+            aln_options=aln_options,
+            seeds=None,
+            seed_coverage=0.1,
+            query_coverage=0.5)
+
+        for key in clusters.keys():
+            clust_size = len(clusters[key])
+            if clust_size > 1:
+                for sr in seed_records_prelim:
+                    gi = sr.annotations['gi']
+                    if gi == key:
+                        seed_records.append(sr)
+
+        seed_records = copy.copy(seed_records)
+
+        for sr in seed_records:
+            sr.description = ''
+            sr.name = ''
+            sr.id = sr.annotations['gi']
+
+        krbioio.write_sequence_file(
+            records=seed_records,
+            file_path=seed_recs_file_path,
+            file_format='fasta')
 
     msg = '\tFiltering records for locus ' + locus_name + '.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
@@ -1807,13 +1830,11 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
         # reference_records = sorted(reference_records, key=lambda x: len(x.seq), reverse=True)
         # reference_records = reference_records[0:min(100, len(reference_records))]
 
-        ###
         aln_options = ''
-        if ref_mean_length > 10000:
+        if ref_mean_length >= 10000:
             aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
         else:
-            aln_options = '--genafpair --jtt 100 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
-        ###
+            aln_options = '--genafpair --jtt 10 --maxiterate 1000 --nuc --reorder --adjustdirection --thread ' + str(cpu)
 
         reference_records = kralign.dereplicate(
             records=reference_records,
