@@ -660,7 +660,7 @@ def cluster(
             krcl.print_progress(
                 current=len(consumed_ids), total=record_count, length=0,
                 prefix=krother.timestamp() + ' ',
-                postfix=' Records clustered',
+                postfix=' records clustered',
                 show_bar=False)
 
             # print('b_rec', b_rec)
