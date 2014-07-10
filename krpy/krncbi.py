@@ -485,7 +485,7 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
             genbank_mode=False)
 
     results = dict()
-    for record in records:
+    for i, record in enumerate(records):
         ###
         # for kk in record.keys():
         #     print(kk, '  ::  ', record[kk])
@@ -493,11 +493,21 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
         ###
         lineage_list_temp = record['LineageEx']
         lineage_list = list()
+
         for l in lineage_list_temp:
             lin_item = 'name=' + l['ScientificName'] + ';' + 'rank=' + l['Rank'] + ';' + 'taxid=' + l['TaxId'] + ';'
             lineage_list.append(lin_item)
         tax_id = record['TaxId']
+
+        lin_item = 'name=' + record['ScientificName'] + ';' + 'rank=' + record['Rank'] + ';' + 'taxid=' + record['TaxId'] + ';'
+        lineage_list.append(lin_item)
+
         results[tax_id] = lineage_list
+
+        if tax_terms:
+            results[str(tax_terms[i])] = lineage_list
+        else:
+            results[str(tax_ids[i])] = lineage_list
 
     return results
 
@@ -629,4 +639,12 @@ def get_common_name(email, tax_term=None, tax_id=None):
 
     # common_names = get_common_names(email='test@test.com', tax_ids=['52231', '9483'])
     # print(common_names)
+
+    # lineages = get_lineages(
+    #     email='test@test.com',
+    #     tax_terms=['Capsicum'],
+    #     tax_ids=None)
+
+    # print(lineages)
+    # print(parse_lineage_string_list(lineage_string_list=lineages['Capsicum']))
 
