@@ -358,6 +358,13 @@ if __name__ == '__main__':
     LOCI = dict()
     loci_temp = CFG.items('Loci')
     loci_temp = [x[0] for x in loci_temp]
+
+    AUTO_LOCI = False
+    if not loci_temp:
+        # Automatically find loci
+        AUTO_LOCI = True
+        loci_temp = [x['full'] for x in krio.parse_directory(SRCH_DIR_PATH, '$$$')]
+
     for l in loci_temp:
         locus_ss_file_path = SRCH_DIR_PATH + l
         if os.path.exists(locus_ss_file_path):
@@ -423,8 +430,71 @@ if __name__ == '__main__':
             write_log('There is no search strategy file for locus: ' + l, LFP)
             sys.exit(0)
 
-    # Efficiently utilize CPU cores
+    if AUTO_LOCI:
 
+        write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
+
+        msg = 'No loci given, determining automatically.'
+        write_log(msg, LFP)
+
+        MIN_SEQS_AUTO_LOCI = CFG.getint('General', 'min_seqs_for_auto_locus_discovery')
+
+        for locus_name in LOCI.keys():
+
+            ncbi_db = LOCI[locus_name]['database']
+            query_term_str = LOCI[locus_name]['query']
+
+            min_seq_length = None
+            strategies = LOCI[locus_name]['strategies']
+            for s in strategies:
+                l_msl = s['min_length']
+                if not min_seq_length:
+                    min_seq_length = l_msl
+                else:
+                    min_seq_length = min(l_msl, min_seq_length)
+
+            # msg = 'Searching NCBI ' + ncbi_db + ' database for ' + \
+            #       locus_name + '.'
+            # write_log(msg, LFP, newlines_before=0, newlines_after=0)
+
+            gis = wf.search_genbank(
+                ncbi_db=ncbi_db,
+                query_term_str=query_term_str,
+                ncbi_tax_ids=TAX_IDS,
+                exclude_tax_ids=EXCLUDE_TAX_IDS,
+                min_seq_length=min_seq_length,
+                max_seq_length=MAX_SEQ_LENGTH,
+                email=EMAIL,
+                log_file_path=LFP)
+
+            found_count = len(gis)
+
+            msg = 'Found ' + str(found_count) + ' records for locus ' + locus_name + '.'
+            write_log(msg, LFP)
+
+            if found_count < MIN_SEQS_AUTO_LOCI:
+                del LOCI[locus_name]
+
+        cfg_loci_names = list()
+
+        for locus_name in LOCI.keys():
+            cfg_loci_names.append(locus_name)
+
+        cfg_loci_names.sort(key=lambda x: x.lower())
+
+        cfg_loci_string = '[Loci]\n\n' + '\n'.join(cfg_loci_names)
+        print_loci_string = ', '.join(cfg_loci_names)
+
+        msg = 'Will use loci: ' + print_loci_string + '.'
+        write_log(msg, LFP)
+
+        krio.replace_line_in_file(
+            file_path=CFG_FILE_PATH,
+            line_str='[Loci]',
+            replace_str=cfg_loci_string)
+
+
+    # Efficiently utilize CPU cores
     number_of_loci = len(LOCI.keys())
 
     CPU_TOTAL = CFG.get('General', 'cpu')
@@ -458,10 +528,10 @@ if __name__ == '__main__':
         CPU_FOR_PYTHON = c-1
         CPU_FOR_OTHER = o
 
-    print('CPU_TOTAL', CPU_TOTAL)
-    print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
-    print('CPU_FOR_OTHER', CPU_FOR_OTHER)
-    print('number_of_loci', number_of_loci)
+    # print('CPU_TOTAL', CPU_TOTAL)
+    # print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
+    # print('CPU_FOR_OTHER', CPU_FOR_OTHER)
+    # print('number_of_loci', number_of_loci)
 
     # Flatten options
     FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
@@ -579,6 +649,8 @@ if __name__ == '__main__':
 
     # Get more sequences using BLAST
     if 'blast' in COMMANDS:
+
+        write_log(LOG_LINE_SEP, LFP, newlines_before=0, newlines_after=0)
 
         msg = 'Will run blastn to enrich loci database.'
         write_log(msg, LFP, newlines_before=0, newlines_after=0)
@@ -1763,9 +1835,12 @@ if __name__ == '__main__':
                 org_dict = DB.get_organisms(where_dict={'organisms.id': org_id})[0]
                 org_taxids = org_dict['ncbi_tax_ids']
                 lineage_taxids = org_taxids + lineage_taxids
+
                 for lineage_taxid in lineage_taxids:
                     if str(lineage_taxid) in OUT_TAX_IDS:
                         outgroup = '||OUT'
+
+                # print(binomial, outgroup, ' :: ', common, ' :: ', lineage_parsed)
 
                 name_terms = list()
                 for term in ALN_TAX_NAME_LIST:

@@ -21,17 +21,7 @@ skip_previously_synonymized = Yes
 
 [Loci]
 
-COI
-RAG1
-RAG2
-cytb
-
 [Blast]
-
-COI = 1E-30
-RAG1 = 1E-30
-RAG2 = 1E-30
-cytb = 1E-30
 
 [Flatten]
 
@@ -58,6 +48,9 @@ email = test@test.com
 
 # If sequence exceeds this length it will not be downloaded.
 max_seq_length = 10000
+
+# Minimum number of sequence results to include a locus to a project.
+min_seqs_for_auto_locus_discovery = 20
 
 mafft_executable = mafft
 muscle_executable = muscle

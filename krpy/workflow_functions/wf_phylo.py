@@ -182,7 +182,7 @@ def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, min
         tax_ncbi_query_strings.append(tnqs)
 
     taxa_query_str = ' OR '.join(tax_ncbi_query_strings)
-    taxa_query_str = '(' + taxa_query_str + ')'
+    taxa_query_str = ' AND (' + taxa_query_str + ')'
 
     tax_exclude_ncbi_query_strings = list()
     for te in exclude_tax_ids:
@@ -190,15 +190,17 @@ def produce_ncbi_query_string(ncbi_tax_ids, exclude_tax_ids, query_term_str, min
         tax_exclude_ncbi_query_strings.append(tnqs)
 
     taxa_exclude_query_str = ' OR '.join(tax_exclude_ncbi_query_strings)
-    taxa_exclude_query_str = '(' + taxa_exclude_query_str + ')'
+    taxa_exclude_query_str = ' NOT (' + taxa_exclude_query_str + ')'
 
     query_term_str = '(' + query_term_str + ')'
     seq_length_str = ''
     if max_seq_length > 0:
-        seq_length_str = ' AND ' + str(min_seq_length) + ':' + str(max_seq_length) + '[Sequence Length]'
+        seq_length_str = ' AND (' + str(min_seq_length) + ':' + str(max_seq_length) + '[Sequence Length])'
 
-    query_str = taxa_query_str + ' AND ' + query_term_str + \
-                seq_length_str + ' NOT ' + taxa_exclude_query_str
+    query_str = query_term_str + \
+                seq_length_str + \
+                taxa_query_str + \
+                taxa_exclude_query_str
 
     return query_str
 
