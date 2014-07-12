@@ -108,19 +108,19 @@ This document will explain how to install PhyloMill pipeline and all the depende
 
     * Type these commands to download and setup PhyloMill:
       
-          cd ~
-          git clone https://github.com/karolisr/krpy.git
+          	cd ~
+          	git clone https://github.com/karolisr/krpy.git
       
-          echo -e "\n# PhyloMill" | tee -a ~/.profile
-          phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
-          echo -e $phylomill_bin_path | tee -a ~/.profile
-          echo -e "export PATH" | tee -a ~/.profile
+          	echo -e "\n# PhyloMill" | tee -a ~/.profile
+          	phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
+          	echo -e $phylomill_bin_path | tee -a ~/.profile
+          	echo -e "export PATH" | tee -a ~/.profile
  
-          phylomill_python_path=PYTHONPATH=\"${HOME}/krpy:'${PYTHONPATH}'\"
-          echo -e $phylomill_python_path | tee -a ~/.profile
-          echo -e "export PYTHONPATH" | tee -a ~/.profile
+          	phylomill_python_path=PYTHONPATH=\"${HOME}/krpy:'${PYTHONPATH}'\"
+          	echo -e $phylomill_python_path | tee -a ~/.profile
+          	echo -e "export PYTHONPATH" | tee -a ~/.profile
       
     * To update PhyloMill at any point you can type this in the Terminal app:
     
-          cd ~/krpy
-          git pull
+          	cd ~/krpy
+          	git pull
