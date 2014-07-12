@@ -873,8 +873,9 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
 
     clusters = dict()
 
-    if len(records) < 3:
-        pass
+    if len(records) < 10:
+        for r in records:
+            accept.append(['+', r.annotations['gi'], 1.0])
     else:
 
         # if len(records) <= 500:
@@ -1100,6 +1101,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     trimmed_records = list()
 
     no_feature_record_gi_list = list()
+    short_feature_record_gi_list = list()
 
     records_count = len(records)
 
@@ -1285,7 +1287,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
             loc = location_list_deduplicated[-1]
             trimmed_rec = record[loc[0]:loc[1]]
             if len(trimmed_rec.seq) < l_ml:
-                no_feature_record_gi_list.append(gi)
+                short_feature_record_gi_list.append(gi)
             else:
                 if loc[3] and loc[3] < 0:
                     trimmed_rec = trimmed_rec.reverse_complement()
@@ -1315,7 +1317,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
         for seed_rec in seed_records:
             seed_rec.annotations['gi'] = seed_rec.id
 
-    else:
+    elif len(trimmed_records) > 10:
 
         msg = '\tPreparing seed sequences for locus ' + locus_name + ' .'
         write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
@@ -1337,7 +1339,9 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
         rec_lengths = list()
         for r in seed_records_prelim:
             rec_lengths.append(len(r.seq))
-        mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
+        mean_seq_length = 0
+        if rec_lengths:
+            mean_seq_length = float(sum(rec_lengths)) / float(len(rec_lengths))
         if mean_seq_length >= 10000:
             aln_options = '--auto --nuc --reorder --adjustdirection --thread ' + str(cpu)
         else:
@@ -1388,9 +1392,9 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     acc_rej_gi_dict['no_feature'] = no_feature_record_gi_list
+    acc_rej_gi_dict['short_feature'] = short_feature_record_gi_list
 
     # Fix sequence direction based on majority of good sequences
-
     acc_gi_list = acc_rej_gi_dict['accept']
     rev_comp_gi_list = list()
     for acc in acc_gi_list:
