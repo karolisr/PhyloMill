@@ -37,7 +37,7 @@ This document will explain how to install PhyloMill pipeline and all the depende
 
     * In the Terminal app run these lines:
     
-      	  sudo port install git
+          sudo port install git
       
       This will install a newer version of [git](http://git-scm.com) than is available on OS X.
       
@@ -64,41 +64,41 @@ This document will explain how to install PhyloMill pipeline and all the depende
 
     * Follow the commands below to install the latest version of MAFFT:
        
-          curl -o mafft-7.158-with-extensions-src.tgz http://mafft.cbrc.jp/alignment/software/mafft-7.158-with-extensions-src.tgz
-          tar xzf mafft-7.158-with-extensions-src.tgz
-          cd mafft-7.158-with-extensions/core
-          make clean
-          make
-          sudo make install
-          cd ..
-          cd extensions
-          make clean
-          make
-          sudo make install
-          cd ..
-          cd ..
-          rm -rf mafft-7.158-with-extensions*
+            curl -o mafft-7.158-with-extensions-src.tgz http://mafft.cbrc.jp/alignment/software/mafft-7.158-with-extensions-src.tgz
+            tar xzf mafft-7.158-with-extensions-src.tgz
+            cd mafft-7.158-with-extensions/core
+            make clean
+            make
+            sudo make install
+            cd ..
+            cd extensions
+            make clean
+            make
+            sudo make install
+            cd ..
+            cd ..
+            rm -rf mafft-7.158-with-extensions*
             
 6. Install [Muscle](http://www.drive5.com/muscle)
 
     * Follow the commands below to install the latest version of Muscle:
     
-          curl -o muscle3.8.31_i86darwin64.tar.gz http://www.drive5.com/muscle/downloads3.8.31/muscle3.8.31_i86darwin64.tar.gz
-          tar xzf muscle3.8.31_i86darwin64.tar.gz
-          sudo mv muscle3.8.31_i86darwin64 /usr/local/bin/muscle
-          rm -rf muscle3.8.31_i86darwin64.tar.gz
+            curl -o muscle3.8.31_i86darwin64.tar.gz http://www.drive5.com/muscle/downloads3.8.31/muscle3.8.31_i86darwin64.tar.gz
+            tar xzf muscle3.8.31_i86darwin64.tar.gz
+            sudo mv muscle3.8.31_i86darwin64 /usr/local/bin/muscle
+            rm -rf muscle3.8.31_i86darwin64.tar.gz
             
 7. Install [RAxML](https://github.com/stamatak/standard-RAxML)
 
     * Follow the commands below to install the latest version of RAxML:
 
-          git clone https://github.com/stamatak/standard-RAxML.git
-          cd standard-RAxML
-          make -f Makefile.AVX.PTHREADS.mac
-          rm *.o
-          sudo mv raxmlHPC-PTHREADS-AVX /usr/local/bin/raxml
-          cd ..
-          rm -rf standard-RAxML
+            git clone https://github.com/stamatak/standard-RAxML.git
+            cd standard-RAxML
+            make -f Makefile.AVX.PTHREADS.mac
+            rm *.o
+            sudo mv raxmlHPC-PTHREADS-AVX /usr/local/bin/raxml
+            cd ..
+            rm -rf standard-RAxML
          
 8. Install latest BLAST+ command line tools
 
@@ -108,19 +108,19 @@ This document will explain how to install PhyloMill pipeline and all the depende
 
     * Type these commands to download and setup PhyloMill:
       
-          cd ~
-          git clone https://github.com/karolisr/krpy.git
+            cd ~
+            git clone https://github.com/karolisr/krpy.git
       
-          echo -e "\n# PhyloMill" | tee -a ~/.profile
-          phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
-          echo -e $phylomill_bin_path | tee -a ~/.profile
-          echo -e "export PATH" | tee -a ~/.profile
+            echo -e "\n# PhyloMill" | tee -a ~/.profile
+            phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
+            echo -e $phylomill_bin_path | tee -a ~/.profile
+            echo -e "export PATH" | tee -a ~/.profile
  
-          phylomill_python_path=PYTHONPATH=\"${HOME}/krpy:'${PYTHONPATH}'\"
-          echo -e $phylomill_python_path | tee -a ~/.profile
-          echo -e "export PYTHONPATH" | tee -a ~/.profile
+            phylomill_python_path=PYTHONPATH=\"${HOME}/krpy:'${PYTHONPATH}'\"
+            echo -e $phylomill_python_path | tee -a ~/.profile
+            echo -e "export PYTHONPATH" | tee -a ~/.profile
       
     * To update PhyloMill at any point you can type this in the Terminal app:
     
-          cd ~/krpy
-          git pull
+            cd ~/krpy
+            git pull
