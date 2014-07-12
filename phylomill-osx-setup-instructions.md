@@ -13,7 +13,7 @@ This document will explain how to install PhyloMill pipeline and all the depende
     * Go to the "App Store", find and install Xcode. This will take a bit. Xcode provides basic tools required to develop for the Mac and is required to get many PhyloMill dependencies to work. If you had done any bioinformatics work on your system, it is very likely you already have Xcode, if not grab a cup of coffee this will take a while.
     * Once Xcode is installed, you will be able to install command line developer tools. Open the Terminal app and type in this:
     
-      	  xcode-select --install
+      	    xcode-select --install
     
       A window will pop up, click "Install", then click "Agree". Once that is done, type in this:
       
@@ -27,7 +27,7 @@ This document will explain how to install PhyloMill pipeline and all the depende
     
     * Open the Terminal app again and type this in:
     
-      	  export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
+      	    export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
       
       Then update the list of available MacPorts software, type in this (you will be asked for your password):
       
