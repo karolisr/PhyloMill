@@ -1019,7 +1019,11 @@ if __name__ == '__main__':
                 delete_note = 'no locus annotation'
                 no_feature_gi_list = [[x, delete_note] for x in no_feature_gi_list]
 
-                bad_list = rej_gi_list + no_feature_gi_list
+                short_feature_gi_list = acc_rej_gi_dict['short_feature']
+                delete_note = 'locus annotation is too short'
+                short_feature_gi_list = [[x, delete_note] for x in short_feature_gi_list]
+
+                bad_list = rej_gi_list + no_feature_gi_list + short_feature_gi_list
 
                 # print()
 
