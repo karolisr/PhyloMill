@@ -1110,8 +1110,8 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     msg = 'Extracting sequences for locus ' + locus_name + ' from downloaded records.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=True)
 
-    if records_count < 3:
-        return {'no_feature': list(), 'accept': list(), 'reject': list()}
+    # if records_count < 3:
+    #     return {'no_feature': list(), 'short_feature': list(), 'accept': list(), 'reject': list()}
 
     msg = 'There are ' + str(records_count) + ' records for locus ' + locus_name + '.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=True)
