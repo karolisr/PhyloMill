@@ -599,13 +599,22 @@ if __name__ == '__main__':
     ############################################################################
 
     # Blacklist gis in blacklisted_gis.csv file
-    gis = list()
 
-    with open(BLACKLIST_GIS_FILE_PATH, 'r') as f:
-        lines = f.readlines()
-        for l in lines:
-            if not l.startswith('#'):
-                gis.append(l.strip('\n'))
+    gis = krio.read_table_file(
+        path=BLACKLIST_GIS_FILE_PATH,
+        has_headers=False,
+        headers=None,
+        delimiter=',',
+        quotechar='"',
+        rettype='set')
+
+    # with open(BLACKLIST_GIS_FILE_PATH, 'r') as f:
+    #     lines = f.readlines()
+    #     for l in lines:
+    #         if (not l.startswith('#')) and (not l.strip() == ''):
+    #             gis.append(l.strip('\n'))
+
+    gis = list(gis)
 
     wf.blacklist_gis(gis=gis, kr_seq_db_object=DB, log_file_path=LFP)
 
