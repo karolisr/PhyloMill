@@ -202,7 +202,9 @@ class KRSequenceDatabase:
         sqlite3.register_adapter(self._KRSeqEdits, self._adapt_seq_edits)
         sqlite3.register_converter(b'SEQREP', self._convert_seq_edits)
 
-        self._DB_CONN = sqlite3.connect(self._DB_FILE,
+        self._DB_CONN = sqlite3.connect(
+            database=self._DB_FILE,
+            timeout=3600,
             detect_types=sqlite3.PARSE_DECLTYPES)
         self._DB_CONN.row_factory = sqlite3.Row
         self._DB_CONN.text_factory = str
