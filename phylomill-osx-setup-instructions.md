@@ -57,31 +57,29 @@ your system.
 
 4. Install dependencies using MacPorts
 
-    In the Terminal app run these lines:
+    This will install a newer version of [git](http://git-scm.com) than is
+    available on OS X. In the Terminal app run these lines:
 
         sudo port install git
 
-    This will install a newer version of [git](http://git-scm.com) than is
-    available on OS X.
+    This will install version of Python required by PhyloMill.
 
         sudo port install python27
         sudo port select --set python python27
 
-    This will install version of Python required by PhyloMill.
+    This will install [Biopython](http://biopython.org).
 
         sudo port install py27-biopython
 
-    This will install [Biopython](http://biopython.org).
+    This will install [SciPy](http://www.scipy.org).
 
         sudo port install py27-scipy
 
-    This will install [SciPy](http://www.scipy.org).
+    These commands will install a few Python libraries required by PhyloMill
 
         sudo port install py27-datrie
         sudo port install py27-levenshtein
         sudo port install py27-unidecode
-
-    These commands will install a few Python libraries required by PhyloMill
 
 5. Install [MAFFT](http://mafft.cbrc.jp/alignment/software)
 
@@ -139,13 +137,17 @@ your system.
 
         cd ~
         git clone https://github.com/karolisr/krpy.git
+
         echo -e "\n# PhyloMill" | tee -a ~/.profile
         phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
         echo -e $phylomill_bin_path | tee -a ~/.profile
         echo -e "export PATH" | tee -a ~/.profile
+
         phylomill_python_path=PYTHONPATH=\"${HOME}/krpy:'${PYTHONPATH}'\"
         echo -e $phylomill_python_path | tee -a ~/.profile
         echo -e "export PYTHONPATH" | tee -a ~/.profile
+
+    Restart the Terminal app and you are done.
 
     To update PhyloMill at any point you can type this in the Terminal app:
 
