@@ -37,7 +37,7 @@ This document will explain how to install PhyloMill pipeline and all the depende
 
     * In the Terminal app run these lines:
     
-          sudo port install git
+            sudo port install git
       
       This will install a newer version of [git](http://git-scm.com) than is available on OS X.
       
