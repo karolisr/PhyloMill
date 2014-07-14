@@ -517,16 +517,19 @@ if __name__ == '__main__':
         o = 0
         c = 0
         cpu_optimized = False
-        for o in range(2, 9):
+        for o in range(2, 2048):
             for c in range(1, number_of_loci+1):
-                # print(o, c * o)
-                if c * o > CPU_TOTAL:
+                # print(o, c, c * o)
+                if c * o >= CPU_TOTAL:
                     cpu_optimized = True
+                    if c * o == CPU_TOTAL:
+                        c = c+1
+                        o = o+1
                     break
             if cpu_optimized:
                 break
-        CPU_FOR_PYTHON = c-1
-        CPU_FOR_OTHER = o
+        CPU_FOR_PYTHON = max(1, c-1)
+        CPU_FOR_OTHER = max(2, o-1)
 
     # print('CPU_TOTAL', CPU_TOTAL)
     # print('CPU_FOR_PYTHON', CPU_FOR_PYTHON)
