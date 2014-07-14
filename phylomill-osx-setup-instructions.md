@@ -1,4 +1,4 @@
-# PhyloMill Setup on a completely clean OS X 10.9 (Macericks) system
+# PhyloMill Setup on a completely clean OS X 10.9 (Mavericks) system
 
 PhyloMill is a Python 2.7 script that pools several other tools together to
 automatically produce multi-locus alignments for a set of taxa. Because of this,
