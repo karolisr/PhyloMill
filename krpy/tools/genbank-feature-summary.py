@@ -52,7 +52,7 @@ if __name__ == '__main__':
         taxa_dict = dict()
 
         for record in records:
-            txid = krncbi.get_ncbi_tax_id(record)
+            txid = krncbi.get_ncbi_tax_id_for_record(record)
             for feature in record.features:
                 if feature.type != 'source':
                     for qualifier in feature.qualifiers:
