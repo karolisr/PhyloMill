@@ -24,6 +24,13 @@ def parse_organism_name(name, sep=' ', ncbi_authority=False):
     # other_string = 'sp.'
     other_list = ['sp.', 'cf.', 'aff.']
 
+    # Replace SLASH
+
+    name = name.replace('/', '$SLASH$')
+    name = name.replace('\\', '$SLASH$')
+
+    #
+
     name_list = name.split(sep)
     name_list_lower = name.lower().split(sep)
 
