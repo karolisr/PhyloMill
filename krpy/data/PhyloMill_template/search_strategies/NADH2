@@ -3,7 +3,7 @@
 [NADH2]
 
 database = nuccore
-query = (ND2[Title] OR NADH2[Title]) NOT ("NADH dehydrogenase subunit 2 (ND3)"[Title] OR "UNVERIFIED"[Title] OR "pseudogene"[Title])
+query = ("ND2"[Title] OR "NADH2"[Title]) NOT ("NADH dehydrogenase subunit 2 (ND3)"[Title] OR "similar to NADH dehydrogenase" OR "UNVERIFIED"[Title] OR "pseudogene"[Title])
 
 [1]
 
