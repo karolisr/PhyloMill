@@ -818,6 +818,12 @@ if __name__ == '__main__':
         org_ids = DB.db_get_row_ids(table_name='organisms',
             where_dict={'active': 1})
 
+        if not org_ids:
+            msg = 'There are no organisms in the database. Was search conducted?'
+            write_log(msg, LFP, newlines_before=0, newlines_after=0)
+            sys.exit(1)
+
+
         if len(org_ids) < 2:
             msg = 'There are only ' + str(len(org_ids)) + ' organisms in the database. Was search conducted?'
             write_log(msg, LFP, newlines_before=0, newlines_after=0)
