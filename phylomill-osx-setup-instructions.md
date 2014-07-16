@@ -80,6 +80,7 @@ your system.
         sudo port install py27-datrie
         sudo port install py27-levenshtein
         sudo port install py27-unidecode
+        sudo port install py27-beautifulsoup4
 
 5. Install [MAFFT](http://mafft.cbrc.jp/alignment/software)
 

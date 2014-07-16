@@ -53,6 +53,8 @@ You can skip over things that you know are already installed on your system.
 
         sudo apt-get -y install python-Levenshtein
         sudo apt-get -y install python-unidecode
+        sudo apt-get -y install python-bs4
+        sudo apt-get -y install python-bs4-doc
 
 2. Install [MAFFT](http://mafft.cbrc.jp/alignment/software)
 
