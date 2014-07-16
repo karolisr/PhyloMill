@@ -36,13 +36,3 @@ min_length = 100
 # extract more to the left and to the right of the feature
 extra_length = 0
 
-# [2]
-
-# locus_relative_position =
-# feature_type =
-# qualifier_label =
-# qualifier_value =
-# regex =
-# strict_value_match =
-# min_length =
-# extra_length =
