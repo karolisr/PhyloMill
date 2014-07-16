@@ -1954,7 +1954,7 @@ def resolve_org_name_using_tgrc(voucher):
 
     import urllib2
     from bs4 import BeautifulSoup
-    import krbionames
+    from krpy import krbionames
     import time
     import sys
 
@@ -2020,14 +2020,12 @@ def get_tgrc_gis(kr_seq_db_object):
 
     sql_string = '''
         SELECT records.ncbi_gi, qualifier
-        FROM record_feature_qualifier_types
-        LEFT OUTER JOIN record_feature_qualifiers
-        ON record_feature_qualifier_types.id IS record_feature_qualifiers.rec_feat_qual_type_id
+        FROM record_feature_qualifiers
         LEFT OUTER JOIN record_features
         ON record_features.id IS rec_feat_id
         LEFT OUTER JOIN records
         ON records.id IS rec_id
-        WHERE (type IN ('specimen_voucher', 'cultivar', 'strain', 'isolate'))
+        WHERE (record_feature_qualifiers.type IN ('specimen_voucher', 'cultivar', 'strain', 'isolate'))
         AND ((qualifier like 'LA___') OR (qualifier like 'LA____') OR (qualifier like 'LA_____') OR (qualifier like 'LA______'));
         '''
 
