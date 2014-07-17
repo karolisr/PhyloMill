@@ -568,8 +568,8 @@ class KRSequenceDatabase:
                 values_dict[b'authority'] = org_dict[b'authority']
             if not values_dict[b'synonymy_check_done']:
                 values_dict[b'synonymy_check_done'] = org_dict[b'synonymy_check_done']
-            if not values_dict[b'taxonomy_check_done']:
-                values_dict[b'taxonomy_check_done'] = org_dict[b'taxonomy_check_done']
+            # if not values_dict[b'taxonomy_check_done']:
+            #     values_dict[b'taxonomy_check_done'] = org_dict[b'taxonomy_check_done']
 
             self.db_update('organisms',
                 values_dict=values_dict,
