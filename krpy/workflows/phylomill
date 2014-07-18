@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     # Prepare clean project directory
     if ARGS.project_dir:
-        PRJ_DIR_PATH = ARGS.project_dir.rstrip(PS)
+        PRJ_DIR_PATH = os.path.abspath(ARGS.project_dir).rstrip(PS)
         PRJ_DIR_PATH = PRJ_DIR_PATH + PS
     else:
         print('Project directory is required.')
