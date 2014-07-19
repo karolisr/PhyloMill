@@ -131,6 +131,8 @@ if __name__ == '__main__':
     # datrie
     # Levenshtein
     # unidecode
+    # scipy
+    # numpy
     ####################
 
     MAC_STANDALONE_DIR_PATH = KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0' + PS
@@ -172,28 +174,26 @@ if __name__ == '__main__':
     except ImportError:
         found_unidecode = False
 
+    found_scipy = False
+    try:
+        imp.find_module('scipy')
+        found_scipy = True
+    except ImportError:
+        found_scipy = False
+
+    found_numpy = False
+    try:
+        imp.find_module('numpy')
+        found_numpy = True
+    except ImportError:
+        found_numpy = False
+
     if (platform.system() == 'Darwin'):
         MAC = True
 
-        if not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode):
+        if not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode or found_scipy or found_numpy):
             sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
             STANDALONE = True
-
-    # print(sys.path)
-
-    # import Bio
-    # import bs4
-    # import datrie
-    # import Levenshtein
-    # import unidecode
-
-    # print(Bio.__file__)
-    # print(bs4.__file__)
-    # print(datrie.__file__)
-    # print(Levenshtein.__file__)
-    # print(unidecode.__file__)
-
-    # sys.exit(0)
 
     if STANDALONE:
 

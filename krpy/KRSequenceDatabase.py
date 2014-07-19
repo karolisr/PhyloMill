@@ -1676,6 +1676,10 @@ class KRSequenceDatabase:
 
     def get_records_with_annotations(self, annotation_type, annotation, active=True, inactive=False):
 
+
+        import sys
+        import sqlite3
+
         sql_string = '''
             SELECT rec_id
             FROM record_annotations
