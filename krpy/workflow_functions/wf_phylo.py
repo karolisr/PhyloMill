@@ -1872,7 +1872,7 @@ def get_outgroup_names(alignment):
     return outgroup_taxa
 
 
-def produce_raxml_input_files(name, aln_file_path, out_dir_path, outgroup_taxa=None, partitions=None, threads=1, locus_name_list=None):
+def produce_raxml_input_files(exe, name, aln_file_path, out_dir_path, outgroup_taxa=None, partitions=None, threads=1, locus_name_list=None):
 
     import random
     from krpy import krio
@@ -1890,7 +1890,7 @@ def produce_raxml_input_files(name, aln_file_path, out_dir_path, outgroup_taxa=N
     raxml_commands_file = out_dir_path + 'RAxML_commands.txt'
     f_raxml = open(raxml_commands_file, 'wb')
 
-    raxml_line_1 = 'raxml \\\n'
+    raxml_line_1 = exe + ' \\\n'
     f_raxml.write(raxml_line_1)
 
     raxml_line_2 = '-s ' + aln_file_path + ' \\\n'

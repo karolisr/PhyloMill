@@ -13,8 +13,118 @@ if __name__ == '__main__':
 
     import os
     import sys
-    import argparse
     import inspect
+    import imp
+    import platform
+
+    ############################################################################
+
+    PS = os.path.sep
+
+    # Script filename
+    SCRIPT_FILE_PATH = inspect.getfile(inspect.currentframe())
+
+    # Script directory path
+    SCRIPT_DIR_PATH = os.path.dirname(os.path.abspath(SCRIPT_FILE_PATH))
+
+    # krpy directory path
+    KRPY_DIR_PATH = PS.join(SCRIPT_DIR_PATH.split(PS)[0:-1])
+
+    # print(SCRIPT_FILE_PATH)
+    # print(SCRIPT_DIR_PATH)
+    # print(KRPY_DIR_PATH)
+
+    ############################################################################
+
+    # Standalone?
+
+    ####################
+    # os.name
+    # 'posix'
+
+    # platform.system()
+    # 'Darwin'
+
+    # platform.release()
+    # '13.3.0'
+    ####################
+
+    ####################
+    # Bio
+    # bs4
+    # datrie
+    # Levenshtein
+    # unidecode
+    ####################
+
+    MAC_STANDALONE_DIR_PATH = KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0' + PS
+
+    STANDALONE = False
+    MAC = False
+
+    found_Bio = False
+    try:
+        imp.find_module('Bio')
+        found_Bio = True
+    except ImportError:
+        found_Bio = False
+
+    found_bs4 = False
+    try:
+        imp.find_module('bs4')
+        found_bs4 = True
+    except ImportError:
+        found_bs4 = False
+
+    found_datrie = False
+    try:
+        imp.find_module('datrie')
+        found_datrie = True
+    except ImportError:
+        found_datrie = False
+
+    found_Levenshtein = False
+    try:
+        imp.find_module('Levenshtein')
+        found_Levenshtein = True
+    except ImportError:
+        found_Levenshtein = False
+
+    found_unidecode = False
+    try:
+        imp.find_module('unidecode')
+        found_unidecode = True
+    except ImportError:
+        found_unidecode = False
+
+
+    if (platform.system() == 'Darwin') and (not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode)):
+        sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
+        STANDALONE = True
+        MAC = True
+
+    # print(sys.path)
+
+    # import Bio
+    # import bs4
+    # import datrie
+    # import Levenshtein
+    # import unidecode
+
+    # print(Bio.__file__)
+    # print(bs4.__file__)
+    # print(datrie.__file__)
+    # print(Levenshtein.__file__)
+    # print(unidecode.__file__)
+
+    # sys.exit(0)
+
+    if STANDALONE:
+        print('Running PhyloMill in standalone mode.')
+
+    ############################################################################
+
+    import argparse
     import shutil
     import copy
     import ConfigParser
@@ -39,8 +149,6 @@ if __name__ == '__main__':
     from krpy import krblast
 
     from krpy.krother import write_log
-
-    PS = os.path.sep
 
     ############################################################################
 
@@ -153,13 +261,7 @@ if __name__ == '__main__':
 
         else:
 
-            # Script filename
-            script_file_path = inspect.getfile(inspect.currentframe())
-
-            # Script directory path
-            script_dir_path = os.path.dirname(os.path.abspath(script_file_path))
-
-            prj_template_dir_path = script_dir_path.strip('workflows') + \
+            prj_template_dir_path = SCRIPT_DIR_PATH.strip('workflows') + \
                 'data' + PS + 'PhyloMill_template'
 
             shutil.copytree(prj_template_dir_path, PRJ_DIR_PATH, symlinks=False,
@@ -540,6 +642,15 @@ if __name__ == '__main__':
     FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
     FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
 
+    if STANDALONE:
+        if MAC:
+            if FLAT_ALN_PROG == 'mafft':
+                FLAT_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'mafft-mac' + PS + 'mafft.bat'
+            elif FLAT_ALN_PROG == 'muscle':
+                FLAT_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'muscle'
+            elif FLAT_ALN_PROG == 'clustalo':
+                FLAT_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'clustalo'
+
     FLAT_ALN_PROG_OPTIONS = CFG.get('Flatten', 'align_program_options')
     if FLAT_ALN_PROG == 'mafft':
         options_temp = shlex.split(FLAT_ALN_PROG_OPTIONS)
@@ -559,6 +670,15 @@ if __name__ == '__main__':
     ALN_ALN_PROG = CFG.get('Align', 'align_program')
     ALN_ALN_PROG_EXE = CFG.get('General', ALN_ALN_PROG + '_executable')
 
+    if STANDALONE:
+        if MAC:
+            if ALN_ALN_PROG == 'mafft':
+                ALN_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'mafft-mac' + PS + 'mafft.bat'
+            elif ALN_ALN_PROG == 'muscle':
+                ALN_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'muscle'
+            elif ALN_ALN_PROG == 'clustalo':
+                ALN_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'clustalo'
+
     ALN_ALN_PROG_OPTIONS = CFG.get('Align', 'align_program_options')
     if ALN_ALN_PROG == 'mafft':
         options_temp = shlex.split(ALN_ALN_PROG_OPTIONS)
@@ -573,6 +693,13 @@ if __name__ == '__main__':
     ALN_TAX_NAME_LIST = CFG.get('Align', 'taxon_name')
     ALN_TAX_NAME_LIST = ALN_TAX_NAME_LIST.split(',')
     ALN_TAX_NAME_LIST = [x.strip() for x in ALN_TAX_NAME_LIST]
+
+    # RAxML
+    RAXML_EXE = CFG.get('General', 'raxml_executable')
+
+    if STANDALONE:
+        if MAC:
+            RAXML_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'raxml'
 
     # Blast
 
@@ -1917,6 +2044,7 @@ if __name__ == '__main__':
             krio.prepare_directory(loc_tre_dir_path)
 
             wf.produce_raxml_input_files(
+                exe=RAXML_EXE,
                 name=locus_name,
                 aln_file_path=aln_file_path_phy,
                 out_dir_path=loc_tre_dir_path,
@@ -2060,6 +2188,7 @@ if __name__ == '__main__':
         krio.prepare_directory(PART_TRE_DIR_PATH)
 
         wf.produce_raxml_input_files(
+            exe=RAXML_EXE,
             name='concat',
             aln_file_path=CAT_ALN_FILE_PREFIX + '.phy',
             out_dir_path=PART_TRE_DIR_PATH,
@@ -2115,38 +2244,38 @@ if __name__ == '__main__':
 
     ############################################################################
 
-    # Run ASTRAL
-    if 'astral' in COMMANDS:
+    # # Run ASTRAL
+    # if 'astral' in COMMANDS:
 
-        krio.prepare_directory(AST_TRE_DIR_PATH)
+    #     krio.prepare_directory(AST_TRE_DIR_PATH)
 
-        trees = list()
-        for locus_name in LOCI.keys():
-            tree_file_path = TRE_DIR_PATH + locus_name + PS + 'RAxML_' + locus_name + PS + 'RAxML_bestTree.' + locus_name
+    #     trees = list()
+    #     for locus_name in LOCI.keys():
+    #         tree_file_path = TRE_DIR_PATH + locus_name + PS + 'RAxML_' + locus_name + PS + 'RAxML_bestTree.' + locus_name
 
-            if not os.path.exists(tree_file_path):
-                msg = 'RAxML tree file does not exist for locus ' + locus_name + '.'
-                write_log(msg, LFP, newlines_before=0, newlines_after=0)
-                sys.exit(1)
+    #         if not os.path.exists(tree_file_path):
+    #             msg = 'RAxML tree file does not exist for locus ' + locus_name + '.'
+    #             write_log(msg, LFP, newlines_before=0, newlines_after=0)
+    #             sys.exit(1)
 
-            tre = ''
-            with open(tree_file_path, 'rb') as f:
-                tre = f.readline()
-                tre = tre.replace('||', '___')
-                trees.append(tre)
+    #         tre = ''
+    #         with open(tree_file_path, 'rb') as f:
+    #             tre = f.readline()
+    #             tre = tre.replace('||', '___')
+    #             trees.append(tre)
 
-        input_trees_file = AST_TRE_DIR_PATH + 'gene_trees.tre'
-        with open(input_trees_file, 'w') as f:
-            f.writelines(trees)
+    #     input_trees_file = AST_TRE_DIR_PATH + 'gene_trees.tre'
+    #     with open(input_trees_file, 'w') as f:
+    #         f.writelines(trees)
 
-        output_tree_file = AST_TRE_DIR_PATH + 'species_tree.tre'
-        cmd = 'java -jar ' + ASTRAL_JAR_FILE + ' -i ' + input_trees_file + ' -o ' + output_tree_file
+    #     output_tree_file = AST_TRE_DIR_PATH + 'species_tree.tre'
+    #     cmd = 'java -jar ' + ASTRAL_JAR_FILE + ' -i ' + input_trees_file + ' -o ' + output_tree_file
 
-        subprocess.call(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=True)
+    #     subprocess.call(
+    #         cmd,
+    #         stdout=subprocess.PIPE,
+    #         stderr=subprocess.PIPE,
+    #         shell=True)
 
     ############################################################################
 

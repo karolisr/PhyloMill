@@ -55,7 +55,7 @@ min_seqs_for_auto_locus_discovery = 20
 mafft_executable = mafft
 muscle_executable = muscle
 clustalo_executable = clustalo
-astral_jar_file = ~/astral-code/ASTRAL/astral.4.2.0.jar
+raxml_executable = raxml
 
 cpu = auto
 
