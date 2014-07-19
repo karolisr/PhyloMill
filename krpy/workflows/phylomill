@@ -669,6 +669,12 @@ if __name__ == '__main__':
     # print('CPU_FOR_OTHER', CPU_FOR_OTHER)
     # print('number_of_loci', number_of_loci)
 
+    # MAFFT executable
+    MAFFT_ALN_PROG_EXE = CFG.get('General', 'mafft_executable')
+    if STANDALONE:
+        if MAC:
+            MAFFT_ALN_PROG_EXE = MAC_STANDALONE_DIR_PATH + 'other' + PS + 'mafft-mac' + PS + 'mafft.bat'
+
     # Flatten options
     FLAT_ALN_PROG = CFG.get('Flatten', 'align_program')
     FLAT_ALN_PROG_EXE = CFG.get('General', FLAT_ALN_PROG + '_executable')
@@ -846,6 +852,7 @@ if __name__ == '__main__':
             ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
 
             reference_records = wf.produce_reference_sequences(
+                aln_executable=MAFFT_ALN_PROG_EXE,
                 locus_name=locus_name,
                 records=records,
                 ref_recs_file_path=ref_recs_file_path,
@@ -1179,6 +1186,7 @@ if __name__ == '__main__':
                 seed_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__seeds.fasta'
 
                 acc_rej_gi_dict = wf.extract_loci(
+                    aln_executable=MAFFT_ALN_PROG_EXE,
                     locus_dict=locus_dict,
                     records=records,
                     log_file_path=lfp,
@@ -1416,6 +1424,7 @@ if __name__ == '__main__':
                 ref_recs_file_path = ORG_LOC_DIR_PATH + locus_name + '__reference.fasta'
 
                 reference_records = wf.produce_reference_sequences(
+                    aln_executable=MAFFT_ALN_PROG_EXE,
                     locus_name=locus_name,
                     records=records,
                     ref_recs_file_path=ref_recs_file_path,

@@ -863,7 +863,7 @@ def rename_organisms_using_taxids(
     # kr_seq_db_object.save()
 
 
-def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1):
+def accept_records_by_similarity(aln_executable, records, seeds, identity_threshold=0.85, cpu=1):
 
     from krpy import kralign
     # from krpy import krusearch
@@ -896,7 +896,7 @@ def accept_records_by_similarity(records, seeds, identity_threshold=0.85, cpu=1)
             unknown='N',
             key='gi',
             aln_program='mafft',
-            aln_executable='mafft',
+            aln_executable=aln_executable,
             aln_options=aln_options,
             seeds=seeds,
             seed_coverage=0.1,
@@ -1081,7 +1081,7 @@ def feature_for_locus(record, feature_type, qualifier_label, locus_name_list,
     return (feature, log_message)
 
 
-def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, seed_recs_file_path, cpu=1):
+def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_object, temp_dir, seed_recs_file_path, cpu=1):
 
     import os
     import copy
@@ -1353,7 +1353,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
             unknown='N',
             key='gi',
             aln_program='mafft',
-            aln_executable='mafft',
+            aln_executable=aln_executable,
             aln_options=aln_options,
             seeds=None,
             seed_coverage=0.1,
@@ -1383,6 +1383,7 @@ def extract_loci(locus_dict, records, log_file_path, kr_seq_db_object, temp_dir,
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     acc_rej_gi_dict = accept_records_by_similarity(
+        aln_executable=aln_executable,
         records=trimmed_records,
         seeds=seed_records,
         identity_threshold=0.80,
@@ -1763,7 +1764,7 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
         rec_id=rec_id)
 
 
-def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_file_path, cpu=1):
+def produce_reference_sequences(aln_executable, locus_name, records, ref_recs_file_path, log_file_path, cpu=1):
 
     import os
     import sys
@@ -1848,7 +1849,7 @@ def produce_reference_sequences(locus_name, records, ref_recs_file_path, log_fil
             unknown='N',
             key='gi',
             aln_program='mafft',
-            aln_executable='mafft',
+            aln_executable=aln_executable,
             aln_options=aln_options,
             seed_coverage=0.30,
             query_coverage=0.80)
