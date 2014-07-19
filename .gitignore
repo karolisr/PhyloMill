@@ -56,7 +56,6 @@ $RECYCLE.BIN/
 ### Python
 *.py[cod]
 # C extensions
-*.so
 # Packages
 *.egg
 *.egg-info
@@ -98,8 +97,6 @@ nosetests.xml
 *.a
 # Shared objects (inc. Windows DLLs)
 *.dll
-*.so
-*.so.*
 *.dylib
 # Executables
 *.exe
