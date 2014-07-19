@@ -191,7 +191,7 @@ if __name__ == '__main__':
     if (platform.system() == 'Darwin'):
         MAC = True
 
-        if not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode or found_scipy or found_numpy):
+        if not (found_Bio and found_bs4 and found_datrie and found_Levenshtein and found_unidecode and found_scipy and found_numpy):
             sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
             STANDALONE = True
 
