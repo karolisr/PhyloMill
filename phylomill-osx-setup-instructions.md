@@ -139,6 +139,23 @@ your system.
         cd ~
         git clone https://github.com/karolisr/krpy.git
 
+    To update PhyloMill at any point you can do this:
+
+        cd ~/krpy
+        git pull
+
+10. Run PhyloMill by typing:
+
+        cd ~/krpy/krpy/workflows
+        ./phylomill -p ~/pm_test_project -c autopilot
+
+    This will create a sample project with name "pm_test_project" in your home
+    directory and produce a sample phylogeny.
+
+<!--
+        cd ~
+        git clone https://github.com/karolisr/krpy.git
+
         echo -e "\n# PhyloMill" | tee -a ~/.profile
         phylomill_bin_path=PATH=\"${HOME}/krpy/krpy/workflows:'${PATH}'\"
         echo -e $phylomill_bin_path | tee -a ~/.profile
@@ -154,3 +171,4 @@ your system.
 
         cd ~/krpy
         git pull
+-->

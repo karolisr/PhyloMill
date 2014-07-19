@@ -16,6 +16,7 @@ if __name__ == '__main__':
     import inspect
     import imp
     import platform
+    import argparse
 
     ############################################################################
 
@@ -30,125 +31,13 @@ if __name__ == '__main__':
     # krpy directory path
     KRPY_DIR_PATH = PS.join(SCRIPT_DIR_PATH.split(PS)[0:-1])
 
+    # krpy root directory path
+    KRPY_ROOT_DIR_PATH = PS.join(SCRIPT_DIR_PATH.split(PS)[0:-2])
+
     # print(SCRIPT_FILE_PATH)
     # print(SCRIPT_DIR_PATH)
     # print(KRPY_DIR_PATH)
-
-    ############################################################################
-
-    # Standalone?
-
-    ####################
-    # os.name
-    # 'posix'
-
-    # platform.system()
-    # 'Darwin'
-
-    # platform.release()
-    # '13.3.0'
-    ####################
-
-    ####################
-    # Bio
-    # bs4
-    # datrie
-    # Levenshtein
-    # unidecode
-    ####################
-
-    MAC_STANDALONE_DIR_PATH = KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0' + PS
-
-    STANDALONE = False
-    MAC = False
-
-    found_Bio = False
-    try:
-        imp.find_module('Bio')
-        found_Bio = True
-    except ImportError:
-        found_Bio = False
-
-    found_bs4 = False
-    try:
-        imp.find_module('bs4')
-        found_bs4 = True
-    except ImportError:
-        found_bs4 = False
-
-    found_datrie = False
-    try:
-        imp.find_module('datrie')
-        found_datrie = True
-    except ImportError:
-        found_datrie = False
-
-    found_Levenshtein = False
-    try:
-        imp.find_module('Levenshtein')
-        found_Levenshtein = True
-    except ImportError:
-        found_Levenshtein = False
-
-    found_unidecode = False
-    try:
-        imp.find_module('unidecode')
-        found_unidecode = True
-    except ImportError:
-        found_unidecode = False
-
-
-    if (platform.system() == 'Darwin') and (not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode)):
-        sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
-        STANDALONE = True
-        MAC = True
-
-    # print(sys.path)
-
-    # import Bio
-    # import bs4
-    # import datrie
-    # import Levenshtein
-    # import unidecode
-
-    # print(Bio.__file__)
-    # print(bs4.__file__)
-    # print(datrie.__file__)
-    # print(Levenshtein.__file__)
-    # print(unidecode.__file__)
-
-    # sys.exit(0)
-
-    if STANDALONE:
-        print('Running PhyloMill in standalone mode.')
-
-    ############################################################################
-
-    import argparse
-    import shutil
-    import copy
-    import ConfigParser
-    import subprocess
-    import shlex
-
-    from subprocess import call
-
-    import multiprocessing
-    from multiprocessing import Process
-    from multiprocessing import JoinableQueue
-
-    from krpy import KRSequenceDatabase
-    from krpy.workflow_functions import wf_phylo as wf
-    from krpy import krncbi
-    from krpy import krother
-    from krpy import krbioio
-    from krpy import krbionames
-    from krpy import krio
-    from krpy import krcl
-    from krpy import kralign
-    from krpy import krblast
-
-    from krpy.krother import write_log
+    # print(KRPY_ROOT_DIR_PATH)
 
     ############################################################################
 
@@ -197,13 +86,149 @@ if __name__ == '__main__':
         action='store_true',
         help='')
 
+    PARSER.add_argument(
+        '--standalone',
+        action='store_true',
+        help='')
+
     ARGS = PARSER.parse_args()
+
+    ############################################################################
+
+    STANDALONE = False
+    if ARGS.standalone:
+        STANDALONE = ARGS.standalone
 
     ############################################################################
 
     COMMANDS = None
     if ARGS.commands:
         COMMANDS = set([x.strip() for x in ARGS.commands.split(',')])
+
+    ############################################################################
+
+    # import krpy path
+    sys.path.insert(0, KRPY_ROOT_DIR_PATH)
+
+    ############################################################################
+
+    # Standalone?
+
+    ####################
+    # os.name
+    # 'posix'
+
+    # platform.system()
+    # 'Darwin'
+
+    # platform.release()
+    # '13.3.0'
+    ####################
+
+    ####################
+    # Bio
+    # bs4
+    # datrie
+    # Levenshtein
+    # unidecode
+    ####################
+
+    MAC_STANDALONE_DIR_PATH = KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0' + PS
+
+    MAC = False
+
+    found_Bio = False
+    try:
+        imp.find_module('Bio')
+        found_Bio = True
+    except ImportError:
+        found_Bio = False
+
+    found_bs4 = False
+    try:
+        imp.find_module('bs4')
+        found_bs4 = True
+    except ImportError:
+        found_bs4 = False
+
+    found_datrie = False
+    try:
+        imp.find_module('datrie')
+        found_datrie = True
+    except ImportError:
+        found_datrie = False
+
+    found_Levenshtein = False
+    try:
+        imp.find_module('Levenshtein')
+        found_Levenshtein = True
+    except ImportError:
+        found_Levenshtein = False
+
+    found_unidecode = False
+    try:
+        imp.find_module('unidecode')
+        found_unidecode = True
+    except ImportError:
+        found_unidecode = False
+
+    if (platform.system() == 'Darwin'):
+        MAC = True
+
+        if not (found_Bio or found_bs4 or found_datrie or found_Levenshtein or found_unidecode):
+            sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
+            STANDALONE = True
+
+    # print(sys.path)
+
+    # import Bio
+    # import bs4
+    # import datrie
+    # import Levenshtein
+    # import unidecode
+
+    # print(Bio.__file__)
+    # print(bs4.__file__)
+    # print(datrie.__file__)
+    # print(Levenshtein.__file__)
+    # print(unidecode.__file__)
+
+    # sys.exit(0)
+
+    if STANDALONE:
+
+        if MAC:
+            print('Running PhyloMill in standalone mode.')
+
+        else:
+            print('Standalone mode not yet supported for this operating system.')
+
+    ############################################################################
+
+    import shutil
+    import copy
+    import ConfigParser
+    import subprocess
+    import shlex
+
+    from subprocess import call
+
+    import multiprocessing
+    from multiprocessing import Process
+    from multiprocessing import JoinableQueue
+
+    from krpy import KRSequenceDatabase
+    from krpy.workflow_functions import wf_phylo as wf
+    from krpy import krncbi
+    from krpy import krother
+    from krpy import krbioio
+    from krpy import krbionames
+    from krpy import krio
+    from krpy import krcl
+    from krpy import kralign
+    from krpy import krblast
+
+    from krpy.krother import write_log
 
     ############################################################################
 
@@ -283,6 +308,19 @@ if __name__ == '__main__':
 
     ############################################################################
 
+    if not COMMANDS:
+        print('No commands given.')
+        sys.exit(0)
+
+    ############################################################################
+
+    # Autopilot
+    if 'autopilot' in COMMANDS:
+        COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate', 'raxml'])
+        SPECIES_TREE = True
+
+    ############################################################################
+
     DNLD_DIR_PATH = PRJ_DIR_PATH + 'downloaded_files' + PS
     OUT_DIR_PATH = PRJ_DIR_PATH + 'output' + PS
     SRCH_DIR_PATH = PRJ_DIR_PATH + 'search_strategies' + PS
@@ -293,20 +331,13 @@ if __name__ == '__main__':
     ALN_DIR_PATH = OUT_DIR_PATH + '02_alignments' + PS
     TRE_DIR_PATH = OUT_DIR_PATH + '03_trees' + PS
     PART_TRE_DIR_PATH = TRE_DIR_PATH + 'concat_partitioned' + PS
-    AST_TRE_DIR_PATH = TRE_DIR_PATH + 'astral' + PS
+    # AST_TRE_DIR_PATH = TRE_DIR_PATH + 'astral' + PS
 
     CFG_FILE_PATH = PRJ_DIR_PATH + 'config'
     BLACKLIST_GIS_FILE_PATH = PRJ_DIR_PATH + 'blacklisted_gis.csv'
     CAT_ALN_FILE_PREFIX = ALN_DIR_PATH + 'concat'
 
     # RAxML_CMD_FILE_PATH = ALN_DIR_PATH + 'raxml-commands.txt'
-
-    ############################################################################
-
-    if not COMMANDS:
-        write_log('No commands given.', LFP, newlines_before=0,
-            newlines_after=0)
-        sys.exit(0)
 
     ############################################################################
 
@@ -318,7 +349,7 @@ if __name__ == '__main__':
     EMAIL = CFG.get('General', 'email')
     MAX_SEQ_LENGTH = CFG.getint('General', 'max_seq_length')
 
-    ASTRAL_JAR_FILE = CFG.get('General', 'astral_jar_file')
+    # ASTRAL_JAR_FILE = CFG.get('General', 'astral_jar_file')
 
     # Hacks
     hacks_items = CFG.items('Hacks')
