@@ -11,12 +11,34 @@ LOG_LINE_SEP = '################################################################
 
 if __name__ == '__main__':
 
-    import os
     import sys
+
+    P_V_MAJOR = sys.version_info.major
+    P_V_MINOR = sys.version_info.minor
+    P_V_MICRO = sys.version_info.micro
+
+    P_DNLD_MESSGE = 'Incompatible Python version: ' + sys.version.split('\n')[0] + '\n' + 'Download latest Python 2.X.X version: https://www.python.org/downloads'
+
+    if P_V_MAJOR != 2:
+        print(P_DNLD_MESSGE)
+        sys.exit(0)
+
+    if P_V_MINOR < 7:
+        print(P_DNLD_MESSGE)
+        sys.exit(0)
+
+    if P_V_MICRO < 6:
+        print(P_DNLD_MESSGE)
+        sys.exit(0)
+
+    import os
     import inspect
     import imp
     import platform
     import argparse
+    import subprocess
+
+    from subprocess import call
 
     ############################################################################
 
@@ -192,6 +214,16 @@ if __name__ == '__main__':
         MAC = True
 
         if not (found_Bio and found_bs4 and found_datrie and found_Levenshtein and found_unidecode and found_scipy and found_numpy):
+
+            # Unarchive standalone dependencies
+            if not os.path.exists(MAC_STANDALONE_DIR_PATH):
+                cmd = 'tar xzf ' + KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0.tar.gz -C ' + KRPY_DIR_PATH
+                call(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True)
+
             sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
             STANDALONE = True
 
@@ -208,10 +240,7 @@ if __name__ == '__main__':
     import shutil
     import copy
     import ConfigParser
-    import subprocess
     import shlex
-
-    from subprocess import call
 
     import multiprocessing
     from multiprocessing import Process
@@ -277,6 +306,10 @@ if __name__ == '__main__':
     if ARGS.project_dir:
 
         if os.path.exists(PRJ_DIR_PATH):
+
+            if (not os.path.exists(PRJ_DIR_PATH + 'db.sqlite3')) or (not os.path.exists(PRJ_DIR_PATH + 'config')):
+                print('This does not appear to be a proper PhyloMill project directory: ' + PRJ_DIR_PATH)
+                sys.exit(0)
 
             msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
             write_log(msg=msg, log_file_path=LFP, append=True,
