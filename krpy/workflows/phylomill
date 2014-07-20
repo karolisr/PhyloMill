@@ -215,6 +215,14 @@ if __name__ == '__main__':
 
         if not (found_Bio and found_bs4 and found_datrie and found_Levenshtein and found_unidecode and found_scipy and found_numpy):
 
+            sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
+            STANDALONE = True
+
+    if STANDALONE:
+
+        if MAC:
+            print('Running PhyloMill in standalone mode.')
+
             # Unarchive standalone dependencies
             if not os.path.exists(MAC_STANDALONE_DIR_PATH):
                 cmd = 'tar xzf ' + KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0.tar.gz -C ' + KRPY_DIR_PATH
@@ -223,14 +231,6 @@ if __name__ == '__main__':
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     shell=True)
-
-            sys.path.insert(0, MAC_STANDALONE_DIR_PATH + 'python')
-            STANDALONE = True
-
-    if STANDALONE:
-
-        if MAC:
-            print('Running PhyloMill in standalone mode.')
 
         else:
             print('Standalone mode not yet supported for this operating system.')
