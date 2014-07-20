@@ -1,9 +1,10 @@
-.dropbox
+standalone-deps-darwin-13.3.0
 
 ### Linux
 .*
 !.gitignore
 *~
+!.gitkeep
 
 ### OSX
 .DS_Store
@@ -28,25 +29,25 @@ $RECYCLE.BIN/
 ### Archives
 # It's better to unpack these files and commit the raw source because
 # git has its own built in compression methods.
-#*.7z
-#*.jar
-#*.rar
-#*.zip
+*.7z
+*.jar
+*.rar
+*.zip
 #*.gz
-#*.bzip
-#*.bz2
-#*.xz
-#*.lzma
+*.bzip
+*.bz2
+*.xz
+*.lzma
 #packing-only formats
-#*.iso
+*.iso
 #*.tar
 #package management formats
-#*.dmg
-#*.xpi
-#*.gem
-#*.egg
-#*.deb
-#*.rpm
+*.dmg
+*.xpi
+*.gem
+*.egg
+*.deb
+*.rpm
 
 ### CVS
 /CVS/*
@@ -57,20 +58,21 @@ $RECYCLE.BIN/
 ### Python
 *.py[cod]
 # C extensions
+*.so
 # Packages
 *.egg
 *.egg-info
-#dist
-#build
-#eggs
-#parts
-#bin
-#var
-#sdist
-#develop-eggs
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
 .installed.cfg
-#lib
-#lib64
+lib
+lib64
 # Installer logs
 pip-log.txt
 # Unit test / coverage reports
@@ -98,11 +100,16 @@ nosetests.xml
 *.a
 # Shared objects (inc. Windows DLLs)
 *.dll
+*.so
+*.so.*
 *.dylib
 # Executables
 *.exe
 *.out
 *.app
+
+### Komodo
+*.komodoproject
 
 ### emacs
 *~
