@@ -110,6 +110,12 @@ def align(records, program, options='', program_executable=''):
         args = [program_executable, '-quiet'] + options + ['-in', '-', '-out', '-']
 
     elif program == 'mafft':
+
+        if (len(records) > 5999) and ('--maxiterate' in options):
+            maxiterate_index = options.index('--maxiterate')
+            options.pop(maxiterate_index+1)
+            options.pop(maxiterate_index)
+
         args = [program_executable, '--quiet'] + options + ['-']
 
     if program == 'clustalo':
