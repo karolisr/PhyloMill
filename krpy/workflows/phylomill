@@ -11,7 +11,12 @@ LOG_LINE_SEP = '################################################################
 
 if __name__ == '__main__':
 
+    import platform
     import sys
+
+    MAC = False
+    if (platform.system() == 'Darwin'):
+        MAC = True
 
     P_V_MAJOR = sys.version_info.major
     P_V_MINOR = sys.version_info.minor
@@ -27,14 +32,13 @@ if __name__ == '__main__':
         print(P_DNLD_MESSGE)
         sys.exit(0)
 
-    if P_V_MICRO < 6:
+    if MAC and (P_V_MICRO < 6):
         print(P_DNLD_MESSGE)
         sys.exit(0)
 
     import os
     import inspect
     import imp
-    import platform
     import argparse
     import subprocess
 
@@ -159,8 +163,6 @@ if __name__ == '__main__':
 
     MAC_STANDALONE_DIR_PATH = KRPY_DIR_PATH + PS + 'standalone-deps-darwin-13.3.0' + PS
 
-    MAC = False
-
     found_Bio = False
     try:
         imp.find_module('Bio')
@@ -210,8 +212,7 @@ if __name__ == '__main__':
     except ImportError:
         found_numpy = False
 
-    if (platform.system() == 'Darwin'):
-        MAC = True
+    if MAC:
 
         if not (found_Bio and found_bs4 and found_datrie and found_Levenshtein and found_unidecode and found_scipy and found_numpy):
 
