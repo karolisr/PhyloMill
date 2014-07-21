@@ -1094,6 +1094,7 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
 
     strategies = locus_dict['strategies']
     locus_name = locus_dict['name']
+    locus_similarity = locus_dict['similarity']
     # locus_short_name = locus_dict['short_name']
 
     acc_rej_gi_dict = dict()
@@ -1319,7 +1320,7 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
 
     elif len(trimmed_records) > 10:
 
-        msg = '\tPreparing seed sequences for locus ' + locus_name + ' .'
+        msg = '\tPreparing seed sequences for locus ' + locus_name + '.'
         write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
         seed_records_dict = dict()
@@ -1379,14 +1380,14 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
             file_path=seed_recs_file_path,
             file_format='fasta')
 
-    msg = '\tFiltering records for locus ' + locus_name + '.'
+    msg = '\tFiltering records for locus ' + locus_name + ' with similarity cutoff of ' + str(locus_similarity) + '.'
     write_log(msg, log_file_path, newlines_before=0, newlines_after=0, to_file=True, to_screen=False)
 
     acc_rej_gi_dict = accept_records_by_similarity(
         aln_executable=aln_executable,
         records=trimmed_records,
         seeds=seed_records,
-        identity_threshold=0.80,
+        identity_threshold=locus_similarity,
         cpu=cpu)
 
     msg = 'Annotating sequence features in database for locus ' + locus_name + '.'
@@ -1917,7 +1918,7 @@ def produce_raxml_input_files(exe, name, aln_file_path, out_dir_path, outgroup_t
     raxml_line_7 = '-p ' + rand_seed + ' \\\n'
     f_raxml.write(raxml_line_7)
 
-    raxml_line_8 = '-n ' + '' + name + '\n'
+    raxml_line_8 = '-n ' + '' + name + '.tre\n'
     f_raxml.write(raxml_line_8)
 
     f_raxml.close()

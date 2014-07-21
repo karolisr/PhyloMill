@@ -524,15 +524,17 @@ if __name__ == '__main__':
     # Loci
     LOCI = dict()
     loci_temp = CFG.items('Loci')
-    loci_temp = [x[0] for x in loci_temp]
+    loci_temp = [(x[0], float(x[1])) for x in loci_temp]
 
     AUTO_LOCI = False
     if not loci_temp:
         # Automatically find loci
         AUTO_LOCI = True
-        loci_temp = [x['full'] for x in krio.parse_directory(SRCH_DIR_PATH, '$$$')]
+        loci_temp = [(x['full'], 0.80) for x in krio.parse_directory(SRCH_DIR_PATH, '$$$')]
 
     for l in loci_temp:
+        l_similarity = l[1]
+        l = l[0]
         locus_ss_file_path = SRCH_DIR_PATH + l
         if os.path.exists(locus_ss_file_path):
             locus_cfg = ConfigParser.SafeConfigParser(allow_no_value=True)
@@ -543,6 +545,7 @@ if __name__ == '__main__':
             l_strategies = list()
 
             l_dict['name'] = l
+            l_dict['similarity'] = l_similarity
 
             for l_sec in locus_cfg.sections():
                 if l_sec == l:
@@ -649,7 +652,7 @@ if __name__ == '__main__':
 
         cfg_loci_names.sort(key=lambda x: x.lower())
 
-        cfg_loci_string = '[Loci]\n\n' + '\n'.join(cfg_loci_names)
+        cfg_loci_string = '[Loci]\n\n' + ' = 0.80\n'.join(cfg_loci_names) + ' = 0.80'
         print_loci_string = ', '.join(cfg_loci_names)
 
         msg = 'Will use loci: ' + print_loci_string + '.'
