@@ -8,7 +8,7 @@ query = ("trnT" OR "trnL" OR "trnF" OR "tRNA-Leu" OR "tRNA-Phe" OR "tRNA-Thr") N
 [1]
 
 # 0 - anywhere; 1,2,3... - position;
-locus_relative_position = 1
+locus_relative_position = 2
 
 # gene, mRNA, CDS, etc.
 feature_type = misc_feature
@@ -39,7 +39,7 @@ extra_length = 0
 [2]
 
 # 0 - anywhere; 1,2,3... - position;
-locus_relative_position = 1
+locus_relative_position = 2
 
 # gene, mRNA, CDS, etc.
 feature_type = gene
@@ -70,7 +70,7 @@ extra_length = 0
 [3]
 
 # 0 - anywhere; 1,2,3... - position;
-locus_relative_position = 1
+locus_relative_position = 3
 
 # gene, mRNA, CDS, etc.
 feature_type = gene
@@ -80,7 +80,7 @@ qualifier_label = gene
 
 # GBSSI, waxy, granule bound starch synthase
 # Alternative values can be separated by a vertical bar '|'
-qualifier_value = trnL|tRNA-Leu|trnF|tRNA-Phe
+qualifier_value = trnL|tRNA-Leu
 
 # Yes or No
 #   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
@@ -101,7 +101,38 @@ extra_length = 0
 [4]
 
 # 0 - anywhere; 1,2,3... - position;
-locus_relative_position = 1
+locus_relative_position = 5
+
+# gene, mRNA, CDS, etc.
+feature_type = gene
+
+# gene, product, etc.
+qualifier_label = gene
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = trnF|tRNA-Phe
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = Yes
+
+# minimum length of the feature being extracted
+min_length = 50
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+
+[5]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 3
 
 # gene, mRNA, CDS, etc.
 feature_type = gene
@@ -129,10 +160,10 @@ min_length = 50
 # extract more to the left and to the right of the feature
 extra_length = 0
 
-[5]
+[6]
 
 # 0 - anywhere; 1,2,3... - position;
-locus_relative_position = 1
+locus_relative_position = 4
 
 # gene, mRNA, CDS, etc.
 feature_type = gene
