@@ -72,14 +72,14 @@ if __name__ == '__main__':
     PARSER.add_argument(
         '-p',
         '--project_dir',
-        type=unicode,
+        type=str,
         help="Prepares clean project directory if it doesn't exist. Otherwise \
               sets the project directory.")
 
     PARSER.add_argument(
         '-c',
         '--commands',
-        type=unicode,
+        type=str,
         help='Commands to run.')
 
     PARSER.add_argument(
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     PARSER.add_argument(
         '--locus',
-        type=unicode,
+        type=str,
         help='')
 
     PARSER.add_argument(
