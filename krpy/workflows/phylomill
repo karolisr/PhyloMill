@@ -22,7 +22,7 @@ if __name__ == '__main__':
     P_V_MINOR = sys.version_info.minor
     P_V_MICRO = sys.version_info.micro
 
-    P_DNLD_MESSGE = 'Incompatible Python version: ' + sys.version.split('\n')[0] + '\n' + 'Download latest Python 2.X.X version: https://www.python.org/downloads'
+    P_DNLD_MESSGE = 'Incompatible Python version: ' + sys.version.split('\n')[0] + '\n' + 'Download latest Python version (at least 2.7.6): https://www.python.org/downloads'
 
     if P_V_MAJOR != 2:
         print(P_DNLD_MESSGE)
