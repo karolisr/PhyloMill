@@ -7,6 +7,26 @@ from __future__ import print_function
 if __name__ == '__main__':
 
     import argparse
+    import os
+    import sys
+    import inspect
+
+    PS = os.path.sep
+
+    # Script filename
+    SCRIPT_FILE_PATH = inspect.getfile(inspect.currentframe())
+
+    # Script directory path
+    SCRIPT_DIR_PATH = os.path.dirname(os.path.abspath(SCRIPT_FILE_PATH))
+
+    # krpy directory path
+    KRPY_DIR_PATH = PS.join(SCRIPT_DIR_PATH.split(PS)[0:-1])
+
+    # krpy root directory path
+    KRPY_ROOT_DIR_PATH = PS.join(SCRIPT_DIR_PATH.split(PS)[0:-2])
+
+    # import krpy path
+    sys.path.insert(0, KRPY_ROOT_DIR_PATH)
 
     from krpy import krbioio
     from krpy import krncbi

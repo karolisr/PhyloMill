@@ -1399,6 +1399,7 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
     # Fix sequence direction based on majority of good sequences
     acc_gi_list = acc_rej_gi_dict['accept']
     rev_comp_gi_list = list()
+
     for acc in acc_gi_list:
 
         kr_seq_db_object.remove_record_annotation(
@@ -1561,7 +1562,7 @@ def improve_alignment_using_reference_records(
 
         ref_aln_record_list = list()
         for r in ref_aln:
-            if r.id != ref_rec_trimmed.id:
+            if r.id.strip('_R_') != ref_rec_trimmed.id:
                 ref_aln_record_list.append(r)
         ref_aln = MultipleSeqAlignment(ref_aln_record_list)
 
@@ -1630,6 +1631,7 @@ def flatten_locus(
     aln_program_executable='mafft',
     aln_options='--auto',
     min_locus_sequence_identity_range=[0.90, 0.98]):
+    # min_locus_sequence_identity_range=[0.90, 0.98]):
 
     from krpy.krother import write_log
     from krpy import kralign
@@ -1664,6 +1666,8 @@ def flatten_locus(
             options=aln_options,
             program_executable=aln_program_executable
             )
+
+        # print(aln)
 
         # ident = kralign.identity(
         #     alignment=aln,
@@ -1732,6 +1736,8 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
     seq_rep_id_list = list()
 
     for ar in new_aln:
+
+        # print(ar.id)
 
         seq = kr_seq_db_object.get_sequence_for_record(
             record_reference=int(ar.id),

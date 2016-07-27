@@ -53,7 +53,7 @@ def cluster_file(
     else:
         threads = ''
 
-    if strand == 'aa':
+    if (strand == 'aa') or (algorithm == 'fast'):
         strand = ''
     else:
         strand = ' -strand ' + strand

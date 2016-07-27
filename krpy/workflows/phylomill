@@ -908,6 +908,7 @@ if __name__ == '__main__':
                     ncbi_tax_ids=ALL_TAX_IDS,
                     exclude_tax_ids=EXCLUDE_TAX_IDS,
                     query_term_str=locus_dict['query'],
+                    min_seq_length=100,  ## QUICK HACK!!!
                     max_seq_length=MAX_SEQ_LENGTH)
 
                 cmd = 'blastn -remote -task blastn -entrez_query \'' + query_str + '\'' \
@@ -1738,6 +1739,11 @@ if __name__ == '__main__':
 
                                 new_aln = new_aln[0]
 
+                            # print(new_aln)
+                            for seq_in_aln in new_aln:
+                                # print(seq_in_aln.id)
+                                seq_in_aln.id = seq_in_aln.id.strip('_R_')
+
                             wf.update_record_alignment(
                                 rec_id=flat_rec_id,
                                 new_aln=new_aln,
@@ -1886,6 +1892,11 @@ if __name__ == '__main__':
                                 aln = aln[0]
 
                                 flat_locus_produced = True
+
+                                # print(aln)
+                                for seq_in_aln in aln:
+                                    # print(seq_in_aln.id)
+                                    seq_in_aln.id = seq_in_aln.id.strip('_R_')
 
                                 krbioio.write_alignment_file(
                                     alignment=aln,
@@ -2091,6 +2102,12 @@ if __name__ == '__main__':
 
                 r.description = ''
                 r.name = ''
+
+            # This will write sequences to be aligned to fasta file
+            # krbioio.write_sequence_file(
+            #     records=records_flat,
+            #     file_path=aln_file_path_fas,
+            #     file_format='fasta')
 
             aln = kralign.align(
                 records=records_flat,

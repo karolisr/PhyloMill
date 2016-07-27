@@ -126,7 +126,7 @@ def read_table_file(
         return None
 
     if not handle:
-        handle = CommentedFile(open(path, 'rb'), commentstring=commentchar)
+        handle = CommentedFile(open(path, 'rU'), commentstring=commentchar)
     else:
         handle = CommentedFile(handle, commentstring=commentchar)
 

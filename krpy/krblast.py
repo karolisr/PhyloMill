@@ -56,7 +56,8 @@ def annotate_blast_hits(blast_results_xml, gb_records, annotation_type, qualifie
 
     for blast_record in blast_records:
         for alignment in blast_record.alignments:
-            alignment_id = (alignment.title.split("|")[1]).split(" ")[0]
+            # alignment_id = (alignment.title.split("|")[1]).split(" ")[0]
+            alignment_id = alignment.title.split(' ')[1]
             if gb_records_dict.has_key(str(alignment_id)):
                 gb_record = gb_records_dict[str(alignment_id)]
                 for hsp in alignment.hsps:

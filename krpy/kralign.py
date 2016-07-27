@@ -142,7 +142,9 @@ def align(records, program, options='', program_executable=''):
             creationflags=0)
 
         data = pipe.communicate(input=input_handle.getvalue())
-        alignment = AlignIO.read(StringIO(data[0]), 'fasta')
+        alignment_string = StringIO(data[0])
+        # print(alignment_string.getvalue())
+        alignment = AlignIO.read(alignment_string, 'fasta')
 
     return alignment
 
@@ -605,7 +607,8 @@ def cluster(
     aln_options='--auto --reorder --adjustdirection',
     seeds=None,
     seed_coverage=0.5,
-    query_coverage=0.9):
+    query_coverage=0.9,
+    free_gaps=True):
 
     from krpy import krother
     from krpy import krcl
@@ -661,12 +664,12 @@ def cluster(
             results_dict[a_id].append(['+', a_id, '1.0'])
             consumed_ids.append(a_id)
 
-        for b_rec in records:
+        for i, b_rec in enumerate(records):
 
             krcl.print_progress(
                 current=len(consumed_ids), total=record_count, length=0,
                 prefix=krother.timestamp() + ' ',
-                postfix=' records clustered',
+                postfix=' records clustered. Checking ' + str(i) + '/' + str(record_count) + '.',
                 show_bar=False)
 
             # print('b_rec', b_rec)
@@ -735,13 +738,14 @@ def cluster(
                 alignment=aln,
                 unknown_letters=set(['N']),
                 free_unknowns=True,
-                free_gaps=True,
+                free_gaps=free_gaps,
                 free_end_gaps=True)
 
             if (score >= threshold) and (a_cov >= seed_coverage) and (b_cov >= query_coverage):
                 results_dict[a_id].append([direction, b_id, score])
                 consumed_ids.append(b_id)
 
+            krcl.clear_line()
             # print(a_id, ':', b_id, '=', score, '|', a_cov, b_cov)
 
     # Report unclustered ids

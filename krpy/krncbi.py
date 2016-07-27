@@ -462,6 +462,7 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
         tax_ids = list()
         for tax_term in tax_terms:
             tax_id = get_ncbi_tax_id_for_tax_term(email, tax_term)
+            # print(tax_id, tax_term)
             if tax_id:
                 tax_ids.append(tax_id)
 
@@ -502,7 +503,7 @@ def get_lineages(email, tax_terms=None, tax_ids=None):
         lin_item = 'name=' + record['ScientificName'] + ';' + 'rank=' + record['Rank'] + ';' + 'taxid=' + record['TaxId'] + ';'
         lineage_list.append(lin_item)
 
-        results[tax_id] = lineage_list
+        # results[tax_id] = lineage_list
 
         if tax_terms:
             results[str(tax_terms[i])] = lineage_list
@@ -516,6 +517,7 @@ def parse_lineage_string_list(lineage_string_list):
 
     full_list = list()
     name_list = list()
+    name_dict = dict()
 
     for ls in lineage_string_list:
         ls_split_1 = ls.split(';')
@@ -531,10 +533,11 @@ def parse_lineage_string_list(lineage_string_list):
                 name_list.append(value)
             local_dict[key] = value
         full_list.append(local_dict)
+        name_dict[local_dict['rank']] = local_dict['name']
         #     print(key, value)
         # print('--- --- --- --- ---')
 
-    return [full_list, name_list]
+    return [full_list, name_list, name_dict]
 
 
 def get_common_names(email, tax_ids=None):

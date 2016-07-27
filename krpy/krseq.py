@@ -211,6 +211,106 @@ def translate_cds(record, table):
     return rec
 
 
+def merge_record_features(gb_records, annotation_type_to_merge, annotation_type_merged, merged_label, qualifiers_dict=None):
+
+    from Bio.SeqFeature import SeqFeature, FeatureLocation
+    from krpy import krbioio
+    from krpy import krother
+
+    gb_records_dict = gb_records
+    if isinstance(gb_records_dict, basestring):
+        gb_records_dict = krbioio.read_sequence_file(
+            file_path=gb_records,
+            file_format='gb',
+            ret_type='dict',
+            key='gi')
+
+    for gb_record in gb_records_dict.values():
+        merged_features = []
+        features = []
+        for feature in gb_record.features:
+            if feature.type == annotation_type_to_merge:
+                features.append(feature)
+        features.sort(key=lambda x: x.location.start, reverse=False)
+        prev_range = [-1,-1]
+        start = -1
+        # q_start = -1
+        # q_end = -1
+        strand = None
+        for feature in features:
+            if prev_range[0] == -1:
+                start = int(feature.location.nofuzzy_start)
+                prev_range = [int(feature.location.nofuzzy_start),int(feature.location.nofuzzy_end)]
+
+                # q_start_temp = feature.qualifiers['query_start']
+                # q_end_temp = feature.qualifiers['query_end']
+
+                # q_start = None
+                # if not isinstance(q_start_temp, int):
+                #     q_start = int(feature.qualifiers['query_start'][0])
+                # else:
+                #     q_start = int(q_start_temp)
+
+                # q_end = None
+                # if not isinstance(q_end_temp, int):
+                #     q_end = int(feature.qualifiers['query_start'][0])
+                # else:
+                #     q_end = int(q_end_temp)
+
+                if feature.strand:
+                    strand = int(feature.strand)
+
+            if not krother.in_range(int(feature.location.nofuzzy_start),prev_range[0],prev_range[1],100):
+                merged_features.append([start, prev_range[1], strand])
+
+                # q_start_temp = feature.qualifiers['query_start']
+                # q_end_temp = feature.qualifiers['query_end']
+
+                # q_start = None
+                # if not isinstance(q_start_temp, int):
+                #     q_start = int(feature.qualifiers['query_start'][0])
+                # else:
+                #     q_start = int(q_start_temp)
+
+                # q_end = None
+                # if not isinstance(q_end_temp, int):
+                #     q_end = int(feature.qualifiers['query_start'][0])
+                # else:
+                #     q_end = int(q_end_temp)
+
+                start = int(feature.location.nofuzzy_start)
+            prev_range = [int(feature.location.nofuzzy_start),max(prev_range[1],int(feature.location.nofuzzy_end))]
+
+            # q_start_temp = feature.qualifiers['query_start']
+            # q_end_temp = feature.qualifiers['query_end']
+
+            # q_start = None
+            # if not isinstance(q_start_temp, int):
+            #     q_start = int(feature.qualifiers['query_start'][0])
+            # else:
+            #     q_start = int(q_start_temp)
+
+            # q_end = None
+            # if not isinstance(q_end_temp, int):
+            #     q_end = int(feature.qualifiers['query_start'][0])
+            # else:
+            #     q_end = int(q_end_temp)
+
+            if feature.strand:
+                strand = int(feature.strand)
+        if len(features) > 0:
+            merged_features.append([start, prev_range[1], strand])
+        for merged_feature in merged_features:
+            # default_qualifiers = {'query_start':merged_feature[2], 'query_end':merged_feature[3], 'label':merged_label}
+            # if qualifiers_dict:
+            #     default_qualifiers = dict(default_qualifiers.items() + qualifiers_dict.items())
+            # alignment_feature = SeqFeature(FeatureLocation(merged_feature[0], merged_feature[1]), strand=merged_feature[2], type=annotation_type_merged)
+            alignment_feature = SeqFeature(FeatureLocation(merged_feature[0], merged_feature[1]), strand=1, type=annotation_type_merged)
+            gb_record.features.append(alignment_feature)
+            gb_records_dict[gb_record.annotations['gi']] = gb_record
+    return gb_records_dict
+
+
 # if __name__ == '__main__':
 
     # Tests
