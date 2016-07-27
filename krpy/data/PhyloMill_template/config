@@ -21,6 +21,11 @@ skip_previously_synonymized = Yes
 
 [Loci]
 
+COI = 0.80
+cytb = 0.80
+RAG1 = 0.80
+RAG2 = 0.80
+
 [Blast]
 
 [Flatten]
