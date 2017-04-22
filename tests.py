@@ -10,15 +10,13 @@ from __future__ import unicode_literals
 from __future__ import with_statement
 
 import unittest
-
 # import datetime
+from krtests import *
 
 from krpy import PYTHON_VERSION_STRING
 py_ver_msg = '\nPython version: {pv}\n'.format(pv=PYTHON_VERSION_STRING)
 print(py_ver_msg)
 
-from krtests import *
-# from krtests import krpySeqTests, krpyIUPACTests
 
 def main():
 

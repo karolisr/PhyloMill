@@ -123,7 +123,8 @@ class NTSeq(_Seq):
             super(NTSeq, self).__init__(seq)
         else:
             message = ('NT sequence should not contain these characters: {s}.')
-            message = message.format(s=', '.join(str(s) for s in set(seq) - NT_AMBIGUOUS))
+            message = message.format(s=', '.join(
+                str(s) for s in set(seq) - NT_AMBIGUOUS))
             raise Error(message)
 
 
@@ -145,8 +146,10 @@ class DNASeq(NTSeq):
             seq = seq.replace('U', 'T')
             super(DNASeq, self).__init__(seq)
         else:
-            message = ('DNA sequence should not contain these characters: {s}.')
-            message = message.format(s=', '.join(str(s) for s in set(seq) - DNA_AMBIGUOUS))
+            message = (
+                'DNA sequence should not contain these characters: {s}.')
+            message = message.format(s=', '.join(
+                str(s) for s in set(seq) - DNA_AMBIGUOUS))
             raise Error(message)
 
 
@@ -168,8 +171,10 @@ class RNASeq(NTSeq):
             seq = seq.replace('T', 'U')
             super(RNASeq, self).__init__(seq)
         else:
-            message = ('RNA sequence should not contain these characters: {s}.')
-            message = message.format(s=', '.join(str(s) for s in set(seq) - RNA_AMBIGUOUS))
+            message = (
+                'RNA sequence should not contain these characters: {s}.')
+            message = message.format(s=', '.join(
+                str(s) for s in set(seq) - RNA_AMBIGUOUS))
             raise Error(message)
 
 
@@ -189,7 +194,8 @@ class AASeq(_Seq):
             super(AASeq, self).__init__(seq)
         else:
             message = ('AA sequence should not contain these characters: {s}.')
-            message = message.format(s=', '.join(str(s) for s in set(seq) - AA_AMBIGUOUS))
+            message = message.format(s=', '.join(
+                str(s) for s in set(seq) - AA_AMBIGUOUS))
             raise Error(message)
 
 

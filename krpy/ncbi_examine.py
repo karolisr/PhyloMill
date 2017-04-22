@@ -17,24 +17,24 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import with_statement
 
-import os.path
-from os import remove
-import hashlib
-import zipfile
+# import os.path
+# from os import remove
+# import hashlib
+# import zipfile
 
-from krpy import PS
-from krpy import FILE_OPEN_MODE_READ
+# from krpy import PS
+# from krpy import FILE_OPEN_MODE_READ
 
-from krpy import Root
-from krpy import Error
-from krpy import internet
-from krpy import io
+# from krpy import Root
+# from krpy import Error
+# from krpy import internet
+# from krpy import io
 
-from krpy.ncbi import TAX_BASE_URL
-from krpy.ncbi import TAXDMP_FILES
-from krpy.ncbi import TAXDMP_ARCHIVE
-from krpy.ncbi import TAXCAT_FILES
-from krpy.ncbi import TAXCAT_ARCHIVE
+# from krpy.ncbi import TAX_BASE_URL
+# from krpy.ncbi import TAXDMP_FILES
+# from krpy.ncbi import TAXDMP_ARCHIVE
+# from krpy.ncbi import TAXCAT_FILES
+# from krpy.ncbi import TAXCAT_ARCHIVE
 
 from krpy.ncbi import _parse_ncbi_taxonomy_dump_file
 
@@ -152,13 +152,13 @@ def _examine_ncbi_taxonomy_nodes_dump(file_path):
         rank = r[2]
         embl_code = r[3]
         division_id = r[4]
-        inherited_div_flag = r[5]
+        # inherited_div_flag = r[5]
         genetic_code_id = r[6]
-        inherited_GC_flag = r[7]
+        # inherited_GC_flag = r[7]
         mitochondrial_genetic_code_id = r[8]
-        inherited_MGC_flag = r[9]
-        GenBank_hidden_flag = r[10]
-        hidden_subtree_root_flag = r[11]
+        # inherited_MGC_flag = r[9]
+        # GenBank_hidden_flag = r[10]
+        # hidden_subtree_root_flag = r[11]
 
         # not every row contains this column, and it is not needed
         # comments = r[12]
@@ -172,7 +172,8 @@ def _examine_ncbi_taxonomy_nodes_dump(file_path):
         mitochondrial_genetic_code_id_set.add(mitochondrial_genetic_code_id)
 
         genetic_code_id_list.append(genetic_code_id)
-        mitochondrial_genetic_code_id_list.append(mitochondrial_genetic_code_id)
+        mitochondrial_genetic_code_id_list.append(
+            mitochondrial_genetic_code_id)
 
     print('row_count', row_count)
     print('column_count_set', column_count_set)

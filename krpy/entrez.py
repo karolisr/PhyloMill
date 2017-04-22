@@ -21,7 +21,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import with_statement
 
-import sys
+# import sys
 import locale
 from xml.etree import ElementTree
 
@@ -56,6 +56,8 @@ def esearch(db, term):
 
     url = ENTREZ_BASE_URL + eutil + '?db=' + db + '&term=' + term \
         + '&retmax=100000' + '&usehistory=y'
+
+    # print(url)
 
     response = internet.urlopen(url)
     tree = ElementTree.parse(response)

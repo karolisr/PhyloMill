@@ -17,13 +17,13 @@ from __future__ import with_statement
 
 import os.path
 from os import remove
-import hashlib
+# import hashlib
 import zipfile
 
-from krpy import PS
+# from krpy import PS
 from krpy import FILE_OPEN_MODE_READ
 
-from krpy import Root
+# from krpy import Root
 from krpy import Error
 from krpy import internet
 from krpy import io

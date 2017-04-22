@@ -15,24 +15,24 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import with_statement
 
-import os.path
-from os import remove
-import hashlib
-import zipfile
+# import os.path
+# from os import remove
+# import hashlib
+# import zipfile
 
 from krpy import PS
-from krpy import FILE_OPEN_MODE_READ
+# from krpy import FILE_OPEN_MODE_READ
 
 from krpy import Root
 from krpy import Error
-from krpy import internet
+# from krpy import internet
 from krpy import io
 
-from krpy.ncbi import TAX_BASE_URL
-from krpy.ncbi import TAXDMP_FILES
-from krpy.ncbi import TAXDMP_ARCHIVE
-from krpy.ncbi import TAXCAT_FILES
-from krpy.ncbi import TAXCAT_ARCHIVE
+# from krpy.ncbi import TAX_BASE_URL
+# from krpy.ncbi import TAXDMP_FILES
+# from krpy.ncbi import TAXDMP_ARCHIVE
+# from krpy.ncbi import TAXCAT_FILES
+# from krpy.ncbi import TAXCAT_ARCHIVE
 from krpy.ncbi import NAME_CLASS_SET
 
 from krpy.ncbi import _update_ncbi_taxonomy_data

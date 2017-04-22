@@ -10,7 +10,7 @@ from __future__ import with_statement
 
 import unittest
 
-from krpy import PS
+# from krpy import PS
 from krpy import FILE_OPEN_MODE_READ
 from krpy.bioio import _parse_gbseq_xml_handle
 
