@@ -16,7 +16,7 @@ def blacklist_gis(gis, kr_seq_db_object, log_file_path):
 
     for gi in gis:
 
-        GI = gi
+        GI = int(gi)
 
         in_blacklist = kr_seq_db_object.in_blacklist(
             record_reference=GI,
@@ -162,7 +162,7 @@ def download_new_records(locus_name, ncbi_db, gis, dnld_file_path, kr_seq_db_obj
             key='gi')
 
         downloaded_gis = records_new_temp.keys()
-        # downloaded_gis = [int(x) for x in downloaded_gis]
+        downloaded_gis = [int(x) for x in downloaded_gis]
 
         gis_new_after_dnld = list(set(downloaded_gis) - set(all_gis_in_db))
 
@@ -229,7 +229,7 @@ def search_genbank(ncbi_db, query_term_str, ncbi_tax_ids, exclude_tax_ids, min_s
     uid_list = list()
 
     for uid in result_uids:
-        gi = uid
+        gi = int(uid)
         uid_list.append(gi)
 
     return uid_list
@@ -313,14 +313,14 @@ def regular_search(kr_seq_db_object, log_file_path, email, loci, locus_name, ncb
             krcl.print_progress(
                 current=i+1, total=record_count, length=0,
                 prefix=krother.timestamp() + ' ',
-                postfix=' - ' + record.annotations['accessions'][0],
+                postfix=' - ' + record.annotations['gi'],
                 show_bar=False)
 
             DB.add_genbank_record(
                 record=record,
                 action_str='Genbank search result.')
 
-            gi = record.annotations['accessions'][0]
+            gi = int(record.annotations['gi'])
 
             DB.add_record_annotation(
                 record_reference=gi,
@@ -529,7 +529,7 @@ def rename_organisms_with_record_taxon_mappings(
 
             kr_seq_db_object.update_records(
                 values_dict={'org_id': org_id_new},
-                where_dict={'ncbi_gi': gi_mapped})
+                where_dict={'ncbi_gi': int(gi_mapped)})
 
             if org_flat != acc_name_flat:
 
@@ -842,7 +842,7 @@ def rename_organisms_using_taxids(
 
                     rec_gi = rec.annotations['gi']
                     if rec_gi and rec_gi != 'None':
-                        rec_gi = rec_gi
+                        rec_gi = int(rec_gi)
 
                     kr_seq_db_object.add_record_to_blacklist(
                         ncbi_gi=rec_gi,
@@ -1126,7 +1126,7 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
             show_bar=False)
 
         rec_id = int(record.annotations['kr_seq_db_id'])
-        gi = record.annotations['gi']
+        gi = int(record.annotations['gi'])
 
         location_list = list()
 
@@ -1403,14 +1403,14 @@ def extract_loci(aln_executable, locus_dict, records, log_file_path, kr_seq_db_o
     for acc in acc_gi_list:
 
         kr_seq_db_object.remove_record_annotation(
-            record_reference=acc[1],
+            record_reference=int(acc[1]),
             type_str='locus_not_extracted',
             annotation_str=locus_name,
             record_reference_type='gi'  # gi version internal raw
             )
 
         if acc[0] == '-':
-            rev_comp_gi_list.append(acc[1])
+            rev_comp_gi_list.append(int(acc[1]))
 
     prfl_count = len(prelim_record_feat_loc_list)
     for i, r in enumerate(prelim_record_feat_loc_list):
@@ -1740,7 +1740,7 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
         # print(ar.id)
 
         seq = kr_seq_db_object.get_sequence_for_record(
-            record_reference=ar.id,
+            record_reference=int(ar.id),
             record_reference_type='gi'
             )
 
@@ -1750,7 +1750,7 @@ def update_record_alignment(rec_id, new_aln, aln_name, kr_seq_db_object):
 
         ar_id = kr_seq_db_object.db_get_row_ids(
             table_name='records',
-            where_dict={'ncbi_gi': ar.id})[0]
+            where_dict={'ncbi_gi': int(ar.id)})[0]
 
         seq_id = kr_seq_db_object.db_get_row_ids(
             table_name='sequences',
