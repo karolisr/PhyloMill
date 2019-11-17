@@ -1,0 +1,94 @@
+# 12S ribosomal RNA mitochondrial
+# tRNA-Val mitochondrial
+# 16S ribosomal RNA mitochondrial
+
+[16S-tRNA_Val-12S]
+
+database = nuccore
+query = ("12S"[Title] OR "16S"[Title] OR "mitochondrion"[Title] OR "mitochondrial DNA, complete genome"[Title]) NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
+
+[1]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 1
+
+# gene, mRNA, CDS, etc.
+feature_type = rRNA
+
+# gene, product, etc.
+qualifier_label = note
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = 12S ribosomal RNA|12S
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = No
+
+# minimum length of the feature being extracted
+min_length = 100
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+
+[2]
+
+locus_relative_position = 1
+feature_type = rRNA
+qualifier_label = product
+qualifier_value = 12S ribosomal RNA|12S
+regex = No
+strict_value_match = No
+min_length = 100
+extra_length = 0
+
+[3]
+
+locus_relative_position = 3
+feature_type = rRNA
+qualifier_label = note
+qualifier_value = 16S ribosomal RNA|16S
+regex = No
+strict_value_match = No
+min_length = 100
+extra_length = 0
+
+[4]
+
+locus_relative_position = 3
+feature_type = rRNA
+qualifier_label = product
+qualifier_value = 16S ribosomal RNA|16S
+regex = No
+strict_value_match = No
+min_length = 100
+extra_length = 0
+
+[5]
+
+locus_relative_position = 2
+feature_type = tRNA
+qualifier_label = product
+qualifier_value = tRNA-Val
+regex = No
+strict_value_match = No
+min_length = 100
+extra_length = 0
+
+[6]
+
+locus_relative_position = 0
+feature_type = misc_feature
+qualifier_label = note
+qualifier_value = 12S ribosomal RNA|tRNA-Val|16S ribosomal RNA|12S|16S
+regex = No
+strict_value_match = No
+min_length = 100
+extra_length = 0
