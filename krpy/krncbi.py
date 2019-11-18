@@ -66,7 +66,8 @@ def esearch(esearch_terms, db, email):
                     if row['DbName'] == db:
                         retmax = int(row['Count'])
                         break
-                handle = Entrez.esearch(db=db, term=term, retmax=retmax)
+                handle = Entrez.esearch(db=db, term=term, retmax=retmax,
+                                        idtype='acc')
                 record = Entrez.read(handle)
                 uid_set = uid_set + record['IdList']
             uid_set = set(uid_set)
@@ -185,7 +186,7 @@ def download_ncbi_records(uids, db, entrez_email, rettype, large_batch_size=2000
                 rec_downloaded = len(temp_records)
                 ##
                 # for tr in temp_records:
-                #     downloaded_uids.add(tr.annotations['gi'])
+                #     downloaded_uids.add(tr.id)
                 ##
             except Exception as err:
                 # print(rec_downloaded, n_rec_to_download)
@@ -333,7 +334,7 @@ def download_sequence_records(file_path, uids, db, entrez_email, verbose=True):
 #                 rec_downloaded = len(temp_records)
 #                 ##
 #                 for tr in temp_records:
-#                     downloaded_uids.add(tr.annotations['gi'])
+#                     downloaded_uids.add(tr.id)
 #                 ##
 #             except Exception as err:
 #                 # print(rec_downloaded, n_rec_to_download)

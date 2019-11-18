@@ -630,7 +630,7 @@ def cluster(
             if key == 'accession':
                 key_value = seed_rec.id
             elif key == 'gi':
-                key_value = seed_rec.annotations['gi']
+                key_value = seed_rec.id
             elif key == 'description':
                 key_value = seed_rec.description
             else:
@@ -647,7 +647,7 @@ def cluster(
         if key == 'accession':
             key_value = a_rec.id
         elif key == 'gi':
-            key_value = a_rec.annotations['gi']
+            key_value = a_rec.id
         elif key == 'description':
             key_value = a_rec.description
         else:
@@ -678,7 +678,7 @@ def cluster(
             if key == 'accession':
                 key_value = b_rec.id
             elif key == 'gi':
-                key_value = b_rec.annotations['gi']
+                key_value = b_rec.id
             elif key == 'description':
                 key_value = b_rec.description
             else:
@@ -756,7 +756,7 @@ def cluster(
         if key == 'accession':
             key_value = rec.id
         elif key == 'gi':
-            key_value = rec.annotations['gi']
+            key_value = rec.id
         elif key == 'description':
             key_value = rec.description
         else:
@@ -801,7 +801,7 @@ def dereplicate(
             if key == 'accession':
                 key_value = r.id
             elif key == 'gi':
-                key_value = r.annotations['gi']
+                key_value = r.id
             elif key == 'description':
                 key_value = r.description
             else:

@@ -203,7 +203,7 @@ def translate_cds(record, table):
 
     rec.name = record.id.split('.')[0]
     rec.description = record.description
-    rec.annotations['gi'] = record.annotations['gi']
+    # rec.annotations['gi'] = record.annotations['gi']
     rec.annotations['organism'] = record.annotations['organism']
     rec.annotations['taxonomy'] = record.annotations['taxonomy']
     rec.id = record.id
@@ -307,7 +307,7 @@ def merge_record_features(gb_records, annotation_type_to_merge, annotation_type_
             # alignment_feature = SeqFeature(FeatureLocation(merged_feature[0], merged_feature[1]), strand=merged_feature[2], type=annotation_type_merged)
             alignment_feature = SeqFeature(FeatureLocation(merged_feature[0], merged_feature[1]), strand=1, type=annotation_type_merged)
             gb_record.features.append(alignment_feature)
-            gb_records_dict[gb_record.annotations['gi']] = gb_record
+            gb_records_dict[gb_record.id] = gb_record
     return gb_records_dict
 
 

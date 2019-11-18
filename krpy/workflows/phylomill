@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-
 
 from __future__ import print_function
 
-LOG_LINE_SEP = '################################################################################'
+LOG_LINE_SEP = '#' * 80
 
 ################################################################################
 
@@ -314,7 +313,7 @@ if __name__ == '__main__':
 
             msg = 'Using project directory at ' + PRJ_DIR_PATH.rstrip(PS)
             write_log(msg=msg, log_file_path=LFP, append=True,
-                newlines_before=0, newlines_after=0)
+                      newlines_before=0, newlines_after=0)
             DB = KRSequenceDatabase.KRSequenceDatabase(
                 PRJ_DIR_PATH + 'db.sqlite3')
 
@@ -329,13 +328,14 @@ if __name__ == '__main__':
             print('')
             msg = 'Creating project directory at ' + PRJ_DIR_PATH.rstrip(PS)
             write_log(msg=msg, log_file_path=LFP, append=False,
-                newlines_before=0, newlines_after=0)
+                      newlines_before=0, newlines_after=0)
 
             DB = KRSequenceDatabase.KRSequenceDatabase(PRJ_DIR_PATH + 'db.sqlite3')
 
             wd = os.getcwd()
-            os.chdir(PRJ_DIR_PATH+'organism_name_files')
-            call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
+            os.chdir(PRJ_DIR_PATH + 'organism_name_files')
+            call(['./get_ncbi_data.sh'])
+            # call(['./get_ncbi_data.sh'], stdout=open(os.devnull, 'wb'))
             os.chdir(wd)
 
             # sys.exit(0)
@@ -350,7 +350,15 @@ if __name__ == '__main__':
 
     # Autopilot
     if 'autopilot' in COMMANDS:
-        COMMANDS = set(['search', 'resolve_org_names', 'extract_loci', 'flatten', 'align', 'concatenate', 'raxml'])
+
+        COMMANDS = set(['search',
+                        'resolve_org_names',
+                        'extract_loci',
+                        'flatten',
+                        'align',
+                        'concatenate',
+                        'raxml'])
+
         SPECIES_TREE = True
 
     ############################################################################
@@ -952,7 +960,7 @@ if __name__ == '__main__':
 
                     records_to_add_dict = dict()
                     for r in records_to_add:
-                        records_to_add_dict[r.annotations['gi']] = r
+                        records_to_add_dict[r.id] = r
 
                     records_to_add_dict = krblast.annotate_blast_hits(
                         blast_results_xml=blast_results_path,
@@ -975,14 +983,14 @@ if __name__ == '__main__':
                         krcl.print_progress(
                             current=i+1, total=record_count, length=0,
                             prefix=krother.timestamp() + ' ',
-                            postfix=' - ' + record.annotations['gi'],
+                            postfix=' - ' + record.id,
                             show_bar=False)
 
                         DB.add_genbank_record(
                             record=record,
                             action_str='Blast ' + db + ' search result.')
 
-                        gi = int(record.annotations['gi'])
+                        gi = record.id
 
                         DB.add_record_annotation(
                             record_reference=gi,
@@ -1235,7 +1243,7 @@ if __name__ == '__main__':
 
                 rej_gi_list = acc_rej_gi_dict['reject']
                 delete_note = 'failed sequence similarity test'
-                rej_gi_list = [[int(x[1]), delete_note] for x in rej_gi_list]
+                rej_gi_list = [[x[1], delete_note] for x in rej_gi_list]
 
                 no_feature_gi_list = acc_rej_gi_dict['no_feature']
                 delete_note = 'no locus annotation'
@@ -1280,7 +1288,7 @@ if __name__ == '__main__':
                                 )
 
                             db_thread.add_record_to_blacklist(
-                                ncbi_gi=int(rec.annotations['gi']),
+                                ncbi_gi=rec.id,
                                 ncbi_version=rec.id,
                                 internal_reference=rec.annotations['internal_reference'],
                                 notes=blacklist_notes)
@@ -1573,7 +1581,7 @@ if __name__ == '__main__':
 
                             gis_in_file = list()
                             if existing_record_list:
-                                gis_in_file = [int(x.id) for x in existing_record_list]
+                                gis_in_file = [x.id for x in existing_record_list]
 
                             rec_id_gi_dict = dict()
                             rec_ids_in_file = list()
@@ -1665,7 +1673,7 @@ if __name__ == '__main__':
 
                                     blacklist_notes = 'user_deleted'
 
-                                    ncbi_gi=int(del_rec.annotations['gi'])
+                                    ncbi_gi=del_rec.id
 
                                     #### TODO: USED IN blacklist_gi SHOULD BE REFACTORED ####
 
@@ -1906,7 +1914,7 @@ if __name__ == '__main__':
                                 for ar in aln:
 
                                     seq = db_thread.get_sequence_for_record(
-                                        record_reference=int(ar.id),
+                                        record_reference=ar.id,
                                         record_reference_type='gi'
                                         )
 
@@ -1916,7 +1924,7 @@ if __name__ == '__main__':
 
                                     rec_id = db_thread.db_get_row_ids(
                                         table_name='records',
-                                        where_dict={'ncbi_gi': int(ar.id)})[0]
+                                        where_dict={'ncbi_gi': ar.id})[0]
 
                                     seq_id = db_thread.db_get_row_ids(
                                         table_name='sequences',

@@ -43,7 +43,7 @@ class KRSequenceDatabase:
 
     CREATE TABLE blacklist(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ncbi_gi INTEGER,
+        ncbi_gi TEXT,
         ncbi_version TEXT,
         internal_reference TEXT,
         notes TEXT
@@ -53,7 +53,7 @@ class KRSequenceDatabase:
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         org_id INTEGER NOT NULL REFERENCES organisms(id) ON DELETE CASCADE,
         active INTEGER NOT NULL,
-        ncbi_gi INTEGER,
+        ncbi_gi TEXT,
         ncbi_version TEXT,
         internal_reference TEXT,
         description TEXT
@@ -711,7 +711,7 @@ class KRSequenceDatabase:
         }
 
         row_id = self.db_insert('sequence_representations', values_dict,
-            check_exists=False)
+            check_exists=True)
 
         return row_id
 
@@ -852,6 +852,8 @@ class KRSequenceDatabase:
             where_dict_key = 'id'
 
         where_dict = {where_dict_key: record_reference}
+
+        # print('\n', '*' * 80, where_dict, '*' * 80, '\n')
 
         rec_id = self.db_get_row_ids(
             table_name='records',
@@ -1149,9 +1151,8 @@ class KRSequenceDatabase:
 
         active = 1
 
-        ncbi_gi = record.annotations['gi']
-
         ncbi_version = record.id
+        ncbi_gi = ncbi_version
 
         description = record.description
 

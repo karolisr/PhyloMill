@@ -29,7 +29,8 @@ def read_sequence_data(
             if key == 'accession':
                 key_value = record.id
             elif key == 'gi':
-                key_value = record.annotations['gi']
+                # key_value = record.annotations['gi']
+                key_value = record.id
             elif key == 'description':
                 key_value = record.description
             else:
@@ -74,7 +75,8 @@ def export_records(records, file_format, file_path, seq_id=None, seq_id_prefix='
             records_copy.append(copy.copy(rec))
         for record in records_copy:
             if seq_id is None or seq_id == 'gi':
-                record.id = seq_id_prefix + record.annotations['gi']
+                # record.id = seq_id_prefix + record.annotations['gi']
+                record.id = seq_id_prefix + record.id
             if seq_id == 'accession':
                 record.id = seq_id_prefix + record.id
             record.description = ''

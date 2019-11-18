@@ -174,7 +174,7 @@ def merge_blast_hit_annotations(gb_records, annotation_type_to_merge, annotation
                 default_qualifiers = dict(default_qualifiers.items() + qualifiers_dict.items())
             alignment_feature = SeqFeature(FeatureLocation(merged_feature[0], merged_feature[1]), strand=merged_feature[4], type=annotation_type_merged, qualifiers=default_qualifiers)
             gb_record.features.append(alignment_feature)
-            gb_records_dict[gb_record.annotations['gi']] = gb_record
+            gb_records_dict[gb_record.id] = gb_record
     return gb_records_dict
 
 
