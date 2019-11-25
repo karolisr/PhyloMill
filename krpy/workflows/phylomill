@@ -544,6 +544,56 @@ if __name__ == '__main__':
         l_similarity = l[1]
         l = l[0]
         locus_ss_file_path = SRCH_DIR_PATH + l
+
+        # KRHACK_TEMP ########################################################
+
+        ss_text = """[xxx]
+
+database = nuccore
+query = xxx[Title] NOT ("UNVERIFIED"[Title] OR "pseudogene"[Title])
+
+[1]
+
+# 0 - anywhere; 1,2,3... - position;
+locus_relative_position = 0
+
+# gene, mRNA, CDS, etc.
+feature_type = gene
+
+# gene, product, etc.
+qualifier_label = gene
+
+# GBSSI, waxy, granule bound starch synthase
+# Alternative values can be separated by a vertical bar '|'
+qualifier_value = xxx
+
+# Yes or No
+#   Yes means: treat qualifier_value as a regular expression; strict_value_match has no effect
+#    No means: treat qualifier_value as a fixed string
+regex = No
+
+# Yes or No
+#   Yes means: match value (not case sensitive) exactly
+#    No means: some part of the value matches
+strict_value_match = No
+
+# minimum length of the feature being extracted
+min_length = 100
+
+# extract more to the left and to the right of the feature
+extra_length = 0
+        """
+
+        if not os.path.exists(locus_ss_file_path):
+            write_log('There is no search strategy file for locus: ' + l, LFP)
+            ss_text = ss_text.replace('xxx', l)
+            ss_file_handle = open(locus_ss_file_path, 'w')
+            write_log('Creating default search strategy file for locus: ' + l, LFP)
+            ss_file_handle.write(ss_text)
+            ss_file_handle.close()
+
+        ######################################################################
+
         if os.path.exists(locus_ss_file_path):
             locus_cfg = ConfigParser.SafeConfigParser(allow_no_value=True)
             locus_cfg.optionxform=str
@@ -1662,14 +1712,17 @@ if __name__ == '__main__':
                         if deleted_rec_ids:
                             for del_rec_id in deleted_rec_ids:
                                 del_rec = None
+                                del_rec_index = None
 
-                                for r in org_records:
+                                for i, r in enumerate(org_records):
                                     if int(r.annotations['kr_seq_db_id']) == del_rec_id:
                                         del_rec = r
+                                        del_rec_index = i
                                         break
 
                                 if del_rec:
-                                    org_records.remove(del_rec)
+                                    org_records.pop(del_rec_index)
+                                    # org_records.remove(del_rec)
 
                                     blacklist_notes = 'user_deleted'
 

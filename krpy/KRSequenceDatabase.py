@@ -855,9 +855,14 @@ class KRSequenceDatabase:
 
         # print('\n', '*' * 80, where_dict, '*' * 80, '\n')
 
-        rec_id = self.db_get_row_ids(
+        rec_id_temp = self.db_get_row_ids(
             table_name='records',
-            where_dict=where_dict)[0]
+            where_dict=where_dict)
+
+        if rec_id_temp is None:
+            return
+        else:
+            rec_id = rec_id_temp[0]
 
         # row_id = self._add_record_annotation(
         #     rec_id=rec_id,
